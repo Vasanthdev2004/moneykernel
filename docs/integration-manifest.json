@@ -1,0 +1,104 @@
+{
+  "schema_version": "1",
+  "adapter": "binance-mcp",
+  "checked_at": "2026-09-08T05:45:00Z",
+  "gate0": {
+    "status": "IN_PROGRESS",
+    "decision": "PENDING: custom MCP client reaches the endpoint and completes discovery, but the first authenticated tools/list and one market-data read still require the operator's OAuth consent",
+    "prd_reference": "prd.md section 2.4"
+  },
+  "endpoint": "https://agent.binance.com/mcp/agentic",
+  "transport": "streamable-http",
+  "client": {
+    "name": "moneykernel-gate0-spike",
+    "version": "0.0.1",
+    "sdk": "@modelcontextprotocol/sdk",
+    "sdk_version": "1.30.0",
+    "runtime": "node v24.19.0",
+    "source": "spikes/gate0/mcp-spike.ts"
+  },
+  "protocol_version": null,
+  "authentication": {
+    "status": "PENDING_OPERATOR_CONSENT",
+    "observed": "HTTP 401 with Content-Length 0 on the MCP initialize POST when no bearer token is sent",
+    "observed_at": "2026-09-08T05:38:53Z",
+    "www_authenticate": "Bearer resource_metadata=\"https://agent.binance.com/.well-known/oauth-protected-resource/gateway-mcp\"",
+    "protected_resource_metadata": {
+      "url": "https://agent.binance.com/.well-known/oauth-protected-resource/gateway-mcp",
+      "resource": "https://agent.binance.com/mcp/agentic",
+      "authorization_servers": ["https://agent.binance.com"],
+      "scopes_supported": null
+    },
+    "authorization_server_metadata": {
+      "url": "https://agent.binance.com/.well-known/oauth-authorization-server",
+      "issuer": "https://agent.binance.com",
+      "authorization_endpoint": "https://accounts.binance.com/agentic-oauth/authorize",
+      "token_endpoint": "https://accounts.binance.com/oauth-agentic/token",
+      "token_endpoint_auth_methods_supported": ["none"],
+      "response_types_supported": ["code"],
+      "grant_types_supported": ["authorization_code"],
+      "code_challenge_methods_supported": ["S256"],
+      "client_id_metadata_document_supported": true,
+      "registration_endpoint": null
+    },
+    "custom_client_route": "OAuth 2.1 authorization_code + PKCE S256 as a public client; client_id is the HTTPS URL of a hosted client ID metadata document because no dynamic client registration endpoint is advertised",
+    "client_id_metadata_document": "https://vasanthdev2004.github.io/moneykernel/oauth-client.json",
+    "client_id_metadata_source": "docs/oauth-client.json served by GitHub Pages (verified HTTP 200, application/json)",
+    "redirect_uri": "http://127.0.0.1:8765/callback",
+    "scope_requested": null,
+    "scope_note": "Scope names are not published in the server metadata; none requested. Documentation describes selectable scopes (market data, account, trade, transfer) on the consent screen.",
+    "platform_statement_vs_observation": "Documentation describes market data as public with no auth. Observation: a custom client still needs a bearer token to complete the MCP initialize handshake. The scope statement and the transport-level requirement are different things; do not claim unauthenticated MCP reads.",
+    "token_storage": "spikes/gate0/raw/oauth-tokens.json (gitignored); never exported"
+  },
+  "operations": {
+    "read_market_context": {
+      "status": "UNVERIFIED",
+      "upstream_tool": null,
+      "input_schema_hash": null,
+      "output_parser_version": null,
+      "note": "Set only after an authenticated tools/list and one successful read with deterministic numeric parsing"
+    }
+  },
+  "discovered_tools": null,
+  "order_writes_enabled": false,
+  "spot_testnet": {
+    "capability": "NOT_ATTEMPTED",
+    "blocker": "No dedicated Spot Testnet credentials supplied (BINANCE_TESTNET_API_KEY and BINANCE_TESTNET_API_SECRET absent). Testnet execution is P1 and only follows the qualification table in prd.md section 13.5.",
+    "public_reachability": {
+      "ping": "HTTP 200",
+      "time": "HTTP 200",
+      "exchangeInfo_BTCUSDT": "docs/gate0/spot-testnet-exchangeinfo-BTCUSDT.json",
+      "observed_filters": {
+        "PRICE_FILTER.tickSize": "0.01000000",
+        "LOT_SIZE.stepSize": "0.00001000",
+        "NOTIONAL.minNotional": "5.00000000"
+      }
+    }
+  },
+  "mainnet_public_rest": {
+    "ping": "HTTP 200",
+    "note": "Reachable. Permitted only as separately labelled read-only enrichment (prd.md section 13.4). Never relabelled as MCP. No mainnet trading credential exists or is accepted in v0.1."
+  },
+  "model_route": {
+    "status": "PENDING_OWNER_DECISION",
+    "provider_keys_present_in_environment": false,
+    "default_until_decided": "MODEL_PROVIDER=disabled; REPLAY mode and the offline test suite need no provider",
+    "constraint": "Consumer subscriptions (Claude Max, GPT Pro) are development resources, not API credit (prd.md section 16.5). A separately billed provider API key is required for a live model-generated proposal."
+  },
+  "local_stack": {
+    "node": "v24.19.0",
+    "npm": "11.17.0",
+    "pnpm": "12.3.4 (npm global, %APPDATA%\\npm)",
+    "typescript_in_spike": "7.0.2",
+    "docker_cli": "29.7.2",
+    "docker_compose": "v5.4.0",
+    "docker_engine": "NOT_RUNNING at check time; Docker Desktop processes present but engine pipe absent",
+    "postgres": "not provisioned yet; Gate 1 uses Docker Compose"
+  },
+  "evidence_files": [
+    "docs/gate0/spot-testnet-exchangeinfo-BTCUSDT.json",
+    "docs/oauth-client.json",
+    "spikes/gate0/mcp-spike.ts",
+    "spikes/gate0/oauth.ts"
+  ]
+}
