@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
+import { verifyRunExport } from "../../scripts/verify-receipt.ts";
 
 /**
  * Operator flows through the real console and kernel (prd.md 17, 20.1 e2e):
@@ -11,6 +12,7 @@ import { expect, type Page, test } from "@playwright/test";
 type Seed = { agents: Array<{ fixture_agent_id: string; token: string; lease_id: string }> };
 
 const SECRET = process.env.OPERATOR_BOOTSTRAP_SECRET ?? "";
+const API = `http://127.0.0.1:${process.env.E2E_KERNEL_PORT ?? "8080"}`;
 let seed: Seed;
 
 // Seeding is once per account alias; a worker restart after a failed test reuses the recorded tokens.
@@ -59,14 +61,14 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   // The agent proposes through its own API; the console never holds agent tokens.
   const alpha = seed.agents.find((a) => a.fixture_agent_id === "agent_alpha");
   if (alpha === undefined) throw new Error("alpha not seeded");
-  const context = await request.get("http://127.0.0.1:8080/v1/agent/context", {
+  const context = await request.get(`${API}/v1/agent/context`, {
     headers: { authorization: `Bearer ${alpha.token}` },
   });
   expect(context.ok()).toBeTruthy();
   const ctx = (await context.json()) as { observations: Array<{ snapshot_id: string; symbol: string }> };
   const obs = ctx.observations.find((o) => o.symbol === "SOLUSDT");
   if (obs === undefined) throw new Error("no SOL observation");
-  const submitted = await request.post("http://127.0.0.1:8080/v1/agent/intents", {
+  const submitted = await request.post(`${API}/v1/agent/intents`, {
     headers: { authorization: `Bearer ${alpha.token}`, "idempotency-key": `e2e-${Date.now()}` },
     data: {
       schema_version: "1",
@@ -126,6 +128,20 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   const download = page.waitForEvent("download");
   await page.getByTestId("export-receipt").click();
   expect((await download).suggestedFilename()).toMatch(/^receipt-.*\.json$/);
+
+  const runDownload = page.waitForEvent("download");
+  await page.getByTestId("export-run").click();
+  const exported = await runDownload;
+  expect(exported.suggestedFilename()).toMatch(/^moneykernel-run-.*\.json$/);
+  const exportPath = await exported.path();
+  if (exportPath === null) throw new Error("run export was not downloaded");
+  const exportText = readFileSync(exportPath, "utf8");
+  const report = verifyRunExport(JSON.parse(exportText));
+  expect(report.checks.filter((c) => !c.ok)).toEqual([]);
+  expect(report.ok).toBe(true);
+  expect(report.summary).toMatchObject({ receipts: 1, replayed: 1, commands: 1, fills: 1 });
+  expect(exportText).not.toContain(SECRET);
+  expect(exportText).not.toContain(alpha.token);
 
   // T-53: a reload catches up from the durable log without duplicating committed events.
   await page.reload();

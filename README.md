@@ -16,7 +16,7 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
 | G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
 | G5 operator experience | Implemented and independently reviewed: operations console, exact approvals, agent/lease controls, conflicts, receipts, incidents, commands, integration status, and SSE timeline. Session, cash-buffer, state-label, and responsive fixes have [G5 review evidence](docs/g5-fix-test-evidence.md), including 7 passing browser tests. |
-| G6 adversarial hardening | Done: fault layer (`pnpm test:fault`), sanitized run export, standalone `verify:receipt` (chain, fingerprints, evaluator replay, numerical agreement, secret scan), offline `demo:replay` for all four scenarios with isolated runs. See `docs/decisions/0008-g6-export-verify-replay.md`. |
+| G6 adversarial hardening | Implemented and independently reviewed: fault layer, consistent complete run exports with credential screening, standalone verification of audit linkage, evaluator replay and financial authority, and offline replays for all four scenarios. See [G6 review evidence](docs/g6-fix-test-evidence.md) for validation and verification limits. |
 | G7 release candidate | Done: scripted four-scene demo rehearsal through the real console (`pnpm demo:rehearse`, three consecutive runs with screenshots under `docs/evidence/demo/`), REPLAY-only synthetic fault endpoint for scene D, manual recording script (`docs/demo-script.md`, `pnpm demo:scene`), fresh-clone start check, evidence package index. Recording and submission are the owner's steps. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
@@ -88,7 +88,7 @@ pnpm agent:run -- --token <mka_...> --context-out .moneykernel/context.json   # 
 pnpm agent:run -- --token <mka_...> --provider agent-session --proposal proposal.json --role alpha
 ```
 
-A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
+A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Binding live-model provenance to archived receipt evidence remains incomplete after G6. An export labels the run `SCRIPTED` only when every registered agent is scripted; otherwise its model source is conservatively `DISABLED`, with individual strategy kinds retained.
 
 ### Demo rehearsal and recording (prd.md 23)
 
@@ -101,7 +101,9 @@ pnpm demo:replay -- scenario-d-lost-response --runs 3   # isolated virtual runs,
 pnpm verify:receipt -- .moneykernel/replays/<alias>/export.json
 ```
 
-`demo:replay` needs the database and `.env` (REPLAY mode) but no exchange or model access. `verify:receipt` needs nothing but the file: it re-verifies the event hash chain, every receipt fingerprint, re-runs the pure evaluator on each receipt's archived context, checks that candidate, command, order, fills, reservations, and ledger agree numerically, and scans for secrets. The operator console exports the current run from `GET /v1/runs/current/export`.
+`demo:replay` needs the database and `.env` (REPLAY mode) but no exchange or model access. `--runs` must be a positive integer; `--keep-alias` is for a single fresh account. `verify:receipt` needs only the export file and the installed repository dependencies: it verifies the event hash chain, receipt fingerprints and audit linkage, replays available contexts through the matching evaluator, checks financial authority and accounting, and screens for credential patterns. The operator console exports one consistent database snapshot from `GET /v1/runs/current/export`; unsafe content makes the download fail rather than rewriting signed evidence.
+
+For verification against an independently retained final event hash, add `--head-checkpoint <sha256>`. The older `--checkpoint` option identifies the preceding event of a chain slice; it does not authenticate the final event, and a slice cannot establish complete account-row coverage. Without an independent final hash, a successful report establishes internal consistency only. Legacy receipts with no archived context are explicitly counted as fingerprint-only.
 
 ## Gate 0 outcome (2026-09-08)
 
@@ -130,7 +132,7 @@ Implemented P0 behaviour is what the tests above exercise. The following is not 
 - **Fees and filters.** Quote-asset and base-asset commissions are modelled; any other fee asset opens a CRITICAL incident and keeps the hold. `PRICE_FILTER`, `LOT_SIZE`, and `NOTIONAL` are enforced; `PERCENT_PRICE(_BY_SIDE)` is bounded only by the drift policy; unknown filter types deny with `FILTER_UNSUPPORTED`.
 - **Freshness.** Referenced observations must be under 5 s old at admission (policy default), so a slow model path earns `STALE_MARKET_DATA` rather than an exemption.
 - **Operations.** One kernel instance, no hot failover; operator sessions live in memory (a restart logs everyone out and pauses the account); the event stream polls committed events every 500 ms; the integration, fault, and browser suites share one database and must run one at a time.
-- **Evidence.** `verify:receipt` proves that the exported records are intact, internally consistent, and re-derivable by the pure evaluator. It does not prove that Binance or a model was honest, and there is no external anchoring of checkpoints (P2).
+- **Evidence.** A successful `verify:receipt` report establishes the checks described above, with complete settlement proof only for reconciled commands. Legacy receipts without context cannot be replayed. A complete history rewrite cannot be detected without an independently retained checkpoint; automated external anchoring remains P2. Credential screening detects known formats and configured values at export time, but cannot recognize every arbitrary secret in prose. No check proves that Binance or a model was honest.
 - **Not production-ready.** No claim of guaranteed maximum loss, exactly-once execution under every failure, or risk-free trading (prd.md 23.3).
 
 ## License

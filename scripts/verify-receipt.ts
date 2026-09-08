@@ -17,26 +17,31 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import {
+  CandidateOrderSchema,
   canonicalJson,
   decisionFingerprint,
   type ExportedReceipt,
+  exportSecretFindings,
   HEX64_RE,
+  hashCanonical,
   type RunExport,
   RunExportSchema,
   verifyEventChain,
 } from "@moneykernel/contracts";
 import {
-  abs,
   add,
   type Dec,
   dec,
+  ENGINE_VERSION,
   type EvaluationInput,
   type EvaluationResult,
   eq,
   evaluate,
+  mul,
   toDecimalString,
   ZERO,
 } from "@moneykernel/domain";
+import { auditLinkageProblems } from "./verify-export-linkage.ts";
 
 export type VerificationCheck = {
   name: string;
@@ -68,6 +73,8 @@ export type VerifyOptions = {
    * the bundle's own checkpoint.previous_hash.
    */
   checkpointHash?: string | null;
+  /** Trusted final event hash retained out of band; unlike a predecessor, this binds the whole exported tail. */
+  headCheckpointHash?: string;
 };
 
 export const CHECK_NAMES = [
@@ -84,13 +91,14 @@ export const CHECK_NAMES = [
 
 export const USAGE = `MoneyKernel receipt verifier (prd.md 22.2, 14.5, 23.4)
 
-Usage: node scripts/verify-receipt.ts <export-file> [--checkpoint <hex64>] [--json]
-       pnpm verify:receipt -- <export-file> [--checkpoint <hex64>] [--json]
+Usage: node scripts/verify-receipt.ts <export-file> [--checkpoint <hex64>] [--head-checkpoint <hex64>] [--json]
+       pnpm verify:receipt -- <export-file> [--checkpoint <hex64>] [--head-checkpoint <hex64>] [--json]
 
   <export-file>          sanitized run export from GET /v1/runs/:id/export
   --checkpoint <hex64>   trusted event_hash preceding the exported slice, retained out of band (T-54);
                          default: the bundle's own checkpoint.previous_hash, normally genesis
   --json                 print the VerificationReport as JSON instead of the text report
+  --head-checkpoint <hex64> trusted final event_hash retained out of band; authenticates the exported tail
   --help
 
 Checks, in order: ${CHECK_NAMES.join(", ")}.
@@ -105,28 +113,6 @@ type Row = Record<string, unknown>;
 const TERMINAL_ORDER_STATUSES: ReadonlySet<string> = new Set(["FILLED", "CANCELED", "EXPIRED"]);
 const FORBIDDEN_CONTEXT_KEYS: ReadonlySet<string> = new Set(["token", "secret", "api_key"]);
 const MAX_LISTED = 3;
-const MAX_MESSAGE = 120;
-
-/**
- * Secret shapes (T-58). The first six are copied from scripts/doctor.ts, with the
- * assignment forms widened from `KEY = value` to the JSON `"KEY": "value"` this
- * scanner sees; the rest are the kernel's own credential shapes (prd.md 14.7).
- * The verifier never imports doctor: it must stay runnable without a database.
- */
-const SECRET_PATTERNS: ReadonlyArray<readonly [label: string, pattern: RegExp]> = [
-  ["private key block", /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/],
-  ["anthropic key", /(?<![A-Za-z0-9])sk-ant-[A-Za-z0-9_-]{20,}/],
-  ["openai key", /(?<![A-Za-z0-9])sk-(?:proj-)?[A-Za-z0-9]{32,}/],
-  ["aws access key", /AKIA[0-9A-Z]{16}/],
-  ["binance-style key assignment", /BINANCE_[A-Z_]*(?:KEY|SECRET)"?\s*[:=]\s*['"]?[A-Za-z0-9]{32,}/],
-  [
-    "generic secret assignment",
-    /(?:api[_-]?key|api[_-]?secret|access[_-]?token)"?\s*[:=]\s*['"][A-Za-z0-9_-]{24,}['"]/i,
-  ],
-  ["agent or operator bearer token", /\bmk[ao]_[A-Za-z0-9_-]{20,}\b/],
-  ["bootstrap secret value", /bootstrap_secret"?\s*[:=]\s*['"]?[^'",\s{}]{8,}/i],
-  ["token_hash key", /"token_hash"\s*:/],
-];
 
 // --- small helpers -----------------------------------------------------------
 
@@ -210,16 +196,6 @@ function listSome(items: ReadonlyArray<string>, maxLength = 160): string {
   return `${shown.join(", ")}${more}`;
 }
 
-function formatPath(path: ReadonlyArray<PropertyKey>): string {
-  if (path.length === 0) return "$";
-  return `$${path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("")}`;
-}
-
-function errorText(error: unknown): string {
-  const text = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  return text.length > MAX_MESSAGE ? `${text.slice(0, MAX_MESSAGE - 3)}...` : text;
-}
-
 /** True when any nested plain object carries one of the keys (compared case-insensitively). */
 function containsKey(value: unknown, keys: ReadonlySet<string>): boolean {
   if (Array.isArray(value)) return value.some((item) => containsKey(item, keys));
@@ -242,18 +218,43 @@ function checkEventChain(run: RunExport, options: VerifyOptions): VerificationCh
   let source: string;
   if (checkpointHash === null) source = supplied ? "genesis (supplied)" : "genesis per the bundle checkpoint";
   else source = supplied ? "the supplied checkpoint" : "the bundle checkpoint";
-  const chain = verifyEventChain(run.audit_events, checkpointHash);
   const events = run.audit_events.length;
+  const fail = (detail: string): VerificationCheck => ({ name: "event_chain", ok: false, detail, count: events });
+  if (events === 0) return fail("account export has no audit evidence; no checkpoint can be verified");
+  if (run.audit_events.some((event) => event.account_id !== run.account.id)) {
+    return fail("audit event belongs to a different account");
+  }
+  if (new Set(run.audit_events.map((event) => event.id)).size !== events) return fail("duplicate audit event id");
+  if (run.checkpoint.previous_hash === null && run.audit_events[0]?.account_seq !== 1) {
+    return fail("genesis export must begin with account sequence 1");
+  }
+  let chain: ReturnType<typeof verifyEventChain>;
+  try {
+    chain = verifyEventChain(run.audit_events, checkpointHash);
+  } catch {
+    return fail("event payload is not valid canonical JSON");
+  }
   const countOk = events === run.checkpoint.event_count;
+  const tail = run.audit_events.at(-1);
+  const headOk =
+    (run.checkpoint.final_hash === undefined || run.checkpoint.final_hash === tail?.event_hash) &&
+    (run.checkpoint.final_seq === undefined || run.checkpoint.final_seq === tail?.account_seq) &&
+    (options.headCheckpointHash === undefined || options.headCheckpointHash === tail?.event_hash);
   let detail: string;
   if (!chain.ok) {
     detail = `first_bad_seq=${chain.first_bad_seq} reason=${chain.reason} (${plural(events, "event")} verified from ${source})`;
   } else if (!countOk) {
     detail = `${plural(events, "event")} exported but checkpoint.event_count=${run.checkpoint.event_count}`;
+  } else if (!headOk) {
+    detail = "exported tail does not match the declared or independently retained head checkpoint";
   } else {
-    detail = `${plural(events, "event")} chain from ${source}; count matches checkpoint.event_count`;
+    const trust =
+      options.headCheckpointHash === undefined
+        ? "unanchored internal consistency only; no independently retained final hash supplied"
+        : "tail matches independently retained head checkpoint";
+    detail = `${plural(events, "event")} chain from ${source}; count and declared head match; ${trust}`;
   }
-  return { name: "event_chain", ok: chain.ok && countOk, detail, count: events };
+  return { name: "event_chain", ok: chain.ok && countOk && headOk, detail, count: events };
 }
 
 function checkFingerprints(run: RunExport): VerificationCheck {
@@ -289,16 +290,32 @@ function checkFingerprints(run: RunExport): VerificationCheck {
 
 /** Pure replay of the archived logical context (prd.md 14.5, T-55). Never creates commands or touches a venue. */
 function replayProblem(receipt: ExportedReceipt, proposalsById: ReadonlyMap<string, Row>): string | null {
+  if (receipt.engine_version !== ENGINE_VERSION) return "archived engine version is unsupported by this evaluator";
+  const input = asRow(receipt.evaluation_input);
+  if (input === null || typeof input.now !== "string" || Date.parse(input.now) !== Date.parse(receipt.evaluated_at)) {
+    return "evaluation time differs from the receipt";
+  }
   let result: EvaluationResult;
   try {
     result = evaluate(receipt.evaluation_input as EvaluationInput);
-  } catch (error) {
-    return `evaluator threw ${errorText(error)}`;
+  } catch {
+    return "archived context cannot be evaluated";
   }
   if (result.outcome !== receipt.outcome) return `outcome ${result.outcome} != recorded ${receipt.outcome}`;
   if (!sameCanonical(result.reason_codes, receipt.reason_codes)) return "reason_codes differ";
   if (!sameCanonical(result.checks, receipt.checks)) return "checks differ";
   if (!sameCanonical(result.normalized_request, receipt.normalized_request)) return "normalized_request differs";
+  if (!sameCanonical(result.input_refs, receipt.input_refs)) return "input_refs differ";
+  const fingerprint = decisionFingerprint({
+    engine_version: ENGINE_VERSION,
+    normalized_request: result.normalized_request,
+    input_refs: result.input_refs,
+    outcome: result.outcome,
+    reason_codes: result.reason_codes,
+    checks: result.checks,
+    evaluated_at: receipt.evaluated_at,
+  });
+  if (fingerprint !== receipt.decision_fingerprint) return "replayed decision fingerprint differs";
   const proposal = receipt.proposal_id === null ? undefined : proposalsById.get(receipt.proposal_id);
   const recorded = proposal?.normalized_order ?? null;
   if (result.candidate === null && recorded === null) return null;
@@ -313,6 +330,7 @@ function checkReplay(
   let replayed = 0;
   let fingerprintOnly = 0;
   const failures: string[] = [];
+  if (run.engine_version !== ENGINE_VERSION) failures.push("export engine version is unsupported by this evaluator");
   for (const receipt of run.receipts) {
     if (receipt.evaluation_input === null) {
       fingerprintOnly += 1;
@@ -322,7 +340,7 @@ function checkReplay(
     const problem = replayProblem(receipt, proposalsById);
     if (problem !== null) failures.push(`${receipt.decision_id} (${problem})`);
   }
-  const archived = `${fingerprintOnly} fingerprint-only: context not archived (receipt predates migration 0005)`;
+  const archived = `${fingerprintOnly} fingerprint-only: context unavailable; replay completeness is not verified`;
   return {
     replayed,
     fingerprintOnly,
@@ -332,7 +350,7 @@ function checkReplay(
       count: replayed,
       detail:
         failures.length === 0
-          ? `${replayed} replayed through the pure evaluator with identical outcome, reason codes, checks, request, and candidate; ${archived}`
+          ? `${replayed} replayed through the pure evaluator with identical fingerprint, time, references, and candidate; ${archived}`
           : `${failures.length} of ${replayed} replays diverge: ${listSome(failures)}; ${archived}`,
     },
   };
@@ -345,7 +363,7 @@ function checkLinkage(run: RunExport): VerificationCheck {
   const commands = idSet(run.commands);
   const orders = idSet(run.orders);
   const fills = idSet(run.fills);
-  const dangling: string[] = [];
+  const dangling: string[] = auditLinkageProblems(run);
   let references = 0;
   const link = (kind: string, id: unknown, refName: string, ref: unknown, known: Set<string>, optional = false) => {
     if (optional && (ref === null || ref === undefined)) return;
@@ -378,21 +396,120 @@ function checkLinkage(run: RunExport): VerificationCheck {
 }
 
 type AgreementContext = {
+  run: RunExport;
   proposalsById: ReadonlyMap<string, Row>;
+  intentsById: ReadonlyMap<string, Row>;
+  leasesById: ReadonlyMap<string, Row>;
+  approvalsById: ReadonlyMap<string, Row>;
+  policiesById: ReadonlyMap<string, Row>;
+  commandsById: ReadonlyMap<string, Row>;
+  commandsByProposal: ReadonlyMap<string, Row[]>;
+  ordersById: ReadonlyMap<string, Row>;
   ordersByCommand: ReadonlyMap<string, Row[]>;
   fillsByOrder: ReadonlyMap<string, Row[]>;
   reservationsByProposal: ReadonlyMap<string, Row[]>;
   quoteAsset: string;
 };
 
-/** The BASE hold names the asset the kernel settled; fall back to the symbol without its quote suffix. */
-function baseAssetFor(reservations: ReadonlyArray<Row>, symbol: unknown, quoteAsset: string): string | null {
-  const hold = reservations.find((r) => r.kind === "BASE");
-  const held = asString(hold?.asset);
-  if (held !== null) return held;
+/** Asset identity comes from the approved symbol, never from a possibly misattributed hold. */
+function baseAssetFor(symbol: unknown, quoteAsset: string): string | null {
   const text = asString(symbol);
   if (text !== null && text.length > quoteAsset.length && text.endsWith(quoteAsset)) {
     return text.slice(0, -quoteAsset.length);
+  }
+  return null;
+}
+
+const byId = (rows: ReadonlyArray<Row>): Map<string, Row> => new Map(rows.map((row) => [asString(row.id) ?? "", row]));
+const hasTimestamp = (value: unknown): boolean => typeof value === "string" && Number.isFinite(Date.parse(value));
+const timeOf = (value: unknown): number => (typeof value === "string" ? Date.parse(value) : Number.NaN);
+const isArmed = (command: Row): boolean => hasTimestamp(command.armed_at);
+const isSettled = (command: Row): boolean => command.state === "ACCEPTED" && hasTimestamp(command.reconciled_at);
+const isNonNegative = (value: unknown): boolean => asDec(value)?.gte(ZERO) === true;
+
+function proposalProblem(proposal: Row, ctx: AgreementContext): string | null {
+  const parsed = CandidateOrderSchema.safeParse(proposal.normalized_order);
+  if (!parsed.success) return "invalid normalized_order";
+  const candidate = parsed.data;
+  const policy = ctx.policiesById.get(asString(proposal.policy_id) ?? "");
+  if (policy === undefined) return "policy not in export";
+  if (
+    typeof proposal.intent_id !== "string" ||
+    ![proposal.revision, policy.version, proposal.lease_revision, proposal.account_epoch].every(
+      (value) => Number.isSafeInteger(value) && (value as number) >= 0,
+    )
+  )
+    return "proposal authority identifiers or revisions are invalid";
+  const expectedHash = hashCanonical({
+    account_id: ctx.run.account.id,
+    intent_id: proposal.intent_id,
+    revision: proposal.revision,
+    policy_version: policy.version,
+    lease_revision: proposal.lease_revision,
+    account_epoch: proposal.account_epoch,
+    environment: ctx.run.environment,
+    order: proposal.normalized_order,
+  });
+  if (proposal.proposal_hash !== expectedHash) return "proposal_hash does not bind the recorded order and authority";
+  if (!eq(mul(dec(candidate.quantity), dec(candidate.limit_price)), dec(candidate.notional_quote))) {
+    return "candidate notional_quote != quantity * limit_price";
+  }
+  if (candidate.side === "BUY") {
+    if (
+      !eq(dec(candidate.base_reserved), ZERO) ||
+      !eq(dec(candidate.total_quote_reserved), add(dec(candidate.notional_quote), dec(candidate.fee_reserve_quote)))
+    ) {
+      return "BUY candidate resource envelope does not match notional plus fee";
+    }
+  } else if (
+    !eq(dec(candidate.base_reserved), dec(candidate.quantity)) ||
+    !eq(dec(candidate.total_quote_reserved), ZERO) ||
+    !eq(dec(candidate.fee_reserve_quote), ZERO)
+  ) {
+    return "SELL candidate resource envelope does not match owned base quantity";
+  }
+  const intent = ctx.intentsById.get(asString(proposal.intent_id) ?? "");
+  if (intent === undefined) return "intent not in export";
+  const reservations = ctx.reservationsByProposal.get(asString(proposal.id) ?? "") ?? [];
+  const kind = candidate.side === "BUY" ? "QUOTE" : "BASE";
+  const asset = candidate.side === "BUY" ? ctx.quoteAsset : baseAssetFor(candidate.symbol, ctx.quoteAsset);
+  if (asset === null) return "cannot determine approved base asset";
+  const command = ctx.commandsByProposal.get(asString(proposal.id) ?? "")?.[0];
+  const armed = command !== undefined && isArmed(command);
+  const ended =
+    command?.state === "ABORTED_PRE_ARM" || ["INVALIDATED", "REJECTED", "EXPIRED"].includes(String(proposal.state));
+  const released = command?.state === "REJECTED_CONFIRMED";
+  for (const r of reservations) {
+    if (r.agent_id !== intent.agent_id) return "reservation owner differs from intent agent";
+    if (!isNonNegative(r.amount)) return "reservation amount is not a nonnegative decimal";
+    if (r.kind !== kind && r.kind !== "ATTEMPT") return "reservation kind differs from candidate resources";
+    if (r.asset !== (r.kind === "ATTEMPT" ? "ATTEMPT" : asset)) return "reservation asset differs from approved asset";
+    if (!["HELD", "ARMED", "CONSUMED", "RELEASED"].includes(String(r.state))) return "invalid reservation state";
+    if (r.kind === "ATTEMPT") {
+      if (r.state !== (armed ? "CONSUMED" : ended ? "RELEASED" : "HELD"))
+        return "attempt hold state does not match arming";
+    } else if (!armed) {
+      if (r.state !== (ended ? "RELEASED" : "HELD")) return "never-armed financial hold has the wrong state";
+    } else if (released) {
+      if (r.state !== "RELEASED") return "confirmed rejection retains or consumes a financial hold";
+    } else if (command !== undefined && isSettled(command)) {
+      if (r.state === "HELD" || r.state === "ARMED") return "reservation still HELD or ARMED after reconciliation";
+    } else if (r.state !== "ARMED" && r.state !== "CONSUMED") {
+      return "unsettled command lost its financial hold before reconciliation";
+    }
+  }
+  const financial = sumField(
+    reservations.filter((r) => r.kind === kind),
+    "amount",
+  );
+  const attempts = sumField(
+    reservations.filter((r) => r.kind === "ATTEMPT"),
+    "amount",
+  );
+  const envelope = dec(candidate.side === "BUY" ? candidate.total_quote_reserved : candidate.base_reserved);
+  if (financial === null || !eq(financial, envelope)) return "total financial holds differ from the candidate envelope";
+  if (reservations.filter((r) => r.kind === "ATTEMPT").length !== 1 || attempts === null || !eq(attempts, dec("1"))) {
+    return "proposal must retain exactly one attempt hold";
   }
   return null;
 }
@@ -409,28 +526,138 @@ function commandProblem(command: Row, ctx: AgreementContext): string | null {
   for (const key of ["quantity", "limit_price"] as const) {
     if (!sameDecimal(payload[key], candidate[key])) return `exact_payload.${key} differs from the approved candidate`;
   }
+  const expected = {
+    environment: ctx.run.environment,
+    account_id: ctx.run.account.id,
+    client_order_id: command.client_order_id,
+    symbol: candidate.symbol,
+    side: candidate.side,
+    order_type: candidate.order_type,
+    proposal_hash: proposal.proposal_hash,
+  };
+  for (const [key, value] of Object.entries(expected)) {
+    if (typeof value !== "string" || payload[key] !== value)
+      return `exact_payload.${key} differs from the approved binding`;
+  }
+  if (Object.keys(payload).length !== 9) return "exact_payload contains unapproved fields";
+  const approval = ctx.approvalsById.get(asString(command.approval_id) ?? "");
+  if (
+    approval === undefined ||
+    approval.proposal_id !== proposalId ||
+    approval.proposal_revision !== proposal.revision ||
+    approval.proposal_hash !== proposal.proposal_hash ||
+    approval.account_epoch !== proposal.account_epoch
+  ) {
+    return "approval does not bind this proposal revision, hash, and epoch";
+  }
+  const armed = isArmed(command);
+  const settled = isSettled(command);
+  if (
+    !["READY", "ARMED", "ACCEPTED", "REJECTED_CONFIRMED", "OUTCOME_UNKNOWN", "ABORTED_PRE_ARM"].includes(
+      String(command.state),
+    )
+  ) {
+    return "invalid command state";
+  }
+  const preArm = command.state === "READY" || command.state === "ABORTED_PRE_ARM";
+  if (preArm === armed) return "command state contradicts armed_at";
+  if (command.reconciled_at !== null && !settled) return "reconciled_at is invalid for command state";
+  if (armed) {
+    const intent = ctx.intentsById.get(asString(proposal.intent_id) ?? "");
+    const lease = ctx.leasesById.get(asString(intent?.lease_id) ?? "");
+    const capability = asRow(lease?.capability_json);
+    if (
+      intent === undefined ||
+      lease === undefined ||
+      intent.agent_id !== lease.agent_id ||
+      !Number.isSafeInteger(lease.revision) ||
+      !Number.isSafeInteger(proposal.lease_revision) ||
+      Number(lease.revision) < Number(proposal.lease_revision) ||
+      !(timeOf(lease.starts_at) <= timeOf(command.armed_at) && timeOf(command.armed_at) < timeOf(lease.expires_at))
+    ) {
+      return "command armed outside its owning lease authority";
+    }
+    for (const [key, value] of [
+      ["allowed_symbols", candidate.symbol],
+      ["allowed_sides", candidate.side],
+      ["allowed_order_types", candidate.order_type],
+    ]) {
+      const allowed = capability?.[String(key)];
+      if (!Array.isArray(allowed) || !allowed.includes(value)) return "command exceeds its lease capability";
+    }
+    if (proposal.state !== "COMMAND_CREATED") return "armed command proposal has been invalidated";
+    if (approval.status !== "CONSUMED" || timeOf(approval.consumed_at) !== timeOf(command.armed_at)) {
+      return "armed command requires its approval consumed at arm time";
+    }
+    if (
+      !(
+        timeOf(approval.created_at) <= timeOf(command.armed_at) &&
+        timeOf(command.armed_at) < timeOf(approval.expires_at) &&
+        timeOf(command.armed_at) < timeOf(proposal.expires_at)
+      )
+    )
+      return "command armed outside approval/proposal validity";
+    if (settled && timeOf(command.reconciled_at) < timeOf(command.armed_at)) return "reconciliation predates arming";
+  } else if (
+    approval.consumed_at !== null ||
+    (command.state === "READY"
+      ? approval.status !== "ACTIVE"
+      : !["INVALIDATED", "EXPIRED"].includes(String(approval.status)))
+  ) {
+    return "never-armed command has inconsistent approval consumption/state";
+  }
   const orders = ctx.ordersByCommand.get(asString(command.id) ?? "") ?? [];
   const order = orders[0];
-  if (order === undefined || orders.length !== 1) return `${plural(orders.length, "order row")} (expected exactly 1)`;
+  if (orders.length > 1 || (command.state === "ACCEPTED" && order === undefined)) {
+    return `${plural(orders.length, "order row")} (expected exactly 1 for ACCEPTED)`;
+  }
+  if (order === undefined) {
+    const consumed = (ctx.reservationsByProposal.get(proposalId) ?? []).some(
+      (r) => r.kind !== "ATTEMPT" && r.state === "CONSUMED" && asDec(r.amount)?.gt(ZERO),
+    );
+    return consumed ? "financial holds consumed without an observed fill" : null;
+  } // READY, ARMED, and ambiguous submissions need not have an observed order.
+  if (preArm || command.state === "REJECTED_CONFIRMED") return "unsubmitted or rejected command has an order";
+  if (order.symbol !== candidate.symbol || order.client_order_id !== command.client_order_id) {
+    return "order identity differs from approved command";
+  }
   const fills = ctx.fillsByOrder.get(asString(order.id) ?? "") ?? [];
   const baseSum = sumField(fills, "base_qty");
   const quoteSum = sumField(fills, "quote_qty");
   const executedBase = asDec(order.executed_base);
   const executedQuote = asDec(order.executed_quote);
-  if (baseSum === null || quoteSum === null || executedBase === null || executedQuote === null) {
+  const quantity = asDec(candidate.quantity);
+  const limit = asDec(candidate.limit_price);
+  if (
+    baseSum === null ||
+    quoteSum === null ||
+    executedBase === null ||
+    executedQuote === null ||
+    quantity === null ||
+    limit === null
+  ) {
     return "order or fill quantities are not decimal strings";
   }
-  if (!eq(executedBase, baseSum)) return `order executed_base ${show(executedBase)} != fills ${show(baseSum)}`;
-  if (!eq(executedQuote, quoteSum)) return `order executed_quote ${show(executedQuote)} != fills ${show(quoteSum)}`;
+  if (executedBase.lt(ZERO) || executedQuote.lt(ZERO) || executedBase.gt(quantity))
+    return "order execution exceeds the approved quantity or is negative";
+  if (executedBase.lt(baseSum) || (settled && !eq(executedBase, baseSum)))
+    return `order executed_base ${show(executedBase)} != fills ${show(baseSum)}`;
+  if (executedQuote.lt(quoteSum) || (settled && !eq(executedQuote, quoteSum)))
+    return `order executed_quote ${show(executedQuote)} != fills ${show(quoteSum)}`;
+  const limitNotional = mul(executedBase, limit);
+  if (candidate.side === "BUY" ? executedQuote.gt(limitNotional) : executedQuote.lt(limitNotional))
+    return "order execution violates the approved limit price";
   const status = asString(order.status) ?? "?";
-  if (!TERMINAL_ORDER_STATUSES.has(status)) return `order status ${status} is not terminal`;
+  if (!["NEW", "PARTIALLY_FILLED", ...TERMINAL_ORDER_STATUSES].includes(status)) return "invalid order status";
+  if (settled && !TERMINAL_ORDER_STATUSES.has(status)) return `order status ${status} is not terminal`;
+  if (status === "FILLED" && !eq(executedBase, quantity)) return "FILLED order did not execute the approved quantity";
   const reservations = ctx.reservationsByProposal.get(proposalId) ?? [];
   const open = reservations.filter((r) => r.state === "HELD" || r.state === "ARMED").length;
-  if (open > 0) return `${plural(open, "reservation")} still HELD or ARMED after reconciliation`;
+  if (settled && open > 0) return `${plural(open, "reservation")} still HELD or ARMED after reconciliation`;
   const side = asString(candidate.side);
   if (side !== "BUY" && side !== "SELL") return "candidate side is not BUY or SELL";
   const kind = side === "BUY" ? "QUOTE" : "BASE";
-  const settledAsset = side === "BUY" ? ctx.quoteAsset : baseAssetFor(reservations, order.symbol, ctx.quoteAsset);
+  const settledAsset = side === "BUY" ? ctx.quoteAsset : baseAssetFor(candidate.symbol, ctx.quoteAsset);
   if (settledAsset === null) return "cannot determine the base asset for the SELL";
   const consumed = sumField(
     reservations.filter((r) => r.kind === kind && r.state === "CONSUMED"),
@@ -442,14 +669,47 @@ function commandProblem(command: Row, ctx: AgreementContext): string | null {
   );
   if (consumed === null || commissions === null) return "reservation amounts or commissions are not decimal strings";
   const executed = add(side === "BUY" ? quoteSum : baseSum, commissions);
-  if (!eq(consumed, executed)) {
+  if (consumed.gt(executed) || (settled && !eq(consumed, executed))) {
     return `CONSUMED ${kind} holds ${show(consumed)} != executed ${show(executed)} (fills plus ${settledAsset} commissions)`;
   }
   return null;
 }
 
-/** Every fill is journaled exactly once: one FILL_BASE, one FILL_QUOTE, at most one FILL_FEE (prd.md 14.3, T-39). */
-function fillLedgerProblem(fill: Row, entries: ReadonlyArray<Row>): string | null {
+/** Every known fill has correctly signed, attributed asset entries, including every positive fee. */
+function fillLedgerProblem(fill: Row, entries: ReadonlyArray<Row>, ctx: AgreementContext): string | null {
+  const order = ctx.ordersById.get(asString(fill.order_id) ?? "");
+  const command = ctx.commandsById.get(asString(order?.command_id) ?? "");
+  const proposal = ctx.proposalsById.get(asString(command?.proposal_id) ?? "");
+  const candidate = asRow(proposal?.normalized_order);
+  const intent = ctx.intentsById.get(asString(proposal?.intent_id) ?? "");
+  if (order === undefined || command === undefined || candidate === null || intent === undefined)
+    return "fill authority chain is incomplete";
+  if (fill.symbol !== candidate.symbol || order.symbol !== candidate.symbol)
+    return "fill symbol differs from approved order";
+  const baseAsset = baseAssetFor(candidate.symbol, ctx.quoteAsset);
+  const baseQty = asDec(fill.base_qty);
+  const quoteQty = asDec(fill.quote_qty);
+  const price = asDec(fill.price);
+  const commission = asDec(fill.commission_qty);
+  const limit = asDec(candidate.limit_price);
+  if (
+    baseAsset === null ||
+    baseQty === null ||
+    quoteQty === null ||
+    price === null ||
+    commission === null ||
+    limit === null ||
+    typeof fill.commission_asset !== "string" ||
+    fill.commission_asset.length === 0 ||
+    !baseQty.gt(ZERO) ||
+    !quoteQty.gt(ZERO) ||
+    !price.gt(ZERO) ||
+    commission.lt(ZERO)
+  )
+    return "fill has invalid financial values";
+  if (!eq(mul(baseQty, price), quoteQty)) return "fill quote_qty != base_qty * price";
+  if (candidate.side !== "BUY" && candidate.side !== "SELL") return "invalid fill side";
+  if (candidate.side === "BUY" ? price.gt(limit) : price.lt(limit)) return "fill price violates the approved limit";
   const byCategory = (category: string): Row[] => entries.filter((e) => e.category === category);
   const base = byCategory("FILL_BASE");
   const quote = byCategory("FILL_QUOTE");
@@ -457,18 +717,22 @@ function fillLedgerProblem(fill: Row, entries: ReadonlyArray<Row>): string | nul
   if (base.length !== 1 || quote.length !== 1) {
     return `${base.length} FILL_BASE and ${quote.length} FILL_QUOTE ledger entries (expected exactly one each)`;
   }
-  if (fee.length > 1) return `${fee.length} FILL_FEE ledger entries (expected at most one)`;
-  const expectations: ReadonlyArray<readonly [category: string, entry: Row | undefined, field: string]> = [
-    ["FILL_BASE", base[0], "base_qty"],
-    ["FILL_QUOTE", quote[0], "quote_qty"],
-    ["FILL_FEE", fee[0], "commission_qty"],
+  const feeCount = commission.gt(ZERO) ? 1 : 0;
+  if (fee.length !== feeCount)
+    return `${fee.length} FILL_FEE ledger entries (expected ${feeCount} for recorded commission)`;
+  if (entries.length !== 2 + feeCount) return "fill has extra ledger categories";
+  const buy = candidate.side === "BUY";
+  const expectations: ReadonlyArray<readonly [category: string, entry: Row | undefined, asset: unknown, delta: Dec]> = [
+    ["FILL_BASE", base[0], baseAsset, buy ? baseQty : baseQty.negated()],
+    ["FILL_QUOTE", quote[0], ctx.quoteAsset, buy ? quoteQty.negated() : quoteQty],
+    ["FILL_FEE", fee[0], fill.commission_asset, commission.negated()],
   ];
-  for (const [category, entry, field] of expectations) {
+  for (const [category, entry, asset, wanted] of expectations) {
     if (entry === undefined) continue;
     const delta = asDec(entry.signed_delta);
-    const wanted = asDec(fill[field]);
-    if (delta === null || wanted === null || !eq(abs(delta), wanted)) {
-      return `${category} |signed_delta| != fill ${field}`;
+    if (delta === null || !eq(delta, wanted)) return `${category} signed_delta differs from the fill debit/credit`;
+    if (entry.asset !== asset || entry.agent_id !== intent.agent_id || entry.source_ref !== fill.exchange_trade_id) {
+      return `${category} asset, owner, or trade identity differs from fill`;
     }
   }
   return null;
@@ -476,35 +740,267 @@ function fillLedgerProblem(fill: Row, entries: ReadonlyArray<Row>): string | nul
 
 function checkNumericalAgreement(run: RunExport, proposalsById: ReadonlyMap<string, Row>): VerificationCheck {
   const ctx: AgreementContext = {
+    run,
     proposalsById,
+    intentsById: byId(run.intents),
+    leasesById: byId(run.leases),
+    approvalsById: byId(run.approvals),
+    policiesById: byId(run.policy_versions),
+    commandsById: byId(run.commands),
+    commandsByProposal: groupBy(run.commands, "proposal_id"),
+    ordersById: byId(run.orders),
     ordersByCommand: groupBy(run.orders, "command_id"),
     fillsByOrder: groupBy(run.fills, "order_id"),
     reservationsByProposal: groupBy(run.reservations, "proposal_id"),
     quoteAsset: run.account.quote_asset,
   };
   const ledgerByFill = groupBy(run.ledger_entries, "source_fill_id");
-  const reconciled = run.commands.filter(
-    (c) => c.state === "ACCEPTED" && c.reconciled_at !== null && c.reconciled_at !== undefined,
-  );
+  const reconciled = run.commands.filter(isSettled);
   const failures: string[] = [];
-  for (const command of reconciled) {
+  for (const proposal of run.proposals) {
+    const problem = proposalProblem(proposal, ctx);
+    if (problem !== null) failures.push(`proposal ${String(proposal.id)}: ${problem}`);
+  }
+  for (const command of run.commands) {
     const problem = commandProblem(command, ctx);
     if (problem !== null) failures.push(`command ${String(command.id)}: ${problem}`);
   }
   for (const fill of run.fills) {
     const fillId = asString(fill.id) ?? "";
-    const problem = fillLedgerProblem(fill, ledgerByFill.get(fillId) ?? []);
+    const problem = fillLedgerProblem(fill, ledgerByFill.get(fillId) ?? [], ctx);
     if (problem !== null) failures.push(`fill ${String(fill.id)}: ${problem}`);
+  }
+  for (const lease of run.leases) {
+    let consumed = ZERO;
+    let attempts = 0;
+    let reserved = ZERO;
+    let reservedAttempts = ZERO;
+    for (const proposal of run.proposals) {
+      const intent = ctx.intentsById.get(asString(proposal.intent_id) ?? "");
+      if (intent === undefined || intent.lease_id !== lease.id) continue;
+      if (intent.agent_id !== lease.agent_id)
+        failures.push(`lease ${String(lease.id)}: intent agent differs from lease owner`);
+      const holds = ctx.reservationsByProposal.get(asString(proposal.id) ?? "") ?? [];
+      for (const hold of holds) {
+        const amount = asDec(hold.amount);
+        if (amount === null) continue; // proposal check reports malformed holds.
+        if (hold.kind === "QUOTE" && (hold.state === "HELD" || hold.state === "ARMED"))
+          reserved = add(reserved, amount);
+        if (hold.kind === "ATTEMPT" && hold.state === "HELD") reservedAttempts = add(reservedAttempts, amount);
+      }
+      for (const command of ctx.commandsByProposal.get(asString(proposal.id) ?? "") ?? []) {
+        if (isArmed(command)) attempts += 1;
+        if (asRow(proposal.normalized_order)?.side !== "BUY") continue;
+        for (const order of ctx.ordersByCommand.get(asString(command.id) ?? "") ?? []) {
+          for (const fill of ctx.fillsByOrder.get(asString(order.id) ?? "") ?? []) {
+            const quote = asDec(fill.quote_qty);
+            const fee = fill.commission_asset === ctx.quoteAsset ? asDec(fill.commission_qty) : ZERO;
+            if (quote !== null && fee !== null) consumed = add(consumed, add(quote, fee));
+          }
+        }
+      }
+    }
+    const budget = asDec(lease.budget_quote);
+    if (!sameDecimal(lease.consumed_quote, show(consumed)))
+      failures.push(`lease ${String(lease.id)}: consumed_quote differs from BUY fills plus quote fees`);
+    if (budget === null || budget.lt(ZERO) || add(consumed, reserved).gt(budget))
+      failures.push(`lease ${String(lease.id)}: budget does not cover consumed and reserved quote`);
+    if (
+      lease.attempts_consumed !== attempts ||
+      !Number.isSafeInteger(lease.attempt_limit) ||
+      dec(String(attempts)).plus(reservedAttempts).gt(String(lease.attempt_limit))
+    ) {
+      failures.push(`lease ${String(lease.id)}: attempts do not match armed commands and outstanding holds`);
+    }
   }
   return {
     name: "numerical_agreement",
     ok: failures.length === 0,
-    count: reconciled.length,
+    count: run.commands.length,
     detail:
       failures.length === 0
-        ? `${plural(reconciled.length, "reconciled command")} and ${plural(run.fills.length, "fill")} agree: payload = candidate, order = fills, consumed holds = executed + commissions, ledger = fills`
+        ? `${plural(reconciled.length, "reconciled command")}, ${plural(run.commands.length - reconciled.length, "command without completed settlement")}, and ${plural(run.fills.length, "fill")}: approval/payload, resources, known fills, and ledger agree; only reconciled commands have complete settlement proof`
         : `${plural(failures.length, "disagreement")}: ${listSome(failures)}`,
   };
+}
+
+/** Replay the supported attribution mutations: one virtual baseline, absolute assignments, and reconciled fills. */
+function allocationProblems(run: RunExport): string[] {
+  const failures: string[] = [];
+  const expected = new Map<string, { owner: string; asset: string; amount: Dec }>();
+  const balances = new Map<string, Dec>();
+  const agents = idSet(run.agents);
+  const fills = byId(run.fills);
+  const orders = byId(run.orders);
+  const commands = byId(run.commands);
+  const proposals = byId(run.proposals);
+  const intents = byId(run.intents);
+  const seenFills = new Set<string>();
+  let baselineSeen = false;
+  const key = (owner: string, asset: string): string => JSON.stringify([owner, asset]);
+  const set = (owner: unknown, asset: unknown, value: unknown): boolean => {
+    const amount = asDec(value);
+    if (
+      typeof owner !== "string" ||
+      (owner !== "UNASSIGNED" && !agents.has(owner)) ||
+      typeof asset !== "string" ||
+      asset.length === 0 ||
+      amount === null ||
+      amount.lt(ZERO)
+    ) {
+      failures.push("attribution event has an invalid owner, asset, or amount");
+      return false;
+    }
+    if (asset === run.account.quote_asset && owner !== "UNASSIGNED" && amount.gt(ZERO)) {
+      failures.push("shared quote cash must remain UNASSIGNED");
+    }
+    expected.set(key(owner, asset), { owner, asset, amount });
+    return true;
+  };
+  const apply = (owner: string, asset: string, delta: Dec): void => {
+    const entry = expected.get(key(owner, asset));
+    const next = add(entry?.amount ?? ZERO, delta);
+    if (next.lt(ZERO)) failures.push("recorded fills overdraw attributed inventory");
+    expected.set(key(owner, asset), { owner, asset, amount: next });
+    balances.set(asset, add(balances.get(asset) ?? ZERO, delta));
+  };
+  const conserved = (asset: string): void => {
+    let attributed = ZERO;
+    for (const entry of expected.values()) if (entry.asset === asset) attributed = add(attributed, entry.amount);
+    if (!eq(attributed, balances.get(asset) ?? ZERO))
+      failures.push("inventory assignment does not conserve account assets");
+  };
+  for (const event of run.audit_events) {
+    const p = event.payload;
+    if (event.type === "INVENTORY_ASSIGNED") {
+      if (typeof p.baseline_ref === "string") {
+        const owned = asRow(p.balances);
+        const allocations = asRow(p.allocations);
+        if (baselineSeen || seenFills.size > 0 || expected.size > 0 || owned === null || allocations === null) {
+          failures.push("initial inventory baseline is missing, duplicated, or out of order");
+          continue;
+        }
+        baselineSeen = true;
+        const baseline = run.ledger_entries.filter((entry) => entry.category === "BASELINE");
+        for (const [asset, value] of Object.entries(owned)) {
+          const amount = asDec(value);
+          const entries = baseline.filter((entry) => entry.asset === asset);
+          const entry = entries[0];
+          if (
+            amount === null ||
+            amount.lt(ZERO) ||
+            entries.length !== 1 ||
+            entry === undefined ||
+            entry.source_ref !== p.baseline_ref ||
+            entry.agent_id !== null ||
+            entry.source_fill_id !== null ||
+            !sameDecimal(entry.signed_delta, value)
+          ) {
+            failures.push("baseline ledger differs from recorded initial inventory");
+            continue;
+          }
+          balances.set(asset, amount);
+        }
+        if (baseline.length !== Object.keys(owned).length) failures.push("baseline ledger has missing or extra assets");
+        for (const [owner, values] of Object.entries(allocations)) {
+          const assets = asRow(values);
+          if (assets === null) {
+            failures.push("invalid baseline allocations");
+            continue;
+          }
+          for (const [asset, amount] of Object.entries(assets)) {
+            if (!Object.hasOwn(owned, asset)) failures.push("baseline allocation has no owned asset");
+            set(owner, asset, amount);
+          }
+        }
+        for (const asset of balances.keys()) conserved(asset);
+      } else if (Array.isArray(p.assignments)) {
+        // POST /v1/inventory/assignments sets these owner/asset quantities; they are not deltas.
+        const touched = new Set<string>();
+        for (const value of p.assignments) {
+          const assignment = asRow(value);
+          if (assignment === null) {
+            failures.push("invalid inventory assignment evidence");
+            continue;
+          }
+          if (!set(assignment.owner, assignment.asset, assignment.quantity)) continue;
+          touched.add(String(assignment.asset));
+        }
+        for (const asset of touched) conserved(asset);
+      } else failures.push("unsupported inventory assignment evidence cannot establish attribution");
+    } else if (event.type === "FILL_RECONCILED") {
+      const fill = fills.get(asString(p.fill_id) ?? "");
+      const order = orders.get(asString(fill?.order_id) ?? "");
+      const command = commands.get(asString(order?.command_id) ?? "");
+      const proposal = proposals.get(asString(command?.proposal_id) ?? "");
+      const candidate = asRow(proposal?.normalized_order);
+      const intent = intents.get(asString(proposal?.intent_id) ?? "");
+      const baseAsset = baseAssetFor(candidate?.symbol, run.account.quote_asset);
+      const base = asDec(fill?.base_qty);
+      const quote = asDec(fill?.quote_qty);
+      const fee = asDec(fill?.commission_qty);
+      if (
+        fill === undefined ||
+        typeof fill.id !== "string" ||
+        seenFills.has(fill.id) ||
+        intent === undefined ||
+        typeof intent.agent_id !== "string" ||
+        baseAsset === null ||
+        base === null ||
+        quote === null ||
+        fee === null ||
+        (candidate?.side !== "BUY" && candidate?.side !== "SELL")
+      ) {
+        failures.push("fill attribution evidence is missing, duplicated, or invalid");
+        continue;
+      }
+      seenFills.add(fill.id);
+      if (fee.gt(ZERO) && fill.commission_asset !== baseAsset && fill.commission_asset !== run.account.quote_asset) {
+        failures.push("unsupported fee asset prevents complete attribution proof");
+        continue;
+      }
+      const baseDelta = (candidate.side === "BUY" ? base : base.negated()).minus(
+        fill.commission_asset === baseAsset ? fee : ZERO,
+      );
+      const quoteDelta = (candidate.side === "BUY" ? quote.negated() : quote).minus(
+        fill.commission_asset === run.account.quote_asset ? fee : ZERO,
+      );
+      if (
+        (p.agent_id !== undefined && p.agent_id !== intent.agent_id) ||
+        (p.agent_allocation_delta !== undefined && !sameDecimal(p.agent_allocation_delta, show(baseDelta))) ||
+        (p.base_delta !== undefined && !sameDecimal(p.base_delta, show(baseDelta))) ||
+        (p.quote_delta !== undefined && !sameDecimal(p.quote_delta, show(quoteDelta)))
+      ) {
+        failures.push("fill attribution event differs from its financial deltas and owner");
+      }
+      apply(intent.agent_id, baseAsset, baseDelta);
+      apply("UNASSIGNED", run.account.quote_asset, quoteDelta);
+    }
+  }
+  if (run.ledger_entries.some((entry) => entry.category === "BASELINE") && !baselineSeen)
+    failures.push("initial allocation baseline evidence is missing");
+  if (
+    run.ledger_entries.some(
+      (entry) => !["BASELINE", "FILL_BASE", "FILL_QUOTE", "FILL_FEE"].includes(String(entry.category)),
+    )
+  ) {
+    failures.push("unsupported ledger correction requires attribution verification not provided by this engine");
+  }
+  if (seenFills.size !== run.fills.length) failures.push("not every fill has attribution evidence");
+  for (const allocation of run.allocations) {
+    const owner = asString(allocation.agent_or_unassigned_id) ?? "";
+    const asset = asString(allocation.asset) ?? "";
+    const amount = asDec(allocation.owned_quantity);
+    if (asset === run.account.quote_asset && owner !== "UNASSIGNED" && amount?.gt(ZERO))
+      failures.push("shared quote cash must remain UNASSIGNED");
+    if (amount === null || !eq(amount, expected.get(key(owner, asset))?.amount ?? ZERO)) {
+      failures.push("allocation differs from recorded baseline, assignments, and net fills");
+    }
+    expected.delete(key(owner, asset));
+  }
+  if ([...expected.values()].some((entry) => !eq(entry.amount, ZERO)))
+    failures.push("recorded owner inventory is missing from allocations");
+  return failures;
 }
 
 /** prd.md 14.3: the ledger explains every balance, and attribution never changes account totals. */
@@ -517,6 +1013,41 @@ function checkLedgerConservation(run: RunExport): VerificationCheck {
     }
   }
   const failures: string[] = [];
+  const allocationKeys = new Set<string>();
+  const agents = idSet(run.agents);
+  for (const row of [...run.balances, ...run.allocations]) {
+    if (asString(row.asset) === null || !isNonNegative(row.owned_quantity)) {
+      failures.push("balance/allocation asset or nonnegative owned quantity is invalid");
+    }
+  }
+  for (const allocation of run.allocations) {
+    const owner = asString(allocation.agent_or_unassigned_id);
+    const key = `${String(allocation.asset)}:${String(owner)}`;
+    if (owner === null || (owner !== "UNASSIGNED" && !agents.has(owner)))
+      failures.push("allocation owner is not a recorded agent or UNASSIGNED");
+    if (allocationKeys.has(key)) failures.push("duplicate allocation for one asset and owner");
+    allocationKeys.add(key);
+  }
+  const outstanding = run.reservations.filter(
+    (r) => r.kind !== "ATTEMPT" && (r.state === "HELD" || r.state === "ARMED"),
+  );
+  for (const [asset, holds] of groupBy(outstanding, "asset")) {
+    const held = sumField(holds, "amount");
+    const owned = asDec(run.balances.find((b) => b.asset === asset)?.owned_quantity);
+    if (held === null || owned === null || held.gt(owned))
+      failures.push(`${asset}: outstanding holds exceed account inventory`);
+    for (const [agentId, agentHolds] of groupBy(
+      holds.filter((r) => r.kind === "BASE"),
+      "agent_id",
+    )) {
+      const reservedBase = sumField(agentHolds, "amount");
+      const allocatedBase = asDec(
+        run.allocations.find((a) => a.asset === asset && a.agent_or_unassigned_id === agentId)?.owned_quantity,
+      );
+      if (reservedBase === null || allocatedBase === null || reservedBase.gt(allocatedBase))
+        failures.push(`${asset}: outstanding SELL holds exceed their agent inventory`);
+    }
+  }
   for (const asset of [...assets].sort()) {
     const ledgerSum = sumField(
       run.ledger_entries.filter((e) => e.asset === asset),
@@ -539,35 +1070,27 @@ function checkLedgerConservation(run: RunExport): VerificationCheck {
       failures.push(`${asset}: allocations ${show(allocated)} != balance ${show(owned)}`);
     }
   }
+  failures.push(...allocationProblems(run));
   return {
     name: "ledger_conservation",
     ok: failures.length === 0,
     count: assets.size,
     detail:
       failures.length === 0
-        ? `${plural(assets.size, "asset")}: ledger entries sum to each balance and allocations sum to each balance`
+        ? `${plural(assets.size, "asset")}: ledger entries explain balances; allocations match baseline, assignments, net fills, and account totals`
         : `${plural(failures.length, "asset")} violate conservation: ${listSome(failures)}`,
   };
 }
 
 /** T-58: nothing credential-shaped anywhere in the file, and no agent row carries its token hash. Values are never printed. */
-function checkSecrets(bundle: unknown, run: RunExport): VerificationCheck {
-  let text: string;
-  try {
-    text = JSON.stringify(bundle) ?? "";
-  } catch {
-    return { name: "secret_scan", ok: false, detail: "export could not be serialized for scanning" };
-  }
-  const found = SECRET_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([label]) => label);
-  const hashedAgents = run.agents.filter((agent) => Object.hasOwn(agent, "token_hash")).length;
-  if (hashedAgents > 0) found.push(`token_hash present on ${plural(hashedAgents, "agent row")}`);
+function checkSecrets(bundle: unknown): VerificationCheck {
+  const found = exportSecretFindings(bundle);
   return {
     name: "secret_scan",
     ok: found.length === 0,
-    count: SECRET_PATTERNS.length,
     detail:
       found.length === 0
-        ? `${SECRET_PATTERNS.length} patterns over ${text.length} chars: no secret-like values; agent rows carry no token_hash`
+        ? "shared export safety scan: no secret-like values or credential fields found"
         : `secret-like content found (values withheld): ${found.join("; ")}`,
   };
 }
@@ -604,12 +1127,20 @@ function checkSanitization(run: RunExport): VerificationCheck {
 export function verifyRunExport(bundle: unknown, options: VerifyOptions = {}): VerificationReport {
   const parsed = RunExportSchema.safeParse(bundle);
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const where =
-      issue === undefined ? "export does not match RunExportSchema" : `${formatPath(issue.path)}: ${issue.message}`;
     return {
       ok: false,
-      checks: [{ name: "schema", ok: false, detail: `${where}; remaining checks skipped` }],
+      checks: [
+        { name: "schema", ok: false, detail: "export does not match RunExportSchema; remaining checks skipped" },
+      ],
+      summary: { events: 0, receipts: 0, replayed: 0, fingerprint_only: 0, commands: 0, fills: 0 },
+    };
+  }
+  // Schema errors above are static; scan before any row check can echo untrusted identities.
+  const secretScan = checkSecrets(bundle);
+  if (!secretScan.ok) {
+    return {
+      ok: false,
+      checks: [secretScan],
       summary: { events: 0, receipts: 0, replayed: 0, fingerprint_only: 0, commands: 0, fills: 0 },
     };
   }
@@ -632,7 +1163,7 @@ export function verifyRunExport(bundle: unknown, options: VerifyOptions = {}): V
     checkLinkage(run),
     checkNumericalAgreement(run, proposalsById),
     checkLedgerConservation(run),
-    checkSecrets(bundle, run),
+    secretScan,
     checkSanitization(run),
   ];
   return {
@@ -665,6 +1196,7 @@ export function formatReport(report: VerificationReport): string {
 
 const CLI_OPTIONS = {
   checkpoint: { type: "string" },
+  "head-checkpoint": { type: "string" },
   json: { type: "boolean", default: false },
   help: { type: "boolean", short: "h", default: false },
 } as const;
@@ -678,8 +1210,8 @@ export function main(argv: ReadonlyArray<string>): number {
   let parsed: ReturnType<typeof parseCli>;
   try {
     parsed = parseCli(argv);
-  } catch (error) {
-    console.error(`verify:receipt: ${errorText(error)}\n\n${USAGE}`);
+  } catch {
+    console.error(`verify:receipt: invalid command-line arguments\n\n${USAGE}`);
     return 2;
   }
   if (parsed.values.help) {
@@ -699,11 +1231,18 @@ export function main(argv: ReadonlyArray<string>): number {
     }
     options.checkpointHash = parsed.values.checkpoint;
   }
+  if (parsed.values["head-checkpoint"] !== undefined) {
+    if (!HEX64_RE.test(parsed.values["head-checkpoint"])) {
+      console.error("verify:receipt: --head-checkpoint must be a 64-character lowercase sha256 hex digest");
+      return 2;
+    }
+    options.headCheckpointHash = parsed.values["head-checkpoint"];
+  }
   let text: string;
   try {
     text = readFileSync(resolve(file), "utf8");
-  } catch (error) {
-    console.error(`verify:receipt: cannot read ${file}: ${errorText(error)}`);
+  } catch {
+    console.error("verify:receipt: cannot read export file");
     return 2;
   }
   let bundle: unknown;
@@ -711,10 +1250,20 @@ export function main(argv: ReadonlyArray<string>): number {
     bundle = JSON.parse(text);
   } catch {
     // The parser's message can quote file content; keep the report free of it.
-    console.error(`verify:receipt: ${file} is not valid JSON`);
+    console.error("verify:receipt: export file is not valid JSON");
     return 2;
   }
-  const report = verifyRunExport(bundle, options);
+  let report: VerificationReport;
+  try {
+    report = verifyRunExport(bundle, options);
+  } catch {
+    // No raw exception, stack, payload, or filename is safe to echo for untrusted input.
+    report = {
+      ok: false,
+      checks: [{ name: "schema", ok: false, detail: "export contains invalid verification material" }],
+      summary: { events: 0, receipts: 0, replayed: 0, fingerprint_only: 0, commands: 0, fills: 0 },
+    };
+  }
   console.log(parsed.values.json ? JSON.stringify(report, null, 2) : formatReport(report));
   const schema = report.checks.find((check) => check.name === "schema");
   if (schema !== undefined && !schema.ok) return 2;

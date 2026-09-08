@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { errorEnvelope, type RunExport, RunExportSchema } from "@moneykernel/contracts";
-import { exportAccountRows, getAccountById, listAuditEvents, withClient } from "@moneykernel/persistence";
+import {
+  type AuditEvent,
+  errorEnvelope,
+  exportSecretFindings,
+  type RunExport,
+  RunExportSchema,
+} from "@moneykernel/contracts";
+import { exportAccountRows, getAccountById, listAuditEvents, withTransaction } from "@moneykernel/persistence";
 import type { FastifyInstance } from "fastify";
 import { requireOperator } from "../auth/operator.ts";
 import type { KernelRuntime } from "../boot.ts";
@@ -51,11 +57,22 @@ export async function exportRoutes(app: FastifyInstance, options: { runtime: Ker
       reply.code(404);
       return errorEnvelope("NOT_FOUND", "only the loaded account can be exported by this kernel", request.id);
     }
-    const bundle = await withClient(runtime.pool, async (client): Promise<RunExport | null> => {
+    const bundle = await withTransaction(runtime.pool, async (client): Promise<RunExport | null> => {
+      // Every family and event page must describe the same committed state,
+      // without blocking account writes during a potentially large download.
+      await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const account = await getAccountById(client, accountId);
       if (account === null) return null;
       const rows = await exportAccountRows(client, accountId);
-      const events = await listAuditEvents(client, accountId, { limit: 5000 });
+      const events: AuditEvent[] = [];
+      for (;;) {
+        const page = await listAuditEvents(client, accountId, {
+          afterSeq: events.at(-1)?.account_seq ?? 0,
+          limit: 5000,
+        });
+        events.push(...page);
+        if (page.length < 5000) break;
+      }
       const receipts = rows.receipts.map((r) => ({
         decision_id: String(r.id),
         intent_id: String(r.intent_id),
@@ -84,7 +101,14 @@ export async function exportRoutes(app: FastifyInstance, options: { runtime: Ker
           quote_asset: account.quote_asset,
           configuration_hash: account.configuration_hash,
         },
-        provenance: provenanceFor(runtime.config, "SCRIPTED"),
+        // Without archived model-run binding, only an entirely scripted
+        // account supports a SCRIPTED run label; individual kinds remain below.
+        provenance: provenanceFor(
+          runtime.config,
+          rows.agents.length > 0 && rows.agents.every((agent) => agent.strategy_kind === "SCRIPTED")
+            ? "SCRIPTED"
+            : "DISABLED",
+        ),
         integration_manifest: manifestRef(),
         policy_versions: rows.policy_versions.map(plain),
         agents: rows.agents.map(plain),
@@ -103,12 +127,33 @@ export async function exportRoutes(app: FastifyInstance, options: { runtime: Ker
         conflicts: rows.conflicts.map(plain),
         incidents: rows.incidents.map(plain),
         audit_events: events,
-        checkpoint: { previous_hash: null, event_count: events.length },
+        checkpoint: {
+          previous_hash: null,
+          event_count: events.length,
+          final_hash: events.at(-1)?.event_hash ?? null,
+          final_seq: events.at(-1)?.account_seq ?? 0,
+        },
       });
     });
     if (bundle === null) {
       reply.code(503);
       return errorEnvelope("NOT_READY", "account row disappeared", request.id);
+    }
+    const config = runtime.config;
+    const secrets = [
+      config.operatorBootstrapSecret,
+      config.modelApiKey,
+      config.testnet?.apiKey ?? "",
+      config.testnet?.apiSecret ?? "",
+      decodeURIComponent(new URL(config.databaseUrl).password),
+    ];
+    if (exportSecretFindings(bundle, secrets).length > 0) {
+      reply.code(409);
+      return errorEnvelope(
+        "STATE_CONFLICT",
+        "run contains credential-like content and cannot be safely exported",
+        request.id,
+      );
     }
     reply.header("Content-Disposition", `attachment; filename="moneykernel-run-${bundle.account.alias}.json"`);
     return bundle;

@@ -13,7 +13,7 @@ import {
   type TradeIntent,
   TradeIntentSchema,
 } from "@moneykernel/contracts";
-import { type EvaluationInput, type EvaluationResult, evaluate } from "@moneykernel/domain";
+import { ENGINE_VERSION, type EvaluationInput, type EvaluationResult, evaluate } from "@moneykernel/domain";
 
 /**
  * Synthetic but internally consistent run export for the offline verifier
@@ -30,7 +30,8 @@ import { type EvaluationInput, type EvaluationResult, evaluate } from "@moneyker
  */
 export const NOW = "2026-09-08T12:00:00Z";
 const T_MINUS_1S = "2026-09-08T11:59:59Z";
-export const ENGINE_VERSION = "0.1.0";
+
+export { ENGINE_VERSION };
 export const ACCOUNT_ID = "acct_a";
 export const AGENT_ID = "agent_alpha";
 export const LEASE_ID = "lease_alpha_01";
@@ -164,11 +165,13 @@ export function fingerprintFor(result: EvaluationResult, evaluatedAt = NOW): str
 const secondsAfterNow = (seconds: number): string => new Date(Date.parse(NOW) + seconds * 1000).toISOString();
 
 /** Chains events from genesis exactly as the kernel's append path does (prd.md 14.5). */
-function chainEvents(events: ReadonlyArray<{ type: AuditEventType; payload: Record<string, unknown> }>): AuditEvent[] {
+export function chainEvents(
+  events: ReadonlyArray<{ type: AuditEventType; payload: Record<string, unknown>; occurred_at?: string }>,
+): AuditEvent[] {
   let previous: string | null = null;
   return events.map((event, index) => {
     const account_seq = index + 1;
-    const occurred_at = secondsAfterNow(index);
+    const occurred_at = event.occurred_at ?? secondsAfterNow(index);
     const hashes = computeEventHash({
       previous_hash: previous,
       account_seq,
@@ -260,17 +263,40 @@ export function buildBundle(): RunExport {
   };
   const events = chainEvents([
     { type: "ACCOUNT_CREATED", payload: { account_id: ACCOUNT_ID, environment: "REPLAY", epoch: 1 } },
-    { type: "AGENT_REGISTERED", payload: { agent_id: AGENT_ID, name: "Alpha", strategy_kind: "alpha" } },
+    {
+      type: "POLICY_UPDATED",
+      occurred_at: NOW,
+      payload: { policy_id: POLICY_ID, version: 1, hash: hashCanonical(input.policy), created_by: "seed" },
+    },
+    {
+      type: "INVENTORY_ASSIGNED",
+      occurred_at: NOW,
+      payload: {
+        baseline_ref: "bootstrap",
+        ledger_version: 1,
+        balances: { USDT: "1000" },
+        allocations: { UNASSIGNED: { USDT: "1000" } },
+        operator_id: "op_demo",
+      },
+    },
+    {
+      type: "AGENT_REGISTERED",
+      occurred_at: secondsAfterNow(1),
+      payload: { agent_id: AGENT_ID, name: "Alpha", strategy_kind: "alpha" },
+    },
     {
       type: "LEASE_ISSUED",
+      occurred_at: secondsAfterNow(2),
       payload: { lease_id: LEASE_ID, agent_id: AGENT_ID, budget_quote: "40", attempt_limit: 2 },
     },
     {
       type: "INTENT_RECEIVED",
+      occurred_at: secondsAfterNow(3),
       payload: { intent_id: INTENT_ID, agent_id: AGENT_ID, lease_id: LEASE_ID, payload_hash: intentPayloadHash },
     },
     {
       type: "DECISION_RECORDED",
+      occurred_at: NOW,
       payload: {
         receipt_id: RECEIPT_ID,
         intent_id: INTENT_ID,
@@ -282,6 +308,7 @@ export function buildBundle(): RunExport {
     },
     {
       type: "RESERVATION_CREATED",
+      occurred_at: secondsAfterNow(5),
       payload: {
         proposal_id: PROPOSAL_ID,
         revision: 1,
@@ -291,6 +318,7 @@ export function buildBundle(): RunExport {
     },
     {
       type: "APPROVAL_CREATED",
+      occurred_at: secondsAfterNow(6),
       payload: {
         approval_id: APPROVAL_ID,
         proposal_id: PROPOSAL_ID,
@@ -300,11 +328,35 @@ export function buildBundle(): RunExport {
     },
     {
       type: "COMMAND_ARMED",
-      payload: { command_id: COMMAND_ID, proposal_id: PROPOSAL_ID, client_order_id: CLIENT_ORDER_ID },
+      occurred_at: secondsAfterNow(7),
+      payload: {
+        command_id: COMMAND_ID,
+        proposal_id: PROPOSAL_ID,
+        approval_id: APPROVAL_ID,
+        client_order_id: CLIENT_ORDER_ID,
+        exact_payload: {
+          environment: "REPLAY",
+          account_id: ACCOUNT_ID,
+          command_id: COMMAND_ID,
+          client_order_id: CLIENT_ORDER_ID,
+          symbol: candidate.symbol,
+          side: candidate.side,
+          order_type: candidate.order_type,
+          quantity: candidate.quantity,
+          limit_price: candidate.limit_price,
+          payload_hash: proposalHash,
+          armed_at: secondsAfterNow(7),
+        },
+      },
     },
-    { type: "COMMAND_OUTCOME", payload: { command_id: COMMAND_ID, state: "ACCEPTED", order_id: ORDER_ID } },
+    {
+      type: "COMMAND_OUTCOME",
+      occurred_at: secondsAfterNow(8),
+      payload: { command_id: COMMAND_ID, state: "ACCEPTED", order_id: ORDER_ID },
+    },
     {
       type: "FILL_RECONCILED",
+      occurred_at: secondsAfterNow(9),
       payload: {
         command_id: COMMAND_ID,
         order_id: ORDER_ID,
@@ -526,7 +578,12 @@ export function buildBundle(): RunExport {
     conflicts: [],
     incidents: [],
     audit_events: events,
-    checkpoint: { previous_hash: null, event_count: events.length },
+    checkpoint: {
+      previous_hash: null,
+      event_count: events.length,
+      final_hash: events.at(-1)?.event_hash ?? null,
+      final_seq: events.at(-1)?.account_seq ?? 0,
+    },
   });
 }
 
