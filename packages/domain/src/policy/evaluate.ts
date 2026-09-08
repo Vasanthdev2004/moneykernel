@@ -224,8 +224,12 @@ export function evaluate(input: EvaluationInput): EvaluationResult {
     log.fail(RULE.SYMBOL_RULES, "FILTER_UNSUPPORTED", declared, expected);
   } else log.pass(RULE.SYMBOL_RULES, rules.status);
 
-  if (rules !== null && rules.unsupported_filters.length > 0) {
+  if (rules !== null && rules.unsupported_filters.length > 0 && account.environment !== "SHADOW") {
     log.fail(RULE.FILTER_SUPPORT, "FILTER_UNSUPPORTED", rules.unsupported_filters.join(","), "none");
+  } else if (rules !== null && rules.unsupported_filters.length > 0) {
+    // SHADOW never sends an order to Binance (INV-13/T-49). Venue-only filters remain recorded in the
+    // rules snapshot but cannot invalidate a virtual paper order; price, lot and notional fields still apply.
+    log.skipped(RULE.FILTER_SUPPORT);
   } else if (rules !== null) log.pass(RULE.FILTER_SUPPORT, "none");
 
   // G2 qualifies quote-asset commissions only. Other fee assets need their own

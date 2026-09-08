@@ -1,6 +1,7 @@
 import type {
   CandidateOrder,
   DecisionOutcome,
+  Environment,
   OrderType,
   Policy,
   ReasonCode,
@@ -23,6 +24,8 @@ export type AgentView = {
 
 export type AccountView = {
   id: string;
+  /** Runtime accounts supply this. Optional only for archived v1 inputs created before SHADOW qualification. */
+  environment?: Environment;
   status: "PAUSED" | "READY" | "RECONCILING" | "ERROR";
   epoch: number;
   quote_asset: string;

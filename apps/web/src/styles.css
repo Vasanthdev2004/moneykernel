@@ -588,16 +588,18 @@ a {
   font-size: 14px;
   font-weight: 550;
 }
-.asset-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+.token-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--bg-elev-2);
   color: var(--fg-muted);
-  font-size: 13px;
-  font-weight: 600;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-strong) 72%, transparent);
+  overflow: hidden;
+}
+.token-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .holding-quantity {
   margin-left: auto;
@@ -1201,10 +1203,23 @@ input[type="checkbox"] {
   border-top: 1px solid var(--border);
 }
 .holdings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin-top: 14px;
 }
-.holding {
-  margin-right: 14px;
+.holdings > .label {
+  flex-basis: 100%;
+}
+.holding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elev-2);
 }
 .form-disclosure {
   border-top: 1px solid var(--border);

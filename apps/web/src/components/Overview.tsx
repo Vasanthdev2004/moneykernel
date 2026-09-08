@@ -2,6 +2,7 @@ import { ArrowRight, Check, CircleDashed, Inbox } from "lucide-react";
 import { amount, describeSize, eventLabel, eventRefs, fmtAge } from "../format.ts";
 import type { Agent, AuditEvent, OverviewResponse, ProposalListItem, StatusResponse } from "../types.ts";
 import { StatusStrip } from "./StatusStrip.tsx";
+import { TokenIcon } from "./TokenIcon.tsx";
 import type { WorkspacePage } from "./WorkspaceNavigation.tsx";
 
 export function Overview({
@@ -157,7 +158,7 @@ export function Overview({
             <ul className="holdings-list">
               {overview.balances.map((balance) => (
                 <li key={balance.asset}>
-                  <span className="asset-mark">{balance.asset.slice(0, 1)}</span>
+                  <TokenIcon asset={balance.asset} />
                   <strong>{balance.asset}</strong>
                   <span className="holding-quantity">{amount(balance.owned_quantity)}</span>
                 </li>

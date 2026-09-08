@@ -88,9 +88,7 @@
       "note": "Verified in Codex with the Binance plugin from the recommended catalog. The operation's declared security type is NONE and no account or order write was requested."
     }
   },
-  "discovered_tools": [
-    "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker"
-  ],
+  "discovered_tools": ["mcp__codex_apps__binance_get_spot_symbol_order_book_ticker"],
   "order_writes_enabled": false,
   "spot_testnet": {
     "capability": "NOT_ATTEMPTED",
@@ -151,6 +149,11 @@
       "synthetic fixture (REPLAY)",
       "paper execution"
     ],
-    "not_allowed": ["backend-owned Agent OS session", "authenticated account data", "external order execution", "Testnet execution"]
+    "not_allowed": [
+      "backend-owned Agent OS session",
+      "authenticated account data",
+      "external order execution",
+      "Testnet execution"
+    ]
   }
 }
