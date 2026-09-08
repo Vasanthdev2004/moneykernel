@@ -2,6 +2,39 @@
 
 > AI agents can propose trades. MoneyKernel decides whether they have the authority and resources to act, and records the result.
 
+## Recommended recording: live Binance data, virtual execution
+
+Record the primary product flow in `SHADOW`. The market book is read live from Binance's public Spot endpoints,
+the funds are virtual, and the approved order is executed only by the local paper venue. The header and System
+page show these boundaries throughout the recording.
+
+Start a fresh SHADOW kernel with the same alias in both terminals, seed the roomy scenario D account, and keep the
+one-time virtual agent token in the gitignored `.moneykernel` directory:
+
+```powershell
+$env:MONEYKERNEL_MODE = 'SHADOW'
+$env:MONEYKERNEL_ACCOUNT_ALIAS = "record-shadow-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+$env:MONEYKERNEL_STATE_DIR = ".moneykernel/$($env:MONEYKERNEL_ACCOUNT_ALIAS)"
+pnpm dev
+```
+
+```powershell
+$env:MONEYKERNEL_MODE = 'SHADOW'
+$env:MONEYKERNEL_ACCOUNT_ALIAS = '<copy the alias from terminal 1>'
+$env:MONEYKERNEL_STATE_DIR = ".moneykernel/$($env:MONEYKERNEL_ACCOUNT_ALIAS)"
+$seedPath = ".moneykernel/$($env:MONEYKERNEL_ACCOUNT_ALIAS).seed.json"
+pnpm demo:seed scenario-d-lost-response *> $seedPath
+pnpm demo:shadow -- --seed $seedPath
+```
+
+Open **System** first: show `SHADOW · VIRTUAL FUNDS`, `BINANCE_PUBLIC_REST` and paper execution. Then open
+**Approvals**, explain how MoneyKernel reduced the agent's 50 USDT request to its remaining lease budget, approve
+the exact order, and show the live-book paper fill and readable receipt in **Activity**. Finish with the run export
+and offline receipt verification. Never describe the virtual fill as an order placed on Binance.
+
+The deterministic REPLAY scenes below remain engineering and fallback evidence for conflicts, quarantine and
+restart recovery; they do not need to appear in the primary submission video.
+
 Four scenes, each on its own fresh REPLAY account so nothing leaks between them (prd.md 27.5). Every number on
 screen comes from the kernel's database; the console holds no authority. Captions to overlay: `SYNTHETIC FIXTURE`
 for REPLAY market data, `PAPER EXECUTION` for fills, `SYNTHETIC FAULT SCENARIO` for scene D. A separate

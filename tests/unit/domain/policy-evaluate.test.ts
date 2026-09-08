@@ -505,6 +505,18 @@ describe("non-resizable denials (prd.md 8, T-05 to T-08)", () => {
     ]);
     expect(evaluate({ ...base, symbol_rules: null }).reason_codes).toEqual(["FILTER_UNSUPPORTED"]);
   });
+
+  it("records but skips venue-only filters for SHADOW paper execution", () => {
+    const base = scenarioA();
+    const result = evaluate({
+      ...base,
+      account: { ...base.account, environment: "SHADOW" },
+      symbol_rules: { ...SOL_RULES, unsupported_filters: ["PERCENT_PRICE_BY_SIDE", "MAX_POSITION"] },
+    });
+    expect(result.outcome).toBe("COUNTERPROPOSE");
+    expect(result.reason_codes).not.toContain("FILTER_UNSUPPORTED");
+    expect(result.checks.find((check) => check.rule === RULE.FILTER_SUPPORT)?.result).toBe("SKIPPED");
+  });
 });
 
 describe("SELL rules (INV-10, T-13)", () => {

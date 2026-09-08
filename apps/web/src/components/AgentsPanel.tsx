@@ -12,6 +12,7 @@ import type {
   StrategyKind,
 } from "../types.ts";
 import { Badge, CountdownText, DefList, Empty, ErrorNote, Mono, Panel, StateBadge, Timestamp } from "./common.tsx";
+import { TokenIcon } from "./TokenIcon.tsx";
 
 const STRATEGY_KINDS: StrategyKind[] = ["SCRIPTED", "MODEL", "RECORDED", "SUPPORTED_AGENT"];
 const SIDES: Side[] = ["BUY", "SELL"];
@@ -444,9 +445,12 @@ export function AgentsPanel({
                       <span className="muted small">none</span>
                     ) : (
                       agent.holdings.map((holding) => (
-                        <Mono key={holding.asset} className="data holding">
-                          {trimDecimal(holding.quantity)} {holding.asset}
-                        </Mono>
+                        <span key={holding.asset} className="holding-chip">
+                          <TokenIcon asset={holding.asset} size={20} />
+                          <Mono className="data">
+                            {trimDecimal(holding.quantity)} {holding.asset}
+                          </Mono>
+                        </span>
                       ))
                     )}
                   </div>

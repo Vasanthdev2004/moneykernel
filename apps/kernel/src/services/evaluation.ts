@@ -170,6 +170,7 @@ export async function assembleEvaluationInput(
     agent: { id: agent.id, status: agent.status, revision: agent.revision },
     account: {
       id: accountRow.id,
+      environment: accountRow.environment,
       status: accountRow.status,
       epoch: accountRow.epoch,
       quote_asset: accountRow.quote_asset,
