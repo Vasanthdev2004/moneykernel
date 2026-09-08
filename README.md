@@ -11,8 +11,8 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | Gate | State |
 |---|---|
 | G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; see below. |
-| G1 foundation | In progress: workspace, contracts, decimal math, migrations, REPLAY boot, doctor. |
-| G2 deterministic vertical slice | Not started. |
+| G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. See `docs/test-evidence.md`. |
+| G2 deterministic vertical slice | Next: intent → policy → atomic reservation → receipt. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
