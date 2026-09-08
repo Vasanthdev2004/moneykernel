@@ -1,5 +1,6 @@
 import { Moon, Sun } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { Hint } from "./components/ui.tsx";
 
 type Theme = "light" | "dark";
 const STORAGE_KEY = "moneykernel-theme";
@@ -46,15 +47,17 @@ export function ThemeToggle({ className }: { className?: string }) {
   const label = `Switch to ${nextTheme} theme`;
 
   return (
-    <button
-      type="button"
-      className={`theme-toggle${className ? ` ${className}` : ""}`}
-      aria-label={label}
-      title={label}
-      data-testid="theme-toggle"
-      onClick={() => setTheme(nextTheme)}
-    >
-      {theme === "light" ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
-    </button>
+    <Hint label={label}>
+      <button
+        type="button"
+        className={`theme-toggle${className ? ` ${className}` : ""}`}
+        aria-label={label}
+        title={label}
+        data-testid="theme-toggle"
+        onClick={() => setTheme(nextTheme)}
+      >
+        {theme === "light" ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
+      </button>
+    </Hint>
   );
 }

@@ -1,13 +1,14 @@
+import { Bot, BrainCircuit, ChartCandlestick, type LucideIcon, ShieldCheck } from "lucide-react";
 import { fmtAge } from "../format.ts";
 import { integrationState } from "../states.ts";
 import type { IntegrationKey, StatusResponse } from "../types.ts";
 import { Badge, DefList, Empty, ErrorNote, Mono, Panel, StateBadge, Timestamp } from "./common.tsx";
 
-const ENTRIES: ReadonlyArray<[IntegrationKey, string]> = [
-  ["agent_os_mcp", "Agent OS MCP"],
-  ["market_data", "Market data"],
-  ["execution", "Execution"],
-  ["model", "Model"],
+const ENTRIES: ReadonlyArray<[IntegrationKey, string, LucideIcon]> = [
+  ["agent_os_mcp", "Agent OS MCP", Bot],
+  ["market_data", "Market data", ChartCandlestick],
+  ["execution", "Execution", ShieldCheck],
+  ["model", "Model", BrainCircuit],
 ];
 
 export function IntegrationPanel({
@@ -31,26 +32,31 @@ export function IntegrationPanel({
       ) : (
         <>
           <ul className="list">
-            {ENTRIES.map(([key, label]) => {
+            {ENTRIES.map(([key, label, Icon]) => {
               const entry = status.integration[key];
               const presentation = integrationState(entry.state);
               return (
                 <li className="integration" key={key}>
-                  <div className="row-line">
-                    <strong>{label}</strong>
-                    <StateBadge presentation={presentation} />
+                  <div className="integration-icon" aria-hidden="true">
+                    <Icon size={18} strokeWidth={1.8} />
                   </div>
-                  <div className="small">{entry.detail}</div>
-                  <div className="muted small">
-                    last successful read:{" "}
-                    {entry.last_successful_read_at === null ? (
-                      "never"
-                    ) : (
-                      <>
-                        <Timestamp iso={entry.last_successful_read_at} /> ·{" "}
-                        <Mono>{fmtAge(entry.last_successful_read_at, serverNow)}</Mono>
-                      </>
-                    )}
+                  <div className="integration-copy">
+                    <div className="row-line">
+                      <strong>{label}</strong>
+                      <StateBadge presentation={presentation} />
+                    </div>
+                    <div className="small">{entry.detail}</div>
+                    <div className="muted small">
+                      last successful read:{" "}
+                      {entry.last_successful_read_at === null ? (
+                        "never"
+                      ) : (
+                        <>
+                          <Timestamp iso={entry.last_successful_read_at} /> ·{" "}
+                          <Mono>{fmtAge(entry.last_successful_read_at, serverNow)}</Mono>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </li>
               );
