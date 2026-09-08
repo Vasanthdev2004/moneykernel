@@ -8,6 +8,7 @@ import {
   errorMessage,
   NO_TOKEN_USAGE,
   type OutputValidation,
+  ProviderFailure,
   type ProviderResult,
   type ProviderSource,
   type StrategyProvider,
@@ -45,7 +46,7 @@ export type RunTrace = {
   context_hash: string;
   latency_ms: number;
   repair_attempts: number;
-  validation: OutputValidation | null;
+  validation: OutputValidation | "INVALID" | null;
   usage: TokenUsage;
   rationale: string | null;
   output_kind: OutputKind;
@@ -139,10 +140,10 @@ export async function runOnce(options: RunOptions): Promise<RunTrace> {
     } catch (error) {
       trace = stamp({
         ...base,
-        latency_ms: Math.round(performance.now() - started),
-        repair_attempts: 0,
-        validation: null,
-        usage: NO_TOKEN_USAGE,
+        latency_ms: error instanceof ProviderFailure ? error.latency_ms : Math.round(performance.now() - started),
+        repair_attempts: error instanceof ProviderFailure ? error.repair_attempts : 0,
+        validation: error instanceof ProviderFailure ? error.validation : null,
+        usage: error instanceof ProviderFailure ? error.usage : NO_TOKEN_USAGE,
         rationale: null,
         output_kind: "NO_PROPOSAL",
         intent: null,

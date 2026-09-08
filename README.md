@@ -14,7 +14,7 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. |
 | G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. |
 | G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
-| G4 execution and observations | Done: fill accounting in the dispatch transaction (ledger, balances, attribution, lease consumption, hold settlement), paper venue journal, restart recovery by stable order identity (scenario D), operator reconciliation, SHADOW mode on read-only Binance public REST, strategy runner with scripted / recorded / Anthropic / supported-agent-session providers. See `docs/decisions/0005-g4-execution-reconciliation.md`. |
+| G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
 | G5 operator experience | Next: dashboard, approval drawer, conflict panel, incidents, timeline. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
@@ -82,7 +82,7 @@ pnpm agent:run -- --token <mka_...> --context-out .moneykernel/context.json   # 
 pnpm agent:run -- --token <mka_...> --provider agent-session --proposal proposal.json --role alpha
 ```
 
-A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. One real run through the supported-agent-session route, against live SHADOW context, is committed under `docs/evidence/model-runs/`. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
+A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
 
 Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
 

@@ -507,6 +507,15 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
           }
         }
         for (const a of parsed.data.assignments) {
+          if (a.asset === account.quote_asset && a.owner !== UNASSIGNED_OWNER && dec(a.quantity).gt(ZERO)) {
+            throw Object.assign(
+              new Error("shared quote cash must remain UNASSIGNED; leases bound spending without assigning cash"),
+              {
+                code: "INVALID_FINANCIAL_VALUE",
+                status: 422,
+              },
+            );
+          }
           const reserved = await sumReservedBase(tx, accountId, a.owner, a.asset);
           if (dec(a.quantity).lt(dec(reserved))) {
             throw Object.assign(new Error("inventory assignment cannot remove reserved base quantity"), {
@@ -773,7 +782,8 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
     if (blocked !== null) return blocked;
     const { id } = request.params as { id: string };
     return idempotent(request, reply, `reconcile:${id}`, async () => {
-      runtime.reconciliation.delete(id);
+      // The service verifies this account's command ownership before resetting
+      // investigation state or querying the venue; foreign IDs return NOT_FOUND.
       const report = await reconcileCommand(runtime, id, runtime.clock(), "OPERATOR");
       return { status: 200, body: report };
     });

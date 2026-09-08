@@ -1,5 +1,12 @@
-import type { NormalizedFill, NormalizedOrder, OrderQueryResult } from "@moneykernel/contracts";
-import { add, dec, eq, gt, isZero, max, min, sub, toDecimalString, ZERO } from "@moneykernel/domain";
+import {
+  NonNegativeDecimalStringSchema,
+  type NormalizedFill,
+  type NormalizedOrder,
+  type OrderQueryResult,
+  PolicySchema,
+  PositiveDecimalStringSchema,
+} from "@moneykernel/contracts";
+import { add, dec, eq, feeReserve, gt, isZero, max, min, sub, toDecimalString, ZERO } from "@moneykernel/domain";
 import type { PoolClient } from "@moneykernel/persistence";
 import {
   addLeaseConsumedQuote,
@@ -9,7 +16,9 @@ import {
   applyBalanceDelta,
   type CommandRow,
   type CommandState,
+  consumeArmedReservationPart,
   countOutstandingCommands,
+  type FillRow,
   getCommandById,
   getIntentById,
   getOrderForCommand,
@@ -45,14 +54,15 @@ const TERMINAL_ORDER_STATES: NormalizedOrder["status"][] = ["FILLED", "CANCELED"
 export const MAX_AUTOMATIC_RECONCILE_ATTEMPTS = 6;
 
 export type ApplyResult = {
-  order_id: string;
+  /** Null when the observation was refused before any trustworthy order identity was recorded. */
+  order_id: string | null;
   order_status: NormalizedOrder["status"];
   new_fills: number;
   duplicate_fills: number;
   skipped_fills: number;
   /** Terminal order, fill detail matches the order totals, every fee asset supported. */
   complete: boolean;
-  /** `commands.reconciled_at` was set in this transaction. */
+  /** This result confirms a complete committed settlement, including a repeated observation. */
   reconciled: boolean;
   executed_base: string;
   executed_quote: string;
@@ -76,6 +86,76 @@ type FillDeltas = {
   allocationDelta: string;
   leaseDelta: string;
 };
+
+function sameDecimal(left: unknown, right: unknown): boolean {
+  const a = NonNegativeDecimalStringSchema.safeParse(left);
+  const b = NonNegativeDecimalStringSchema.safeParse(right);
+  return a.success && b.success && eq(dec(a.data), dec(b.data));
+}
+
+function sameFillAmounts(
+  left: Pick<NormalizedFill, "base_qty" | "price" | "quote_qty" | "commission_asset" | "commission_qty">,
+  right: Pick<NormalizedFill, "base_qty" | "price" | "quote_qty" | "commission_asset" | "commission_qty"> | FillRow,
+): boolean {
+  return (
+    left.commission_asset === right.commission_asset &&
+    (["base_qty", "price", "quote_qty", "commission_qty"] as const).every((field) =>
+      sameDecimal(left[field], right[field]),
+    )
+  );
+}
+
+/** The venue observation must identify the exact persisted order, even when it came from a typed adapter. */
+function observationProblems(
+  command: CommandRow,
+  order: NormalizedOrder,
+  fills: NormalizedFill[],
+  existing: OrderRow | null,
+): string[] {
+  const exact = command.exact_payload;
+  const problems: string[] = [];
+  for (const field of ["environment", "client_order_id", "symbol", "side", "order_type"] as const) {
+    if (order[field] !== exact[field]) problems.push(`order ${field} differs from the armed command`);
+  }
+  for (const field of ["quantity", "limit_price"] as const) {
+    if (!sameDecimal(order[field], exact[field])) problems.push(`order ${field} differs from the armed command`);
+  }
+  if (
+    existing?.exchange_order_id !== null &&
+    existing?.exchange_order_id !== undefined &&
+    order.exchange_order_id !== existing.exchange_order_id
+  ) {
+    problems.push("venue order identity changed");
+  }
+  if (
+    !["NEW", "PARTIALLY_FILLED", "FILLED", "CANCELED", "EXPIRED"].includes(order.status) ||
+    !NonNegativeDecimalStringSchema.safeParse(order.executed_base).success ||
+    !NonNegativeDecimalStringSchema.safeParse(order.executed_quote).success
+  )
+    problems.push("invalid order observation");
+  for (const fill of fills) {
+    if (
+      fill.symbol !== order.symbol ||
+      fill.side !== order.side ||
+      fill.order.symbol !== order.symbol ||
+      fill.order.client_order_id !== command.client_order_id ||
+      (order.exchange_order_id !== null && fill.order.exchange_order_id !== order.exchange_order_id)
+    ) {
+      problems.push(`fill ${fill.fill_id} does not identify the observed order`);
+    }
+    if (
+      fill.fill_id.length === 0 ||
+      !PositiveDecimalStringSchema.safeParse(fill.base_qty).success ||
+      !PositiveDecimalStringSchema.safeParse(fill.price).success ||
+      !PositiveDecimalStringSchema.safeParse(fill.quote_qty).success ||
+      !NonNegativeDecimalStringSchema.safeParse(fill.commission_qty).success ||
+      !Number.isFinite(Date.parse(fill.event_time))
+    ) {
+      problems.push(`fill ${fill.fill_id} has invalid financial values or event time`);
+    }
+  }
+  return problems;
+}
 
 function fillDeltas(
   side: "BUY" | "SELL",
@@ -185,6 +265,121 @@ export async function applyObservedOrderInTx(
   const problems: string[] = [];
 
   const existing = await getOrderForCommand(tx, command.id);
+  const relevantFills = input.fills.filter((fill) => fill.order.client_order_id === command.client_order_id);
+  const identityProblems = observationProblems(command, order, relevantFills, existing);
+  const observedById = new Map<string, NormalizedFill>();
+  let hasNewFill = false;
+  for (const fill of relevantFills) {
+    const duplicate = observedById.get(fill.fill_id);
+    if (duplicate !== undefined && !sameFillAmounts(fill, duplicate))
+      identityProblems.push(`fill ${fill.fill_id} changed within one observation`);
+    observedById.set(fill.fill_id, fill);
+    const recorded = await tx.query<FillRow>(
+      "SELECT * FROM fills WHERE account_id = $1 AND symbol = $2 AND exchange_trade_id = $3",
+      [accountId, fill.symbol, fill.fill_id],
+    );
+    const prior = recorded.rows[0];
+    if (prior === undefined) hasNewFill = true;
+    if (
+      prior !== undefined &&
+      (prior.order_id !== existing?.id ||
+        !sameFillAmounts(fill, prior) ||
+        prior.event_time.getTime() !== Date.parse(fill.event_time))
+    ) {
+      identityProblems.push(`fill ${fill.fill_id} differs from its immutable recorded identity`);
+    }
+  }
+  if (identityProblems.length > 0) {
+    await raiseIncidentOnce(
+      tx,
+      accountId,
+      intent.agent_id,
+      command.id,
+      "RECONCILIATION_IDENTITY_MISMATCH",
+      "CRITICAL",
+      {
+        problems: identityProblems,
+        order_raw_hash: order.raw_hash,
+        fill_ids: relevantFills.map((fill) => fill.fill_id),
+      },
+      now,
+    );
+    // A late contradictory response cannot erase a previously committed settlement.
+    if (command.reconciled_at === null) await updateCommandState(tx, command.id, "OUTCOME_UNKNOWN", now);
+    await setAccountStatus(tx, accountId, "RECONCILING", now);
+    return {
+      order_id: existing?.id ?? null,
+      order_status: order.status,
+      new_fills: 0,
+      duplicate_fills: 0,
+      skipped_fills: relevantFills.length,
+      complete: false,
+      reconciled: false,
+      executed_base: existing?.executed_base ?? "0",
+      executed_quote: existing?.executed_quote ?? "0",
+      fee_quote: "0",
+      fee_base: "0",
+      consumed_quote: "0",
+      released_quote: "0",
+      consumed_base: "0",
+      released_base: "0",
+      lease_consumed_delta: "0",
+      problems: identityProblems,
+    };
+  }
+  if (
+    command.reconciled_at !== null &&
+    existing !== null &&
+    TERMINAL_ORDER_STATES.includes(existing.status) &&
+    !hasNewFill &&
+    !gt(dec(order.executed_base), dec(existing.executed_base)) &&
+    !gt(dec(order.executed_quote), dec(existing.executed_quote))
+  ) {
+    // A slower dispatch/read can return after another reconciler completed the command.
+    // Known duplicate fills and an older summary cannot roll the durable order backward.
+    const recorded = await listFillsForOrder(tx, existing.id);
+    const feeQuote = recorded
+      .filter((fill) => fill.commission_asset === quoteAsset)
+      .reduce((sum, fill) => add(sum, dec(fill.commission_qty)), ZERO);
+    const feeBase = recorded
+      .filter((fill) => fill.commission_asset === baseAsset)
+      .reduce((sum, fill) => add(sum, dec(fill.commission_qty)), ZERO);
+    await appendAuditEvent(tx, {
+      id: newId("evt"),
+      accountId,
+      type: "ORDER_OBSERVED",
+      occurredAt: now,
+      payload: {
+        command_id: command.id,
+        order_id: existing.id,
+        status: order.status,
+        executed_base: order.executed_base,
+        executed_quote: order.executed_quote,
+        preserved_status: existing.status,
+        source,
+        note: "already settled; duplicate or older observation did not change accounting",
+      },
+    });
+    return {
+      order_id: existing.id,
+      order_status: existing.status,
+      new_fills: 0,
+      duplicate_fills: relevantFills.length,
+      skipped_fills: 0,
+      complete: true,
+      reconciled: true,
+      executed_base: toDecimalString(dec(existing.executed_base)),
+      executed_quote: toDecimalString(dec(existing.executed_quote)),
+      fee_quote: toDecimalString(feeQuote),
+      fee_base: toDecimalString(feeBase),
+      consumed_quote: "0",
+      released_quote: "0",
+      consumed_base: "0",
+      released_base: "0",
+      lease_consumed_delta: "0",
+      problems: [],
+    };
+  }
   const orderRow: OrderRow =
     existing === null
       ? await insertOrder(tx, {
@@ -211,7 +406,7 @@ export async function applyObservedOrderInTx(
   let duplicateFills = 0;
   let skippedFills = 0;
   let leaseConsumedDelta = ZERO;
-  for (const fill of input.fills.filter((f) => f.order.client_order_id === command.client_order_id)) {
+  for (const fill of relevantFills) {
     const deltas = fillDeltas(side, quoteAsset, baseAsset, fill);
     if (deltas === null) {
       // T-45: an unsupported fee asset is never dropped from the ledger and never guessed; the command stays open.
@@ -289,6 +484,8 @@ export async function applyObservedOrderInTx(
     await applyBalanceDelta(tx, accountId, baseAsset, deltas.baseDelta);
     await applyBalanceDelta(tx, accountId, quoteAsset, deltas.quoteDelta);
     await applyAllocationDelta(tx, accountId, intent.agent_id, baseAsset, deltas.allocationDelta);
+    // Quote is shared account cash, whose attribution remains in the operator bucket.
+    await applyAllocationDelta(tx, accountId, "UNASSIGNED", quoteAsset, deltas.quoteDelta);
     if (!isZero(dec(deltas.leaseDelta))) {
       await addLeaseConsumedQuote(tx, intent.lease_id, deltas.leaseDelta, now);
       leaseConsumedDelta = add(leaseConsumedDelta, dec(deltas.leaseDelta));
@@ -356,51 +553,124 @@ export async function applyObservedOrderInTx(
     );
   }
   const terminal = TERMINAL_ORDER_STATES.includes(order.status);
-  const complete = terminal && totalsAgree && skippedFills === 0;
+  const policyResult = await tx.query<{ canonical_policy: Record<string, unknown> }>(
+    "SELECT canonical_policy FROM policy_versions WHERE id = $1 AND account_id = $2",
+    [proposal.policy_id, accountId],
+  );
+  const policy = PolicySchema.parse(policyResult.rows[0]?.canonical_policy);
+  const feeRate = dec(policy.fee_rate);
+  // Venue commissions round independently per fill; aggregating before rounding understates that envelope.
+  const modeledQuoteFee =
+    policy.fee_asset === quoteAsset
+      ? recorded.reduce((sum, fill) => add(sum, feeReserve(dec(fill.quote_qty), feeRate)), ZERO)
+      : ZERO;
+  const modeledBaseFee =
+    policy.fee_asset === baseAsset
+      ? recorded.reduce((sum, fill) => add(sum, feeReserve(dec(fill.base_qty), feeRate)), ZERO)
+      : ZERO;
+  const feeMismatch = gt(feeQuote, modeledQuoteFee) || gt(feeBase, modeledBaseFee);
+  if (feeMismatch) {
+    problems.push("actual fill fees exceed the approved fee model; operator investigation required");
+    await raiseIncidentOnce(
+      tx,
+      accountId,
+      intent.agent_id,
+      command.id,
+      "FEE_MODEL_MISMATCH",
+      "CRITICAL",
+      {
+        policy_id: proposal.policy_id,
+        fee_asset: policy.fee_asset,
+        fee_rate: policy.fee_rate,
+        actual_quote_fee: toDecimalString(feeQuote),
+        actual_base_fee: toDecimalString(feeBase),
+      },
+      now,
+    );
+  }
+  const reservations = await listReservationsForProposal(tx, proposal.id);
+  const executionByKind = { QUOTE: add(sumQuote, feeQuote), BASE: add(sumBase, feeBase) };
+  let shortfall = false;
+  for (const kind of [side === "BUY" ? "QUOTE" : "BASE"] as const) {
+    const heldAndConsumed = reservations
+      .filter((r) => r.kind === kind && (r.state === "ARMED" || r.state === "CONSUMED"))
+      .reduce((total, r) => add(total, dec(r.amount)), ZERO);
+    if (gt(executionByKind[kind], heldAndConsumed)) {
+      shortfall = true;
+      problems.push(
+        `executed ${kind} ${toDecimalString(executionByKind[kind])} exceeded the hold ${toDecimalString(heldAndConsumed)}`,
+      );
+      await raiseIncidentOnce(
+        tx,
+        accountId,
+        intent.agent_id,
+        command.id,
+        "RESERVATION_SHORTFALL",
+        "CRITICAL",
+        {
+          kind,
+          held: toDecimalString(heldAndConsumed),
+          executed: toDecimalString(executionByKind[kind]),
+        },
+        now,
+      );
+    }
+  }
+  const accountingBlocked = skippedFills > 0 || feeMismatch || shortfall;
+  if (accountingBlocked) {
+    const accountRow = await lockAccountRow(tx, accountId);
+    if (accountRow.status !== "RECONCILING") {
+      await setAccountStatus(tx, accountId, "RECONCILING", now);
+      await appendAuditEvent(tx, {
+        id: newId("evt"),
+        accountId,
+        type: "ACCOUNT_RECONCILING",
+        payload: {
+          command_id: command.id,
+          problems,
+          note: "accounting discrepancy requires investigation; holds retained",
+        },
+        occurredAt: now,
+      });
+    }
+  }
+  const complete = terminal && totalsAgree && !accountingBlocked;
 
   let consumedQuote = ZERO;
   let releasedQuote = ZERO;
   let consumedBase = ZERO;
   let releasedBase = ZERO;
   let reconciled = false;
-  if (complete) {
-    const executedCostQuote = add(sumQuote, feeQuote);
-    const executedBaseOut = add(sumBase, feeBase);
-    for (const reservation of await listReservationsForProposal(tx, proposal.id)) {
-      if (reservation.state !== "ARMED") continue;
+  if (!accountingBlocked) {
+    const consumedByKind = {
+      QUOTE: reservations
+        .filter((r) => r.kind === "QUOTE" && r.state === "CONSUMED")
+        .reduce((total, r) => add(total, dec(r.amount)), ZERO),
+      BASE: reservations
+        .filter((r) => r.kind === "BASE" && r.state === "CONSUMED")
+        .reduce((total, r) => add(total, dec(r.amount)), ZERO),
+    };
+    for (const reservation of reservations) {
+      if (reservation.state !== "ARMED" || reservation.kind === "ATTEMPT") continue;
       const held = dec(reservation.amount);
-      const wanted =
-        reservation.kind === "QUOTE" ? executedCostQuote : reservation.kind === "BASE" ? executedBaseOut : ZERO;
+      const wanted = max(sub(executionByKind[reservation.kind], consumedByKind[reservation.kind]), ZERO);
       const consumed = min(held, wanted);
-      const released = max(sub(held, wanted), ZERO);
-      if (gt(wanted, held)) {
-        problems.push(
-          `executed ${reservation.kind} ${toDecimalString(wanted)} exceeded the hold ${reservation.amount}`,
-        );
-        await raiseIncidentOnce(
+      const released = complete ? max(sub(held, wanted), ZERO) : ZERO;
+      if (complete) {
+        await settleArmedReservation(
           tx,
-          accountId,
-          intent.agent_id,
-          command.id,
-          "RESERVATION_SHORTFALL",
-          "WARNING",
-          {
-            reservation_id: reservation.id,
-            kind: reservation.kind,
-            held: reservation.amount,
-            executed: toDecimalString(wanted),
-          },
+          reservation,
+          toDecimalString(consumed),
+          toDecimalString(released),
+          newId("rsv"),
           now,
         );
+      } else if (!isZero(consumed)) {
+        await consumeArmedReservationPart(tx, reservation, toDecimalString(consumed), newId("rsv"), now);
+      } else {
+        continue;
       }
-      await settleArmedReservation(
-        tx,
-        reservation,
-        toDecimalString(consumed),
-        toDecimalString(released),
-        newId("rsv"),
-        now,
-      );
+      consumedByKind[reservation.kind] = add(consumedByKind[reservation.kind], consumed);
       if (reservation.kind === "QUOTE") {
         consumedQuote = add(consumedQuote, consumed);
         releasedQuote = add(releasedQuote, released);
@@ -421,11 +691,15 @@ export async function applyObservedOrderInTx(
           held: reservation.amount,
           consumed: toDecimalString(consumed),
           released: toDecimalString(released),
-          note: "only the unfilled remainder is released after terminal reconciliation (prd.md 11.6)",
+          note: complete
+            ? "only the unfilled remainder is released after terminal reconciliation (prd.md 11.6)"
+            : "applied execution moved to consumed; unfilled remainder stays armed (prd.md 11.6)",
         },
         occurredAt: now,
       });
     }
+  }
+  if (complete) {
     await updateCommandState(tx, command.id, "ACCEPTED", now, { outcomeRef: orderRow.id, reconciledAt: now });
     for (const incident of await listOpenIncidentsForCommand(tx, accountId, command.id)) {
       if (incident.type !== "OUTCOME_UNKNOWN") continue;
@@ -522,6 +796,16 @@ export type ReconcileReport = {
   attempts: number;
 };
 
+export class ReconciliationError extends Error {
+  readonly code = "NOT_FOUND";
+  readonly status = 404;
+
+  constructor() {
+    super("command not found for this account");
+    this.name = "ReconciliationError";
+  }
+}
+
 /**
  * Reconciles one command by asking the venue what happened to the stable
  * client order id (prd.md 11.7 "query known order identifiers and fills"). No
@@ -541,7 +825,10 @@ export async function reconcileCommand(
   const execution = runtime.execution;
   if (pool === null || account === null) throw new Error("kernel has no loaded account");
   const command = await withClient(pool, (client) => getCommandById(client, commandId));
-  if (command === null) throw new Error(`command ${commandId} not found`);
+  if (command === null || command.account_id !== account.id) throw new ReconciliationError();
+  // The account binding is required before even local investigation state can
+  // change. Operator retries start a new bounded read investigation.
+  if (source === "OPERATOR") runtime.reconciliation.delete(command.id);
   const attempts = (runtime.reconciliation.get(commandId)?.attempts ?? 0) + 1;
   const base = { command_id: command.id, client_order_id: command.client_order_id, before: command.state, attempts };
   const needsWork =
@@ -590,12 +877,13 @@ export async function reconcileCommand(
   return withTransaction(pool, async (tx) => {
     await lockAccountRow(tx, account.id);
     const locked = await getCommandById(tx, command.id, { lock: true });
-    if (locked === null || locked.state !== command.state) {
+    if (locked === null || locked.account_id !== account.id) throw new ReconciliationError();
+    if (locked.state !== command.state || locked.reconciled_at !== null) {
       return {
         ...base,
-        after: locked?.state ?? command.state,
+        after: locked.state,
         result: "NOT_APPLICABLE",
-        detail: "command changed concurrently",
+        detail: locked.reconciled_at !== null ? "command settled concurrently" : "command changed concurrently",
         apply: null,
       };
     }
@@ -607,15 +895,22 @@ export async function reconcileCommand(
         now,
         source,
       });
-      runtime.reconciliation.delete(command.id);
-      const after: CommandState = "ACCEPTED";
+      const observed = await getCommandById(tx, command.id);
+      if (observed === null) throw new Error(`command ${command.id} vanished during reconciliation`);
+      const after = observed.state;
+      const accepted = after === "ACCEPTED";
+      const reconciled = accepted && observed.reconciled_at !== null;
+      if (accepted) runtime.reconciliation.delete(command.id);
+      else runtime.reconciliation.set(command.id, { attempts, next_at: now.getTime() + backoffMs(attempts) });
       return {
         ...base,
         after,
-        result: apply.reconciled ? "RECONCILED" : "ACCEPTED_UNSETTLED",
-        detail: apply.reconciled
-          ? `order ${apply.order_status}; ${apply.new_fills} new fill(s) applied; holds settled`
-          : `order ${apply.order_status}; accounting incomplete: ${apply.problems.join("; ") || "order not terminal"}`,
+        result: !accepted ? "STILL_UNKNOWN" : reconciled ? "RECONCILED" : "ACCEPTED_UNSETTLED",
+        detail: !accepted
+          ? `observation refused; outcome remains unresolved: ${apply.problems.join("; ")}`
+          : reconciled
+            ? `order ${apply.order_status}; ${apply.new_fills} new fill(s) applied; holds settled${apply.problems.length > 0 ? `; latest observation problems: ${apply.problems.join("; ")}` : ""}`
+            : `order ${apply.order_status}; accounting incomplete: ${apply.problems.join("; ") || "order not terminal"}`,
         apply,
       };
     }

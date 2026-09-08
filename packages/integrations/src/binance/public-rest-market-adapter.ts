@@ -7,6 +7,7 @@ import {
   hashCanonical,
   type MarketAdapter,
   type MarketSnapshot,
+  NonNegativeDecimalStringSchema,
   SYMBOL_RE,
   type SymbolRules,
   type SymbolStatus,
@@ -52,12 +53,11 @@ const DEFAULT_DEPTH_LIMIT = 20;
  *   apply to a single LIMIT IOC order: they govern market orders, iceberg
  *   orders, trailing stops, algo orders, order lists, and amendments, none of
  *   which the kernel can emit (prd.md 4.3).
- * - PERCENT_PRICE and PERCENT_PRICE_BY_SIDE are bounded in practice by the
- *   kernel's max_price_drift_bps policy against a fresh mark, and are
- *   otherwise venue-enforced: a breach is a confirmed rejection, never an
- *   unbounded fill.
- * - MAX_NUM_ORDERS and MAX_POSITION are not reachable with one in-flight
- *   command and virtual sizes.
+ * - MAX_NUM_ORDERS is bounded by the kernel's single in-flight LIMIT IOC.
+ * - PERCENT_PRICE and PERCENT_PRICE_BY_SIDE need the venue's reference price
+ *   or weighted average over the stated window. A fresh book/drift check is
+ *   not equivalent. MAX_POSITION requires account-position qualification.
+ *   These applicable filters remain unsupported and block proposals.
  *
  * Any filter type outside this list is reported in `unsupported_filters` so
  * the evaluator denies with FILTER_UNSUPPORTED (prd.md 9.10) instead of
@@ -76,9 +76,6 @@ export const KNOWN_FILTER_TYPES: ReadonlySet<string> = new Set([
   "MAX_NUM_ORDER_LISTS",
   "MAX_NUM_ORDER_AMENDS",
   "MAX_NUM_ORDERS",
-  "PERCENT_PRICE_BY_SIDE",
-  "PERCENT_PRICE",
-  "MAX_POSITION",
 ]);
 
 const DepthLevelSchema = z.tuple([z.string(), z.string()]);
@@ -107,6 +104,8 @@ type ExchangeFilter = z.infer<typeof FilterSchema>;
 type ObservedBody = { body: unknown; requestStartedAt: string; receivedAt: string };
 type CachedBook = {
   expiresAtMs: number;
+  requestStartedAt: string;
+  receivedAt: string;
   lastUpdateId: number;
   bids: BookLevel[];
   asks: BookLevel[];
@@ -245,13 +244,10 @@ export class BinancePublicRestMarketAdapter implements MarketAdapter {
     const requestStartedAt = this.clock();
     const cached = this.depthCache.get(symbol);
     if (cached !== undefined && requestStartedAt.getTime() < cached.expiresAtMs) {
-      // A cache hit is still a distinct observation of the same cached
-      // content: it gets its own snapshot_id and clock stamps, while bids,
-      // asks and payload_hash are identical to the request that filled the
-      // cache. The freshness understatement this introduces is bounded by
-      // cacheMs, which is why cacheMs must stay far below the policy
-      // staleness threshold; source_timestamp is null regardless.
-      return this.buildSnapshot(symbol, cached, requestStartedAt.toISOString(), this.clock().toISOString());
+      // A new snapshot ID may reference this cached book, but its age and
+      // request latency still belong to the actual fetch. A cache hit must
+      // never renew freshness or extend the cache's original expiry.
+      return this.buildSnapshot(symbol, cached);
     }
     try {
       const observed = await this.getJson("/api/v3/depth", { symbol, limit: String(this.depthLimit) });
@@ -263,6 +259,8 @@ export class BinancePublicRestMarketAdapter implements MarketAdapter {
       const asks = parsed.data.asks.map(toBookLevel);
       const book: CachedBook = {
         expiresAtMs: Date.parse(observed.receivedAt) + this.cacheMs,
+        requestStartedAt: observed.requestStartedAt,
+        receivedAt: observed.receivedAt,
         lastUpdateId: parsed.data.lastUpdateId,
         bids,
         asks,
@@ -275,7 +273,7 @@ export class BinancePublicRestMarketAdapter implements MarketAdapter {
         }),
       };
       this.depthCache.set(symbol, book);
-      return this.buildSnapshot(symbol, book, observed.requestStartedAt, observed.receivedAt);
+      return this.buildSnapshot(symbol, book);
     } catch (error) {
       this.lastFailure = errorMessage(error);
       throw error;
@@ -328,7 +326,9 @@ export class BinancePublicRestMarketAdapter implements MarketAdapter {
         base_asset: entry.baseAsset,
         quote_asset: entry.quoteAsset,
         status: mapStatus(entry.status),
-        tick_size: requireDecimal(priceFilter, "tickSize"),
+        tick_size: NonNegativeDecimalStringSchema.parse(requireDecimal(priceFilter, "tickSize")),
+        min_price: NonNegativeDecimalStringSchema.parse(requireDecimal(priceFilter, "minPrice")),
+        max_price: NonNegativeDecimalStringSchema.parse(requireDecimal(priceFilter, "maxPrice")),
         step_size: requireDecimal(lotSize, "stepSize"),
         min_qty: requireDecimal(lotSize, "minQty"),
         max_qty: requireDecimal(lotSize, "maxQty"),
@@ -349,18 +349,13 @@ export class BinancePublicRestMarketAdapter implements MarketAdapter {
     }
   }
 
-  private buildSnapshot(
-    symbol: string,
-    book: CachedBook,
-    requestStartedAt: string,
-    receivedAt: string,
-  ): MarketSnapshot {
+  private buildSnapshot(symbol: string, book: CachedBook): MarketSnapshot {
     return {
       snapshot_id: this.newId("snap"),
       symbol,
       source: this.source,
-      request_started_at: requestStartedAt,
-      received_at: receivedAt,
+      request_started_at: book.requestStartedAt,
+      received_at: book.receivedAt,
       // GET /api/v3/depth carries no exchange event time, so null here means
       // "local observation age only" (prd.md 13.8); the kernel must not treat
       // it as guaranteed exchange-event age.

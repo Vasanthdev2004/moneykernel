@@ -1,6 +1,7 @@
 import type { Readiness } from "@moneykernel/contracts";
-import { countOutstandingCommands, withClient } from "@moneykernel/persistence";
+import { countOutstandingCommands, getAccountById, withClient } from "@moneykernel/persistence";
 import type { KernelRuntime, ReadinessCheck } from "./boot.ts";
+import { hasLiveWriterLease } from "./services/writer.ts";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -25,32 +26,40 @@ export async function computeReadiness(runtime: KernelRuntime): Promise<Readines
     }
   }
 
-  if (runtime.writer === null) {
-    live.push({ name: "writer_lock", ok: false, detail: "not held" });
-  } else {
-    try {
-      await runtime.writer.client.query("SELECT 1");
-      live.push({ name: "writer_lock", ok: true, detail: `held: ${runtime.writer.key}` });
-    } catch (error) {
-      live.push({ name: "writer_lock", ok: false, detail: `writer session lost: ${errorMessage(error)}` });
-    }
-  }
+  const writerHeld = await hasLiveWriterLease(runtime);
+  live.push({
+    name: "writer_lock",
+    ok: writerHeld,
+    detail: writerHeld ? `held: ${runtime.writer?.key}` : "not held by this process",
+  });
 
   if (runtime.pool !== null && runtime.account !== null) {
     try {
       const accountId = runtime.account.id;
-      const counts = await withClient(runtime.pool, (client) => countOutstandingCommands(client, accountId));
+      const { counts, account } = await withClient(runtime.pool, async (client) => ({
+        counts: await countOutstandingCommands(client, accountId),
+        account: await getAccountById(client, accountId),
+      }));
+      live.push({
+        name: "account_status",
+        ok: account?.status === "READY" || account?.status === "PAUSED",
+        detail: account?.status ?? "account missing",
+      });
       live.push({
         name: "unresolved_commands",
         ok: counts.total === 0,
         detail: `armed=${counts.armed} unknown=${counts.unknown} accepted_unreconciled=${counts.accepted_unreconciled}`,
       });
     } catch (error) {
+      live.push({ name: "account_status", ok: false, detail: errorMessage(error) });
       live.push({ name: "unresolved_commands", ok: false, detail: errorMessage(error) });
     }
   }
 
   const liveNames = new Set(live.map((c) => c.name));
-  const checks = [...runtime.bootChecks.filter((c) => !liveNames.has(c.name)), ...live];
+  // The boot recovery report describes that attempt, not the current account.
+  // A later successful query can settle its unknown commands without a restart;
+  // the live unresolved_commands check remains the authority for that state.
+  const checks = [...runtime.bootChecks.filter((c) => c.name !== "recovery" && !liveNames.has(c.name)), ...live];
   return { ready: checks.every((c) => c.ok), checks };
 }

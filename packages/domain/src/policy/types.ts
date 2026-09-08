@@ -71,6 +71,8 @@ export type SymbolRulesView = {
   quote_asset: string;
   status: "TRADING" | "HALT" | "BREAK" | "UNKNOWN";
   tick_size: string;
+  min_price?: string | null;
+  max_price?: string | null;
   step_size: string;
   min_qty: string;
   max_qty: string;

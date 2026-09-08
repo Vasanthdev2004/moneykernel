@@ -32,6 +32,9 @@ export type SymbolRules = {
   quote_asset: string;
   status: SymbolStatus;
   tick_size: DecimalString;
+  /** Optional for historical fixtures. Null or zero disables that PRICE_FILTER bound. */
+  min_price?: DecimalString | null;
+  max_price?: DecimalString | null;
   step_size: DecimalString;
   min_qty: DecimalString;
   max_qty: DecimalString;

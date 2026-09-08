@@ -4,6 +4,8 @@ import { type AgentRole, renderUserMessage, SYSTEM_PROMPT } from "../prompt.ts";
 import {
   errorMessage,
   formatIssues,
+  NO_TOKEN_USAGE,
+  ProviderFailure,
   type ProviderResult,
   type StrategyContext,
   type StrategyProvider,
@@ -80,42 +82,57 @@ export class AnthropicProvider implements StrategyProvider {
   async propose(context: StrategyContext): Promise<ProviderResult> {
     const started = performance.now();
     const conversation: ChatMessage[] = [{ role: "user", content: renderUserMessage(context, this.role) }];
-    const first = await this.#call(conversation);
-    const firstCheck = validateOutput(first.text);
-    if (firstCheck.ok) {
-      return {
-        output: firstCheck.output,
-        raw_text: first.text,
-        latency_ms: Math.round(performance.now() - started),
-        repair_attempts: 0,
-        usage: first.usage,
-        validation: "VALID",
-      };
-    }
+    let repairAttempts = 0;
+    let usage: TokenUsage = NO_TOKEN_USAGE;
+    let validation: "INVALID" | null = null;
+    try {
+      const first = await this.#call(conversation);
+      usage = first.usage;
+      const firstCheck = validateOutput(first.text);
+      if (firstCheck.ok) {
+        return {
+          output: firstCheck.output,
+          raw_text: first.text,
+          latency_ms: Math.round(performance.now() - started),
+          repair_attempts: 0,
+          usage: first.usage,
+          validation: "VALID",
+        };
+      }
 
-    // Exactly one schema-repair round (prd.md 16.2); the failure goes back as data.
-    if (first.text.trim().length > 0) conversation.push({ role: "assistant", content: first.text });
-    conversation.push({
-      role: "user",
-      content: `Your previous output failed validation: ${describeFailure(first, firstCheck.error)}. Return only the JSON object.`,
-    });
-    const second = await this.#call(conversation);
-    const usage: TokenUsage = {
-      input_tokens: addTokens(first.usage.input_tokens, second.usage.input_tokens),
-      output_tokens: addTokens(first.usage.output_tokens, second.usage.output_tokens),
-    };
-    const secondCheck = validateOutput(second.text);
-    if (secondCheck.ok) {
-      return {
-        output: secondCheck.output,
-        raw_text: second.text,
-        latency_ms: Math.round(performance.now() - started),
-        repair_attempts: 1,
-        usage,
-        validation: "REPAIRED",
+      validation = "INVALID";
+      // Exactly one schema-repair round (prd.md 16.2); the failure goes back as data.
+      if (first.text.trim().length > 0) conversation.push({ role: "assistant", content: first.text });
+      conversation.push({
+        role: "user",
+        content: `Your previous output failed validation: ${describeFailure(first, firstCheck.error)}. Return only the JSON object.`,
+      });
+      repairAttempts = 1;
+      const second = await this.#call(conversation);
+      usage = {
+        input_tokens: addTokens(first.usage.input_tokens, second.usage.input_tokens),
+        output_tokens: addTokens(first.usage.output_tokens, second.usage.output_tokens),
       };
+      const secondCheck = validateOutput(second.text);
+      if (secondCheck.ok) {
+        return {
+          output: secondCheck.output,
+          raw_text: second.text,
+          latency_ms: Math.round(performance.now() - started),
+          repair_attempts: 1,
+          usage,
+          validation: "REPAIRED",
+        };
+      }
+      throw new Error(`MODEL_OUTPUT_INVALID: ${describeFailure(second, secondCheck.error)} (after 1 repair attempt)`);
+    } catch (error) {
+      throw new ProviderFailure(this.#scrub(errorMessage(error)), {
+        latency_ms: Math.round(performance.now() - started),
+        repair_attempts: repairAttempts,
+        validation,
+        usage,
+      });
     }
-    throw new Error(`MODEL_OUTPUT_INVALID: ${describeFailure(second, secondCheck.error)} (after 1 repair attempt)`);
   }
 
   async #call(messages: ChatMessage[]): Promise<ModelReply> {
