@@ -7,7 +7,7 @@
   "type": "module",
   "packageManager": "pnpm@12.3.4",
   "engines": {
-    "node": ">=24.19.0 <25"
+    "node": ">=24.20.0 <25"
   },
   "scripts": {
     "doctor": "node --env-file-if-exists=.env scripts/doctor.ts",
@@ -32,7 +32,8 @@
     "demo:seed": "node --env-file-if-exists=.env scripts/seed-demo.ts",
     "agent:run": "node --env-file-if-exists=.env apps/agents/src/runner.ts",
     "demo:replay": "node --env-file-if-exists=.env scripts/demo-replay.ts",
-    "verify:receipt": "node scripts/verify-receipt.ts"
+    "verify:receipt": "node scripts/verify-receipt.ts",
+    "secret:generate": "node scripts/generate-secret.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",

@@ -1,0 +1,17 @@
+{
+	admin off
+	email {$ACME_EMAIL}
+}
+
+{$MONEYKERNEL_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8080 {
+		health_uri /health/live
+		health_interval 30s
+	}
+	header -Server
+	log {
+		output stdout
+		format json
+	}
+}

@@ -4,7 +4,7 @@
 
 MoneyKernel is a deterministic capital-control gateway for AI trading agents. Agents propose trades; the kernel checks lease authority, reserves resources atomically, holds opposing pending intents for human review, requires exact single-use human approval, dispatches once, reconciles what actually happened, and records a verifiable decision receipt.
 
-Built for the Binance Agent OS Mini Hackathon (Track A) as a partial v0.1 prototype. The synthetic paper lifecycle is implemented, and a live read-only Binance market observation has been verified through the Binance plugin from Codex's recommended catalog. The backend-owned Agent OS route and other documented integration gaps remain unresolved. Recording and submission are still pending.
+Built for the Binance Agent OS Mini Hackathon (Track A). The complete virtual execution lifecycle and a production-hardened private SHADOW deployment are implemented. SHADOW reads live public Binance market data and executes only against virtual funds. The backend-owned Agent OS route and other documented integration gaps remain unresolved. Recording and submission are still owner steps.
 
 ## Status
 
@@ -22,6 +22,8 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a partial v0.1 protot
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
 - `docs/integration-manifest.json` records the Binance Agent OS integration evidence and its limits.
+- `docs/production-shadow.md` is the deployment, monitoring, backup, restore, upgrade, and rollback runbook.
+- `docs/production-readiness-evidence.md` records the clean test, container smoke, and image-scan results for that topology.
 - `docs/decisions/` is the decision log. `docs/test-evidence.md` records test runs.
 - `fixtures/scenarios/` holds the synthetic scenarios from prd.md section 27.
 - `spikes/gate0/` is throwaway read-only probe tooling, not product runtime code.
@@ -72,6 +74,10 @@ Set `MONEYKERNEL_MODE=SHADOW` and a fresh alias, start the kernel, and seed a sc
 MONEYKERNEL_MODE=SHADOW MONEYKERNEL_ACCOUNT_ALIAS=shadow-run-001 pnpm dev
 pnpm demo:seed scenario-d-lost-response
 ```
+
+### Private SHADOW deployment
+
+The production image serves the built console and API from one HTTPS origin. The supplied Compose topology adds Caddy-managed TLS, a persistent PostgreSQL database, a migration gate, persistent paper-venue state, non-root/read-only application containment, health checks, authenticated metrics, restart handling, and a one-time virtual-account bootstrap. Follow [the production runbook](docs/production-shadow.md). This deployment is for monitored virtual execution; it does not add a Binance account login or mainnet order path.
 
 ### Operator console (prd.md section 17)
 
@@ -137,7 +143,7 @@ Implemented P0 behaviour is what the tests above exercise. The following is not 
 - **Freshness.** Referenced observations must be under 5 s old at admission (policy default), so a slow model path earns `STALE_MARKET_DATA` rather than an exemption.
 - **Operations.** One kernel instance, no hot failover; operator sessions live in memory (a restart logs everyone out and pauses the account); the event stream polls committed events every 500 ms; the integration, fault, and browser suites share one database and must run one at a time.
 - **Evidence.** A successful `verify:receipt` report establishes the checks described above, with complete settlement proof only for reconciled commands. Legacy receipts without context cannot be replayed. A complete history rewrite cannot be detected without an independently retained checkpoint; automated external anchoring remains P2. Credential screening detects known formats and configured values at export time, but cannot recognize every arbitrary secret in prose. No check proves that Binance or a model was honest.
-- **Not production-ready.** No claim of guaranteed maximum loss, exactly-once execution under every failure, or risk-free trading (prd.md 23.3).
+- **Real-money deployment.** No claim of guaranteed maximum loss, exactly-once execution under every failure, or risk-free trading is made. The hardened deployment remains SHADOW-only and cannot place a Binance order (prd.md 23.3).
 
 ## License
 

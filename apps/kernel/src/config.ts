@@ -13,7 +13,7 @@ export const FORBIDDEN_ENV_KEYS = [
 ] as const;
 
 export const PLACEHOLDER_OPERATOR_SECRET = "GENERATE_A_RANDOM_SECRET";
-const MIN_OPERATOR_SECRET_LENGTH = 16;
+const MIN_OPERATOR_SECRET_LENGTH = 32;
 
 const BoolString = z.enum(["true", "false"]).transform((v) => v === "true");
 
@@ -35,6 +35,10 @@ const EnvSchema = z.object({
   BINANCE_TESTNET_API_KEY: z.string().default(""),
   BINANCE_TESTNET_API_SECRET: z.string().default(""),
   ENABLE_PUBLIC_MUTATIONS: BoolString.default(false),
+  PUBLIC_ORIGIN: z.string().default(""),
+  TRUST_PROXY: BoolString.default(false),
+  METRICS_BEARER_TOKEN: z.string().default(""),
+  HTTP_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(60).max(10_000).default(600),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   /** REPLAY only: scenario id under fixtures/scenarios. */
   REPLAY_FIXTURE: z
@@ -63,6 +67,10 @@ export type KernelConfig = {
   modelApiKey: string;
   testnet: { apiKey: string; apiSecret: string } | null;
   enablePublicMutations: boolean;
+  publicOrigin: string | null;
+  trustProxy: boolean;
+  metricsBearerToken: string;
+  httpRateLimitPerMinute: number;
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   replayFixture: string;
   stateDir: string;
@@ -124,6 +132,37 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
     );
   }
 
+  let publicOrigin: string | null = null;
+  if (e.PUBLIC_ORIGIN.length > 0) {
+    try {
+      const parsedOrigin = new URL(e.PUBLIC_ORIGIN);
+      if (
+        !["http:", "https:"].includes(parsedOrigin.protocol) ||
+        parsedOrigin.username ||
+        parsedOrigin.password ||
+        parsedOrigin.pathname !== "/" ||
+        parsedOrigin.search ||
+        parsedOrigin.hash
+      ) {
+        problems.push("PUBLIC_ORIGIN must be an http(s) origin without credentials, path, query, or fragment");
+      } else {
+        publicOrigin = parsedOrigin.origin;
+      }
+    } catch {
+      problems.push("PUBLIC_ORIGIN must be a valid http(s) origin");
+    }
+  }
+  if (e.NODE_ENV === "production") {
+    if (publicOrigin === null) problems.push("PUBLIC_ORIGIN is required in production");
+    else if (new URL(publicOrigin).protocol !== "https:") problems.push("PUBLIC_ORIGIN must use https in production");
+    if (e.METRICS_BEARER_TOKEN.length < 32) {
+      problems.push("METRICS_BEARER_TOKEN must be at least 32 characters in production");
+    }
+    if (e.METRICS_BEARER_TOKEN === e.OPERATOR_BOOTSTRAP_SECRET) {
+      problems.push("METRICS_BEARER_TOKEN must be different from OPERATOR_BOOTSTRAP_SECRET in production");
+    }
+  }
+
   if (problems.length > 0) throw new ConfigError(problems);
 
   const configurationHash = hashCanonical({
@@ -140,6 +179,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
     has_model_api_key: e.MODEL_API_KEY.length > 0,
     has_testnet_credentials: hasTestnetKey && hasTestnetSecret,
     enable_public_mutations: e.ENABLE_PUBLIC_MUTATIONS,
+    public_origin: publicOrigin,
+    trust_proxy: e.TRUST_PROXY,
+    metrics_enabled: e.METRICS_BEARER_TOKEN.length > 0,
+    http_rate_limit_per_minute: e.HTTP_RATE_LIMIT_PER_MINUTE,
     log_level: e.LOG_LEVEL,
     replay_fixture: e.MONEYKERNEL_MODE === "REPLAY" ? e.REPLAY_FIXTURE : null,
   });
@@ -163,6 +206,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
         ? { apiKey: e.BINANCE_TESTNET_API_KEY, apiSecret: e.BINANCE_TESTNET_API_SECRET }
         : null,
     enablePublicMutations: e.ENABLE_PUBLIC_MUTATIONS,
+    publicOrigin,
+    trustProxy: e.TRUST_PROXY,
+    metricsBearerToken: e.METRICS_BEARER_TOKEN,
+    httpRateLimitPerMinute: e.HTTP_RATE_LIMIT_PER_MINUTE,
     logLevel: e.LOG_LEVEL,
     replayFixture: e.REPLAY_FIXTURE,
     stateDir: e.MONEYKERNEL_STATE_DIR,
@@ -188,6 +235,10 @@ export function redactedConfig(config: KernelConfig): Record<string, unknown> {
     has_model_api_key: config.modelApiKey.length > 0,
     has_testnet_credentials: config.testnet !== null,
     enable_public_mutations: config.enablePublicMutations,
+    public_origin: config.publicOrigin,
+    trust_proxy: config.trustProxy,
+    metrics_enabled: config.metricsBearerToken.length > 0,
+    http_rate_limit_per_minute: config.httpRateLimitPerMinute,
     log_level: config.logLevel,
     replay_fixture: config.environment === "REPLAY" ? config.replayFixture : null,
     state_dir: config.stateDir,

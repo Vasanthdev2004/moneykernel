@@ -1,0 +1,144 @@
+name: moneykernel
+
+x-kernel-image: &kernel-image
+  image: ${MONEYKERNEL_IMAGE:-moneykernel:shadow}
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+x-kernel-environment: &kernel-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 8080
+  DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the production environment file}
+  MONEYKERNEL_MODE: SHADOW
+  MONEYKERNEL_ACCOUNT_ALIAS: ${MONEYKERNEL_ACCOUNT_ALIAS:-shadow-production}
+  MONEYKERNEL_STATE_DIR: /var/lib/moneykernel
+  OPERATOR_BOOTSTRAP_SECRET: ${OPERATOR_BOOTSTRAP_SECRET:?set OPERATOR_BOOTSTRAP_SECRET}
+  PUBLIC_ORIGIN: https://${MONEYKERNEL_DOMAIN:?set MONEYKERNEL_DOMAIN}
+  TRUST_PROXY: "true"
+  METRICS_BEARER_TOKEN: ${METRICS_BEARER_TOKEN:?set METRICS_BEARER_TOKEN}
+  HTTP_RATE_LIMIT_PER_MINUTE: ${HTTP_RATE_LIMIT_PER_MINUTE:-600}
+  ENABLE_PUBLIC_MUTATIONS: ${ENABLE_PUBLIC_MUTATIONS:-false}
+  MODEL_PROVIDER: ${MODEL_PROVIDER:-disabled}
+  MODEL_ID: ${MODEL_ID:-}
+  MODEL_API_KEY: ${MODEL_API_KEY:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  db:
+    image: postgres:17.7-bookworm@sha256:86e0b703649d7a792bd9243ee28afc9d8f7c6b2b5638077c9d6882d4d472bbfd
+    environment:
+      POSTGRES_USER: moneykernel
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+      POSTGRES_DB: moneykernel
+    secrets:
+      - postgres-password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneykernel -d moneykernel"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  migrate:
+    <<: *kernel-image
+    command: ["--import", "tsx", "node_modules/@moneykernel/persistence/src/cli.ts", "up"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the production environment file}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    restart: "no"
+
+  app:
+    <<: *kernel-image
+    environment: *kernel-environment
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8080"
+    volumes:
+      - kernel-state:/var/lib/moneykernel
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/nodejs/bin/node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    stop_grace_period: 45s
+    networks:
+      - edge
+      - backend
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    environment:
+      MONEYKERNEL_DOMAIN: ${MONEYKERNEL_DOMAIN:?set MONEYKERNEL_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+
+networks:
+  edge:
+    internal: false
+  backend:
+    internal: true
+
+volumes:
+  postgres-data:
+  kernel-state:
+  caddy-data:
+  caddy-config:
+
+secrets:
+  postgres-password:
+    environment: POSTGRES_PASSWORD

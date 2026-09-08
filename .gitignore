@@ -10,9 +10,13 @@ coverage/
 .env
 .env.*
 !.env.example
+!deploy/production.env.example
 *.pem
 *.key
 secrets/
+deploy/production.env
+deploy/shadow-bootstrap.json
+deploy/backups/
 
 # raw, unsanitized integration captures (only sanitized exports are committed)
 **/raw/

@@ -15,6 +15,10 @@ describe("loadConfig (prd.md 22.1)", () => {
     expect(config.modelProvider).toBe("disabled");
     expect(config.testnet).toBeNull();
     expect(config.enablePublicMutations).toBe(false);
+    expect(config.publicOrigin).toBeNull();
+    expect(config.trustProxy).toBe(false);
+    expect(config.metricsBearerToken).toBe("");
+    expect(config.httpRateLimitPerMinute).toBe(600);
     expect(config.warnings).toEqual([]);
   });
 
@@ -69,20 +73,69 @@ describe("loadConfig (prd.md 22.1)", () => {
     ).toThrow(ConfigError);
   });
 
+  it("requires an HTTPS public origin and strong metrics token in production", () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: "production" })).toThrow(ConfigError);
+    expect(() =>
+      loadConfig({
+        ...base,
+        NODE_ENV: "production",
+        PUBLIC_ORIGIN: "http://moneykernel.example",
+        METRICS_BEARER_TOKEN: "short",
+      }),
+    ).toThrow(ConfigError);
+    expect(() =>
+      loadConfig({
+        ...base,
+        NODE_ENV: "production",
+        OPERATOR_BOOTSTRAP_SECRET: "s".repeat(32),
+        PUBLIC_ORIGIN: "https://moneykernel.example",
+        METRICS_BEARER_TOKEN: "s".repeat(32),
+      }),
+    ).toThrow(/must be different/);
+
+    const config = loadConfig({
+      ...base,
+      NODE_ENV: "production",
+      HOST: "0.0.0.0",
+      MONEYKERNEL_MODE: "SHADOW",
+      PUBLIC_ORIGIN: "https://moneykernel.example",
+      METRICS_BEARER_TOKEN: "m".repeat(32),
+      TRUST_PROXY: "true",
+      ENABLE_PUBLIC_MUTATIONS: "true",
+    });
+    expect(config.publicOrigin).toBe("https://moneykernel.example");
+    expect(config.trustProxy).toBe(true);
+    expect(config.httpRateLimitPerMinute).toBe(600);
+  });
+
+  it("rejects a public origin containing a path", () => {
+    expect(() => loadConfig({ ...base, PUBLIC_ORIGIN: "https://moneykernel.example/app" })).toThrow(ConfigError);
+  });
+
   it("configuration hash ignores secrets and changes with the mode", () => {
     const a = loadConfig(base);
-    const b = loadConfig({ ...base, OPERATOR_BOOTSTRAP_SECRET: "another-sufficiently-long-secret" });
+    const b = loadConfig({
+      ...base,
+      OPERATOR_BOOTSTRAP_SECRET: "another-sufficiently-long-secret",
+    });
     const c = loadConfig({ ...base, MONEYKERNEL_MODE: "SHADOW" });
     expect(a.configurationHash).toBe(b.configurationHash);
     expect(a.configurationHash).not.toBe(c.configurationHash);
   });
 
   it("redactedConfig never contains secrets", () => {
-    const config = loadConfig({ ...base, MODEL_PROVIDER: "openai", MODEL_ID: "gpt", MODEL_API_KEY: "sk-secret-value" });
+    const config = loadConfig({
+      ...base,
+      MODEL_PROVIDER: "openai",
+      MODEL_ID: "gpt",
+      MODEL_API_KEY: "sk-secret-value",
+      METRICS_BEARER_TOKEN: "metrics-secret-value",
+    });
     const text = JSON.stringify(redactedConfig(config));
     expect(text).not.toContain("sk-secret-value");
     expect(text).not.toContain("secret-password");
     expect(text).not.toContain(base.OPERATOR_BOOTSTRAP_SECRET);
+    expect(text).not.toContain("metrics-secret-value");
     expect(text).toContain('"has_model_api_key":true');
   });
 });
