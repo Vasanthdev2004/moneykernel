@@ -44,7 +44,7 @@ Consequences:
 
 - Option 3 is closed for now. The custom client cannot open an Agent OS session, so the product must not claim a backend-owned MCP connection.
 - Impersonating a supported agent's client identity was considered and rejected: it circumvents the platform's access control.
-- Remaining legitimate path: a supported agent session (Claude Code) authenticates to the Binance MCP server; observations obtained there are either captured as provenance-labelled fixtures or relayed into the kernel through an authenticated agent endpoint. In either case the kernel treats relayed market data as untrusted agent context (PRD section 6.1) and derives execution-critical numbers from its own separately labelled public REST read adapter (PRD section 13.4), cross-checking the two and raising an incident on divergence.
+- Supported-agent result: on 2026-09-08, a Codex desktop session used the Binance plugin from Codex's recommended catalog and called `mcp__codex_apps__binance_get_spot_symbol_order_book_ticker` to obtain a live, read-only BTCUSDT observation. The sanitized request, response, timestamp, schema hash and claim boundary are recorded in `docs/evidence/binance-codex-market-observation-20260908T125734Z.json`. This does not change the custom-client verdict or establish a backend-owned session.
 - Gate 0 verdict for the custom client: "stop claiming Agent OS integration" (PRD section 2.4). The kernel build continues offline; the integration gap is disclosed in the README and manifest.
 
 ## Revisit when

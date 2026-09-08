@@ -37,4 +37,4 @@ This adds actual migration, startup and execution proof to the original G7 insta
 
 ## Remaining release work
 
-Recording/upload and entry submission/confirmation remain owner steps. Actual Agent OS observation evidence, receipt-bound model provenance and the README's other integration qualifications remain incomplete. A synthetic REPLAY release candidate is not a claim that all P0 integration requirements or production readiness have been achieved. MIT selection is complete.
+Recording/upload and entry submission/confirmation remain owner steps. A later supported Codex session captured a live read-only observation through the Binance plugin from Codex's recommended catalog at `docs/evidence/binance-codex-market-observation-20260908T125734Z.json`. Backend-owned Agent OS access, receipt-bound model provenance and the README's other integration qualifications remain incomplete. A synthetic REPLAY release candidate is not a claim that all P0 integration requirements or production readiness have been achieved. MIT selection is complete.

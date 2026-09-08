@@ -4,8 +4,9 @@
 
 Four scenes, each on its own fresh REPLAY account so nothing leaks between them (prd.md 27.5). Every number on
 screen comes from the kernel's database; the console holds no authority. Captions to overlay: `SYNTHETIC FIXTURE`
-for REPLAY market data, `PAPER EXECUTION` for fills, `SYNTHETIC FAULT SCENARIO` for scene D. No caption may say
-"live MCP data": this build reads Binance public REST in SHADOW mode and has no Agent OS session (Gate 0).
+for REPLAY market data, `PAPER EXECUTION` for fills, `SYNTHETIC FAULT SCENARIO` for scene D. A separate
+read-only BTCUSDT observation was captured through the Binance plugin in a supported Codex session;
+show its sanitized evidence file before the four deterministic scenes. The backend itself still has no Agent OS session.
 
 ## Rehearsal (automated, three consecutive runs)
 
@@ -87,7 +88,7 @@ your light/dark preference in this browser. Tabs and the menu use Radix UI, with
 
 | Time | Scene | Do | Evidence on screen |
 |---|---|---|---|
-| 0–10 s | Mode and connection | Show the header, then open System | Header `REPLAY · SYNTHETIC FIXTURE` and account `READY`; System shows Agent OS MCP `BLOCKED` (honest Gate 0 outcome), Execution `CONNECTED` (paper), and epoch |
+| 0–10 s | Mode and connection | Briefly show `docs/evidence/binance-codex-market-observation-20260908T125734Z.json`, then the header and System | The evidence records the exact Binance plugin tool, timestamp, BTCUSDT bid/ask and zero side effects; the app remains honestly labelled `REPLAY · SYNTHETIC FIXTURE`, while System says the backend-owned MCP route is blocked |
 | 10–30 s | Constrained acquisition (scenario A) | Prepare `a` with the commands above; in Approvals, open the proposal, tick the confirmation and approve; inspect settlement in Activity | Request 80 USDT vs exact candidate `0.27 SOL @ 100`, limiting rule `SYMBOL_EXPOSURE_LIMIT`, fee reserve 0.027, receipt checks; command `ACCEPTED`, order `FILLED`, one `FILL_RECONCILED` event; quote balance falls by exactly 27.027 |
 | 30–45 s | Opposing pending agents (scenario B) | Prepare `b`; in Approvals, open Conflict review and select Alpha's BUY | Both proposals `CONFLICT_HELD`; after SELECT the winner is a new revision `AWAITING_APPROVAL`, the loser's holds are released, nothing armed |
 | 45–60 s | Scripted chaos burst (scenario C) | Prepare `c`; follow the script's prompt to submit the later request; show Agents, then the incident in Activity and funds in Overview | Eleven distinct requests; the 11th is denied `AGENT_QUARANTINED`; agent shows `QUARANTINED`; a CRITICAL incident; reserved quote back to 0; a later request stays denied |
@@ -108,5 +109,5 @@ failure, risk-free autonomous trading, saved real money.
 - Confirm the current fresh-clone REPLAY startup and rehearsal results in [test evidence](test-evidence.md).
 - Keep screenshots with the verified export and verification result from the same rehearsal account.
 - The [MIT license](../LICENSE) is included. Recording, upload and submission remain owner steps.
-- Describe this as a partial prototype: actual Agent OS observation evidence and the README's integration gaps remain open.
+- Describe this as a partial prototype: a supported Codex session produced verified, read-only Binance plugin evidence; backend-owned Agent OS access and the README's other integration gaps remain open.
 - Verify the entry survey fields and eligibility, submit the actual video/repository links, check public access, and retain the completion confirmation.

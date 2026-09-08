@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-09-08T12:57:34.508Z",
+  "capture_environment": "Codex desktop supported-agent session",
+  "plugin": "Binance (binance@openai-curated-remote)",
+  "tool": "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker",
+  "tool_security_type": "NONE",
+  "tool_data_source": "Memory",
+  "input_schema_sha256": "38fbd40de7d67e0a70778691256bdfbff8ecb6c67fe013d2b3720844789be718",
+  "request": {
+    "symbol": "BTCUSDT",
+    "symbolStatus": "TRADING"
+  },
+  "response": {
+    "symbol": "BTCUSDT",
+    "bidPrice": "78414.61000000",
+    "bidQty": "1.20198000",
+    "askPrice": "78414.62000000",
+    "askQty": "5.38434000"
+  },
+  "result": "SUCCESS",
+  "side_effects": "NONE; read-only market-data operation",
+  "claim_boundary": "This proves a live read through the Binance plugin from Codex's recommended catalog. It does not prove a backend-owned Agent OS connection or any account/order write."
+}

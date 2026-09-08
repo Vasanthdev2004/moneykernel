@@ -1,20 +1,23 @@
 {
   "schema_version": "1",
   "adapter": "binance-mcp",
-  "checked_at": "2026-09-08T05:58:00Z",
+  "status": "SUPPORTED_AGENT_MARKET_READ_VERIFIED",
+  "checked_at": "2026-09-08T12:57:34.508Z",
   "gate0": {
     "status": "CUSTOM_CLIENT_BLOCKED",
-    "decision": "Custom TypeScript MCP client cannot obtain an Agent OS session: the Binance authorization server accepts only allowlisted agents. Per prd.md section 2.4 this is the 'stop claiming Agent OS integration' branch for the custom client. Real Agent OS observations remain obtainable through a supported agent session (Claude Code); see routes below.",
+    "decision": "The custom TypeScript MCP client remains blocked by the Binance authorization allowlist. A live, read-only BTCUSDT book-ticker observation was successfully obtained through the Binance plugin from Codex's recommended catalog; see routes and evidence below.",
     "prd_reference": "prd.md section 2.4",
     "routes": {
       "custom_client_oauth": "BLOCKED_BY_PLATFORM_ALLOWLIST",
-      "supported_agent_session": "AVAILABLE_PENDING_OPERATOR_SETUP: operator adds the server to an interactive Claude Code session and authenticates; observations are then captured or relayed with explicit provenance",
+      "supported_agent_session": "VERIFIED_VIA_CODEX_PLUGIN: a read-only Binance market tool returned a live BTCUSDT book ticker at 2026-09-08T12:57:34.508Z",
       "impersonating_a_supported_agent_client_id": "REJECTED: circumvents the platform's access control; not used"
     },
     "supported_agent_setup": {
-      "documented_command": "claude mcp add binance-mcp-server --transport http https://agent.binance.com/mcp/agentic",
-      "then": "In an interactive Claude Code session run /mcp and complete the Binance consent in the browser. Market-data scope needs no sub-account funding.",
-      "product_use": "Observations obtained in that session are relayed to the kernel with provenance BINANCE_MCP_VIA_SUPPORTED_AGENT and cross-checked against the kernel's own BINANCE_PUBLIC_REST read; divergence raises an incident."
+      "agent": "Codex desktop",
+      "plugin": "Binance (binance@openai-curated-remote)",
+      "verified_tool": "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker",
+      "security_type": "NONE",
+      "product_use": "The supported-agent observation is captured with explicit provenance. MoneyKernel continues to derive execution-critical SHADOW inputs from its separately labelled BINANCE_PUBLIC_REST adapter."
     },
     "self_built_agent_guidance_from_platform": "binance.com/agent-os says self-built agents should 'use MCP, APIs and ready-made skills'. No agent registration, whitelisting request, or API-key route into the MCP server was found in the docs, landing page, or launch blog (checked 2026-09-08)."
   },
@@ -62,19 +65,32 @@
       "result": "Consent page 'Agentic Account Access' rendered, then modal: 'The AI Agent you are using is not currently supported. Please connect using a supported Agent to continue. (3346001-3aa5543c)'. No authorization code was issued; the loopback callback never fired.",
       "interpretation": "The authorization server allowlists agent identities. A syntactically valid metadata document from an unknown origin is refused before consent. Scope names remain unobserved."
     },
+    "supported_agent_observation": {
+      "status": "VERIFIED_READ_ONLY",
+      "agent": "Codex desktop",
+      "plugin": "Binance (binance@openai-curated-remote)",
+      "tool": "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker",
+      "observed_at": "2026-09-08T12:57:34.508Z",
+      "symbol": "BTCUSDT",
+      "result": "bid 78414.61000000 / ask 78414.62000000",
+      "evidence": "docs/evidence/binance-codex-market-observation-20260908T125734Z.json",
+      "side_effects": "NONE"
+    },
     "platform_statement_vs_observation": "Documentation describes market data as public with no auth. Observation: a custom client cannot even open the MCP session. Do not claim unauthenticated or custom-client MCP reads.",
     "token_storage": "spikes/gate0/raw/oauth-tokens.json (gitignored); no token was ever issued"
   },
   "operations": {
     "read_market_context": {
-      "status": "UNVERIFIED",
-      "upstream_tool": null,
-      "input_schema_hash": null,
-      "output_parser_version": null,
-      "note": "Can only be set from a supported-agent session. Record the actual tool name, schema hash, and a sanitized response with timestamps when captured."
+      "status": "VERIFIED_VIA_SUPPORTED_AGENT",
+      "upstream_tool": "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker",
+      "input_schema_hash": "38fbd40de7d67e0a70778691256bdfbff8ecb6c67fe013d2b3720844789be718",
+      "output_parser_version": "codex-binance-book-ticker-v1",
+      "note": "Verified in Codex with the Binance plugin from the recommended catalog. The operation's declared security type is NONE and no account or order write was requested."
     }
   },
-  "discovered_tools": null,
+  "discovered_tools": [
+    "mcp__codex_apps__binance_get_spot_symbol_order_book_ticker"
+  ],
   "order_writes_enabled": false,
   "spot_testnet": {
     "capability": "NOT_ATTEMPTED",
@@ -114,6 +130,7 @@
     "docs/gate0/spot-testnet-exchangeinfo-BTCUSDT.json",
     "docs/oauth-client.json",
     "docs/decisions/0001-gate0-custom-mcp-client-oauth.md",
+    "docs/evidence/binance-codex-market-observation-20260908T125734Z.json",
     "spikes/gate0/mcp-spike.ts",
     "spikes/gate0/oauth.ts"
   ],
@@ -128,7 +145,12 @@
     "note": "prd.md 13.4 read-only fallback: the demo must say public REST market data, never that every field came through MCP"
   },
   "demo_claims": {
-    "allowed": ["public REST market data (SHADOW)", "synthetic fixture (REPLAY)", "paper execution"],
-    "not_allowed": ["live MCP data", "Agent OS session", "Testnet execution"]
+    "allowed": [
+      "live read-only Binance market observation through the Binance plugin in Codex (captured evidence)",
+      "public REST market data (SHADOW)",
+      "synthetic fixture (REPLAY)",
+      "paper execution"
+    ],
+    "not_allowed": ["backend-owned Agent OS session", "authenticated account data", "external order execution", "Testnet execution"]
   }
 }

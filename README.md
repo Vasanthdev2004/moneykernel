@@ -4,17 +4,17 @@
 
 MoneyKernel is a deterministic capital-control gateway for AI trading agents. Agents propose trades; the kernel checks lease authority, reserves resources atomically, holds opposing pending intents for human review, requires exact single-use human approval, dispatches once, reconciles what actually happened, and records a verifiable decision receipt.
 
-Built for the Binance Agent OS Mini Hackathon (Track A) as a partial v0.1 prototype. The synthetic paper lifecycle is implemented; complete P0 status is not claimed while real Agent OS observation evidence and the documented integration gaps remain unresolved. Recording and submission are still pending.
+Built for the Binance Agent OS Mini Hackathon (Track A) as a partial v0.1 prototype. The synthetic paper lifecycle is implemented, and a live read-only Binance market observation has been verified through the Binance plugin from Codex's recommended catalog. The backend-owned Agent OS route and other documented integration gaps remain unresolved. Recording and submission are still pending.
 
 ## Status
 
 | Gate | State |
 |---|---|
-| G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; see below. |
+| G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; supported-agent market read verified through the Binance plugin in Codex. |
 | G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. |
 | G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. |
 | G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
-| G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
+| G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). A supported Codex agent produced a verified read-only Binance plugin observation; backend-owned MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain incomplete. |
 | G5 operator experience | Implemented and independently reviewed: operations console, exact approvals, agent/lease controls, conflicts, receipts, incidents, commands, integration status, and SSE timeline. Session, cash-buffer, state-label, and responsive fixes have [G5 review evidence](docs/g5-fix-test-evidence.md), including 7 passing browser tests. |
 | G6 adversarial hardening | Implemented and independently reviewed: fault layer, consistent complete run exports with credential screening, standalone verification of audit linkage, evaluator replay and financial authority, and offline replays for all four scenarios. See [G6 review evidence](docs/g6-fix-test-evidence.md) for validation and verification limits. |
 | G7 release candidate | Rehearsal and recording tooling implemented: four console scenes, screenshots with matching sanitized exports and verifier reports, and a REPLAY-only synthetic fault endpoint. Current rehearsal and fresh-clone results are in [test evidence](docs/test-evidence.md). The [recording script](docs/demo-script.md) and MIT license are included; recording, upload and submission remain owner steps. |
@@ -113,7 +113,7 @@ For verification against an independently retained final event hash, add `--head
 
 - The Binance MCP endpoint (`https://agent.binance.com/mcp/agentic`) requires an OAuth bearer token to open a session, even for market data.
 - Its authorization server accepts only allowlisted agent applications (Claude, Claude Code, Codex, ChatGPT, Cursor, VS Code). A custom client using a client ID metadata document was refused at the consent screen: "The AI Agent you are using is not currently supported."
-- Therefore the MoneyKernel backend does **not** own an Agent OS session, and this repository does not claim one. Real Agent OS observations can still be obtained through a supported agent session and passed to the kernel with explicit provenance; the kernel treats such data as untrusted agent context and derives execution-critical numbers from its own separately labelled public REST reads.
+- Therefore the MoneyKernel backend does **not** own an Agent OS session, and this repository does not claim one. A supported Codex session successfully read live BTCUSDT book data through the Binance plugin from Codex's recommended catalog with no account or order permission; the sanitized observation and exact tool provenance are committed under `docs/evidence/`. The kernel still derives execution-critical numbers from its separately labelled public REST reads.
 - Spot Testnet public endpoints are reachable; Testnet execution stays P1 and untested until dedicated credentials exist.
 
 ## Non-negotiables (from the PRD)
@@ -130,7 +130,7 @@ For verification against an independently retained final event hash, add `--head
 
 Implemented P0 behaviour is what the tests above exercise. The following is not claimed:
 
-- **Agent OS MCP.** The backend owns no Agent OS session (Gate 0: Binance's authorization server admits only allowlisted agents). Market context comes from Binance's public Spot REST endpoints and is labelled `BINANCE_PUBLIC_REST`; a relay through a supported agent session is designed (`BINANCE_MCP_VIA_SUPPORTED_AGENT`) but not exercised in this repository.
+- **Agent OS MCP.** The backend owns no Agent OS session (Gate 0: Binance's authorization server admits only allowlisted agents). Market context comes from Binance's public Spot REST endpoints and is labelled `BINANCE_PUBLIC_REST`. The Binance plugin from Codex's recommended catalog was exercised for a live read-only observation, captured with exact tool provenance; that observation is submission evidence rather than a backend execution input.
 - **Model route.** No provider key was available, so the Anthropic provider is tested only against a fake endpoint. The [independent supported-session run](docs/evidence/g4-review-model-run/README.md) preserves a real model proposal and its exact context; the kernel denied it for stale data and unsupported filters. The older `model-runs/` artifacts do not prove generation from their claimed fresh context. Receipt-to-run model provenance remains incomplete; the runner trace documents what the supported session actually did.
 - **Testnet.** P1. The Spot Testnet read adapter exists; execution is unqualified and refuses to start. Nothing here proves any exchange's behaviour; the paper venue is a demonstration model, not a market-impact or profitability backtest.
 - **Fees and filters.** Admission uses the qualified quote-fee envelope. Reconciliation accounts for observed quote/base commissions and reports fee-model mismatches; another fee asset opens a CRITICAL incident and keeps the hold. `PRICE_FILTER`, `LOT_SIZE`, and `NOTIONAL` are enforced. `PERCENT_PRICE`, `PERCENT_PRICE_BY_SIDE`, and `MAX_POSITION` remain unqualified and block proposals with `FILTER_UNSUPPORTED`; a drift check does not replace those filters.
