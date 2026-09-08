@@ -1,7 +1,13 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { join } from "node:path";
+import { type RunExport, RunExportSchema } from "@moneykernel/contracts";
+import { dec, toDecimalString } from "@moneykernel/domain";
+import { PaperVenueStateSchema } from "@moneykernel/integrations";
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import { formatReport, verifyRunExport } from "../../scripts/verify-receipt.ts";
+import { stopOwnedChild, waitForOwnedChild } from "./owned-process.ts";
 
 /**
  * Demo rehearsal (prd.md 21.2 G7, 23.1, 23.2, 26): the four scenes of the recorded demo, each on a fresh REPLAY
@@ -9,7 +15,8 @@ import { type APIRequestContext, expect, type Page, test } from "@playwright/tes
  * the console. Screenshots land under docs/evidence/demo/<run>/ so the submission package matches the backend
  * events of a real rehearsal. `pnpm demo:rehearse` runs this three times in a row.
  */
-const KERNEL = "http://127.0.0.1:8080";
+const KERNEL_PORT = Number(process.env.E2E_KERNEL_PORT ?? 8080);
+const KERNEL = `http://127.0.0.1:${KERNEL_PORT}`;
 const SECRET = process.env.OPERATOR_BOOTSTRAP_SECRET ?? "";
 const STATE_DIR = ".moneykernel/demo";
 const runStamp =
@@ -29,11 +36,15 @@ function shotDir(): string {
   return dir;
 }
 
-async function waitForKernel(timeoutMs = 60_000): Promise<void> {
+async function waitForKernel(child: ChildProcess, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) {
+      throw new Error("owned kernel exited before readiness");
+    }
     try {
-      const res = await fetch(`${KERNEL}/health/live`);
+      const res = await fetch(`${KERNEL}/health/live`, { signal: AbortSignal.timeout(1000) });
+      await res.body?.cancel();
       if (res.ok) return;
     } catch {
       // not up yet
@@ -43,20 +54,13 @@ async function waitForKernel(timeoutMs = 60_000): Promise<void> {
   throw new Error("kernel did not come up");
 }
 
-async function waitForKernelGone(timeoutMs = 30_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      await fetch(`${KERNEL}/health/live`);
-    } catch {
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 300));
-  }
-  throw new Error("kernel still listening");
-}
-
 async function startKernel(alias: string, fixture: string): Promise<Kernel> {
+  // Fail before spawning if another checkout owns this port; never reuse or stop it.
+  const probe = createServer();
+  await new Promise<void>((resolve, reject) => {
+    probe.once("error", reject);
+    probe.listen(KERNEL_PORT, "127.0.0.1", () => probe.close((error) => (error ? reject(error) : resolve())));
+  });
   const child = spawn(process.execPath, ["--env-file-if-exists=.env", "apps/kernel/src/server.ts"], {
     env: {
       ...process.env,
@@ -64,36 +68,35 @@ async function startKernel(alias: string, fixture: string): Promise<Kernel> {
       MONEYKERNEL_ACCOUNT_ALIAS: alias,
       MONEYKERNEL_STATE_DIR: STATE_DIR,
       REPLAY_FIXTURE: fixture,
-      PORT: "8080",
+      PORT: String(KERNEL_PORT),
       HOST: "127.0.0.1",
       LOG_LEVEL: "warn",
     },
     stdio: "ignore",
     windowsHide: true,
   });
-  await waitForKernel();
-  // Guard against a previous scene's process still answering on the port: the live kernel must carry this alias.
-  const ready = (await (await fetch(`${KERNEL}/health/ready`)).json()) as {
-    checks: Array<{ name: string; detail: string }>;
-  };
-  const configuration = ready.checks.find((c) => c.name === "configuration")?.detail ?? "";
-  if (!configuration.includes(`alias=${alias}`)) throw new Error(`kernel on 8080 is not ${alias}: ${configuration}`);
+  await waitForOwnedChild(child, async () => {
+    await waitForKernel(child);
+    const ready = (await (await fetch(`${KERNEL}/health/ready`, { signal: AbortSignal.timeout(2000) })).json()) as {
+      checks: Array<{ name: string; detail: string }>;
+    };
+    const configuration = ready.checks.find((c) => c.name === "configuration")?.detail ?? "";
+    if (!configuration.split(/\s+/).includes(`alias=${alias}`))
+      throw new Error("live kernel account differs from this scene");
+  });
   return { child, alias };
 }
 
 /** Crash the kernel the way an operator's Ctrl+C or a process crash would: the venue journal on disk survives. */
 async function stopKernel(kernel: Kernel): Promise<void> {
-  if (process.platform === "win32" && kernel.child.pid !== undefined) {
-    execFileSync("taskkill", ["/PID", String(kernel.child.pid), "/T", "/F"], { stdio: "ignore" });
-  } else {
-    kernel.child.kill("SIGKILL");
-  }
-  await waitForKernelGone();
+  await stopOwnedChild(kernel.child);
 }
 
 function seed(alias: string, fixture: string): Seed {
   const out = execFileSync(process.execPath, ["--env-file-if-exists=.env", "scripts/seed-demo.ts", fixture], {
     encoding: "utf8",
+    timeout: 60_000,
+    windowsHide: true,
     env: {
       ...process.env,
       MONEYKERNEL_MODE: "REPLAY",
@@ -120,6 +123,7 @@ async function observation(request: APIRequestContext, token: string, symbol: st
 }
 
 type Decision = {
+  intent_id: string;
   proposal_id: string | null;
   outcome: string;
   state: string;
@@ -158,10 +162,37 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(shotDir(), `${name}.png`), fullPage: true });
 }
 
+async function exportScene(page: Page, scene: string, alias: string): Promise<RunExport> {
+  const pending = page.waitForEvent("download");
+  await page.getByTestId("export-run").click();
+  const download = await pending;
+  const path = await download.path();
+  if (path === null) throw new Error("scene export was not downloaded");
+  const bundle = RunExportSchema.parse(JSON.parse(readFileSync(path, "utf8")));
+  expect(bundle.account.alias).toBe(alias);
+  expect(bundle.environment).toBe("REPLAY");
+  const report = verifyRunExport(bundle);
+  writeFileSync(join(shotDir(), `${scene}.verification.json`), JSON.stringify(report, null, 2));
+  // Do not copy a failed privacy scan into publishable evidence.
+  expect(report.checks.find((check) => check.name === "secret_scan")?.ok).toBe(true);
+  await download.saveAs(join(shotDir(), `${scene}.export.json`));
+  expect(report.ok, formatReport(report)).toBe(true);
+  return bundle;
+}
+
+const amount = (value: unknown): string => toDecimalString(dec(String(value)));
+const sum = (rows: Array<Record<string, unknown>>, field: string): string =>
+  toDecimalString(rows.reduce((total, row) => total.plus(dec(String(row[field]))), dec("0")));
+
+function venue(alias: string) {
+  return PaperVenueStateSchema.parse(
+    JSON.parse(readFileSync(join(STATE_DIR, `paper-venue-REPLAY-${alias}.json`), "utf8")),
+  );
+}
+
 test.beforeEach(async ({ browserName }, testInfo) => {
   void browserName; // Playwright requires the destructuring form; Biome forbids an empty pattern
   repeat = testInfo.repeatEachIndex + 1;
-  test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
 });
 
 test("scene A: constrained acquisition is counterproposed, exactly approved, settled as a paper fill", async ({
@@ -198,8 +229,11 @@ test("scene A: constrained acquisition is counterproposed, exactly approved, set
     const command = page.getByTestId("command-row").first();
     await expect(command).toHaveAttribute("data-state", "ACCEPTED");
     await expect(page.locator('[data-testid="timeline-event"][data-event-type="FILL_RECONCILED"]')).toHaveCount(1);
-    await expect(page.getByTestId("unresolved")).toContainText("0");
+    await expect(page.getByTestId("unresolved")).toHaveText("0");
     await shot(page, "a3-settled-fill-and-receipt");
+    const bundle = await exportScene(page, "a", alias);
+    expect(bundle.commands).toHaveLength(1);
+    expect(sum(bundle.fills, "base_qty")).toBe("0.27");
   } finally {
     await stopKernel(kernel);
   }
@@ -242,8 +276,18 @@ test("scene B: opposing owned-inventory intents are held and resolved by the ope
     await expect(page.locator('[data-testid="proposal-row"][data-state="CONFLICT_HELD"]')).toHaveCount(0);
     await expect(page.getByTestId("command-row")).toHaveCount(0);
     await shot(page, "b2-winner-revalidated-loser-released");
-    void buy.proposal_id;
-    void sell.proposal_id;
+    const bundle = await exportScene(page, "b", alias);
+    expect(bundle.commands).toHaveLength(0);
+    expect(bundle.approvals).toHaveLength(0);
+    const loserHolds = bundle.reservations.filter((hold) => hold.proposal_id === sell.proposal_id);
+    expect(loserHolds.length).toBeGreaterThan(0);
+    expect(loserHolds.every((hold) => hold.state === "RELEASED")).toBe(true);
+    expect(
+      bundle.proposals.some(
+        (proposal) =>
+          proposal.intent_id === buy.intent_id && proposal.revision === 2 && proposal.state === "AWAITING_APPROVAL",
+      ),
+    ).toBe(true);
   } finally {
     await stopKernel(kernel);
   }
@@ -275,7 +319,7 @@ test("scene C: a scripted burst is quarantined durably on the eleventh request",
     expect(decisions[10]?.reason_codes).toContain("AGENT_QUARANTINED");
     const agentRow = page.getByTestId("agent-row").first();
     await expect(agentRow).toContainText("QUARANTINED");
-    await expect(page.getByTestId("reserved-quote")).toContainText("0");
+    await expect(page.getByTestId("reserved-quote")).toHaveText("0 USDT");
     await expect(page.locator('[data-testid="timeline-event"][data-event-type="AGENT_QUARANTINED"]')).toHaveCount(1);
     await shot(page, "c1-burst-quarantined");
     const later = await submit(request, chaos, `demo-c-${repeat}-later`, {
@@ -288,6 +332,11 @@ test("scene C: a scripted burst is quarantined durably on the eleventh request",
       rationale: "after quarantine",
     });
     expect(later.outcome).toBe("DENY");
+    expect(later.reason_codes).toContain("AGENT_QUARANTINED");
+    const bundle = await exportScene(page, "c", alias);
+    expect(bundle.commands).toHaveLength(0);
+    expect(bundle.approvals).toHaveLength(0);
+    expect(bundle.reservations.every((hold) => hold.state === "RELEASED")).toBe(true);
   } finally {
     await stopKernel(kernel);
   }
@@ -312,13 +361,15 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
       observation_ids: [await observation(request, alpha.token, "SOLUSDT")],
     });
     expect(decision.proposal_id).not.toBeNull();
-    // SYNTHETIC FAULT SCENARIO: the venue will accept this order and drop the response (prd.md 27.4).
+    // SYNTHETIC FAULT SCENARIO: accept and drop the response, then hold queries unavailable until restart.
+    // This makes the recorded uncertainty interval explicit despite background reconciliation (prd.md 27.4).
     const operatorToken = await operatorSession(request);
     const fault = await request.post(`${KERNEL}/v1/demo/faults`, {
       headers: { authorization: `Bearer ${operatorToken}`, "idempotency-key": `demo-d-fault-${repeat}` },
-      data: { kind: "DROP_RESPONSE_AFTER_ACCEPT", proposal_id: decision.proposal_id },
+      data: { kind: "DROP_RESPONSE_AFTER_ACCEPT", proposal_id: decision.proposal_id, hold_queries_until_restart: true },
     });
     expect(fault.status()).toBe(201);
+    expect((await fault.json()).hold_queries_until_restart).toBe(true);
     const row = page.getByTestId("proposal-row").first();
     await expect(row).toHaveAttribute("data-state", "AWAITING_APPROVAL");
     await row.click();
@@ -328,16 +379,32 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
     await expect(command).toHaveAttribute("data-state", "OUTCOME_UNKNOWN");
     await expect(page.getByTestId("unknown-banner")).toBeVisible();
     await shot(page, "d1-outcome-unknown-banner");
+    const beforeResponse = await request.get(`${KERNEL}/v1/commands`, {
+      headers: { authorization: `Bearer ${operatorToken}` },
+    });
+    expect(beforeResponse.ok()).toBe(true);
+    const before = (await beforeResponse.json()).commands as Array<{
+      id: string;
+      client_order_id: string;
+      state: string;
+    }>;
+    expect(before).toHaveLength(1);
+    const original = before[0];
+    if (original === undefined) throw new Error("unknown command missing");
+    expect(original.state).toBe("OUTCOME_UNKNOWN");
+    const beforeVenue = venue(alias);
+    expect(beforeVenue.submissions).toBe(1);
+    expect(Object.keys(beforeVenue.orders)).toEqual([original.client_order_id]);
+    writeFileSync(join(shotDir(), "d.before-restart.venue.json"), JSON.stringify(beforeVenue, null, 2));
 
-    // Crash before anything else could be persisted, then restart on the same alias: the venue journal on disk
-    // remembers the order; the kernel must not.
+    // The kernel has persisted uncertainty; the venue has accepted the order. Restart must query that same order.
     await stopKernel(kernel);
     kernel = await startKernel(alias, "scenario-d-lost-response");
     await login(page);
     await expect(command).toHaveAttribute("data-state", "ACCEPTED");
     await expect(page.getByTestId("unknown-banner")).toHaveCount(0);
     await expect(page.getByTestId("account-status")).toContainText("PAUSED");
-    await expect(page.getByTestId("unresolved")).toContainText("0");
+    await expect(page.getByTestId("unresolved")).toHaveText("0");
     await shot(page, "d2-recovered-after-restart");
     const operatorToken2 = await operatorSession(request);
     const detail = await request.get(`${KERNEL}/v1/commands`, {
@@ -348,12 +415,14 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
     ).commands;
     expect(commands.length).toBe(1);
     expect(commands[0]?.state).toBe("ACCEPTED");
+    expect(commands[0]?.id).toBe(original.id);
+    expect(commands[0]?.client_order_id).toBe(original.client_order_id);
     const one = await request.get(`${KERNEL}/v1/commands/${commands[0]?.id ?? ""}`, {
       headers: { authorization: `Bearer ${operatorToken2}` },
     });
     const body = (await one.json()) as { order: { status: string; executed_base: string }; fills: unknown[] };
     expect(body.order.status).toBe("EXPIRED");
-    expect(body.order.executed_base.startsWith("0.12")).toBe(true);
+    expect(amount(body.order.executed_base)).toBe("0.12");
     expect(body.fills.length).toBe(1);
     await page.getByTestId("resume-button").click();
     const resumeConfirm = page.getByTestId("resume-confirm");
@@ -362,6 +431,37 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
     await resumeConfirm.click();
     await expect(page.getByTestId("account-status")).toContainText("READY");
     await shot(page, "d3-resumed-after-reconciliation");
+    const bundle = await exportScene(page, "d", alias);
+    expect(bundle.commands).toHaveLength(1);
+    expect(bundle.commands[0]?.id).toBe(original.id);
+    expect(bundle.commands[0]?.client_order_id).toBe(original.client_order_id);
+    expect(bundle.orders).toHaveLength(1);
+    expect(amount(bundle.orders[0]?.executed_base)).toBe("0.12");
+    expect(amount(bundle.orders[0]?.executed_quote)).toBe("12");
+    expect(sum(bundle.fills, "commission_qty")).toBe("0.012");
+    expect(bundle.fills.every((fill) => fill.commission_asset === "USDT")).toBe(true);
+    expect(amount(bundle.leases[0]?.consumed_quote)).toBe("12.012");
+    const quoteHolds = bundle.reservations.filter((hold) => hold.kind === "QUOTE");
+    expect(
+      sum(
+        quoteHolds.filter((hold) => hold.state === "CONSUMED"),
+        "amount",
+      ),
+    ).toBe("12.012");
+    expect(
+      sum(
+        quoteHolds.filter((hold) => hold.state === "RELEASED"),
+        "amount",
+      ),
+    ).toBe("8.008");
+    expect(bundle.reservations.some((hold) => hold.state === "HELD" || hold.state === "ARMED")).toBe(false);
+    expect(amount(bundle.balances.find((balance) => balance.asset === "USDT")?.owned_quantity)).toBe("987.988");
+    expect(amount(bundle.balances.find((balance) => balance.asset === "SOL")?.owned_quantity)).toBe("0.12");
+    const afterVenue = venue(alias);
+    expect(afterVenue.submissions).toBe(1);
+    expect(Object.keys(afterVenue.orders)).toEqual([original.client_order_id]);
+    expect(afterVenue.orders[original.client_order_id]).toEqual(beforeVenue.orders[original.client_order_id]);
+    writeFileSync(join(shotDir(), "d.after-restart.venue.json"), JSON.stringify(afterVenue, null, 2));
   } finally {
     await stopKernel(kernel);
   }
