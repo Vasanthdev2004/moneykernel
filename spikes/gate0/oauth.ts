@@ -64,6 +64,7 @@ export async function discover(): Promise<AsMetadata> {
   });
   if (!res.ok) throw new Error(`authorization server metadata: HTTP ${res.status}`);
   const md = (await res.json()) as AsMetadata;
+  if (md.issuer !== AS_ISSUER) throw new Error("authorization server metadata issuer does not match configured issuer");
   if (!md.authorization_endpoint || !md.token_endpoint) throw new Error("authorization server metadata lacks endpoints");
   if (md.code_challenge_methods_supported && !md.code_challenge_methods_supported.includes("S256")) {
     throw new Error("authorization server does not advertise PKCE S256");
@@ -83,6 +84,15 @@ function saveTokens(t: Tokens): void {
 
 function isExpired(t: Tokens): boolean {
   return t.expires_at !== null && Date.parse(t.expires_at) - 30_000 < Date.now();
+}
+
+function assertTokenBinding(t: Tokens): void {
+  const expected = { resource: RESOURCE, issuer: AS_ISSUER, client_id: CLIENT_ID };
+  for (const field of ["resource", "issuer", "client_id"] as const) {
+    if (t[field] !== expected[field]) {
+      throw new Error(`stored OAuth tokens do not match configured ${field}; run login again for this configuration`);
+    }
+  }
 }
 
 async function exchange(md: AsMetadata, params: Record<string, string>): Promise<Tokens> {
@@ -197,6 +207,7 @@ export async function login(): Promise<Tokens> {
 }
 
 export async function refresh(t: Tokens): Promise<Tokens> {
+  assertTokenBinding(t);
   if (!t.refresh_token) throw new Error("no refresh_token stored; run login again");
   const md = await discover();
   const next = await exchange(md, {
@@ -214,6 +225,7 @@ export async function refresh(t: Tokens): Promise<Tokens> {
 export async function getAccessToken(): Promise<Tokens | null> {
   const t = loadTokens();
   if (!t) return null;
+  assertTokenBinding(t);
   if (!isExpired(t)) return t;
   if (t.refresh_token) return refresh(t);
   throw new Error("stored access token expired and no refresh_token available; run login again");

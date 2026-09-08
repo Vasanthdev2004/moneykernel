@@ -3,9 +3,9 @@
  *
  * Read-only probe of the documented Binance MCP endpoint. It performs the MCP
  * initialize handshake, lists tools, and on explicit request calls ONE tool
- * that is classified read-only. It refuses to call anything that looks like a
- * write. No upstream tool name is guessed: a call must name a tool that the
- * server itself listed.
+ * that matches an explicitly reviewed read-only mapping. Names and server
+ * annotations cannot grant authority. The endpoint and complete discovered
+ * tool definition must match the reviewed entry; writes remain blocked.
  *
  * The endpoint requires OAuth even for the initialize handshake (observed
  * HTTP 401 with a resource_metadata challenge). `login` runs the
@@ -23,6 +23,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLIENT_ID, describe, getAccessToken, login, RESOURCE } from "./oauth.ts";
+import { REVIEWED_READ_TOOLS } from "./reviewed-read-tools.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = join(HERE, "raw");
@@ -31,8 +32,6 @@ const ENDPOINT = RESOURCE;
 const CLIENT_INFO = { name: "moneykernel-gate0-spike", version: "0.0.1" };
 
 const DECIMAL_STRING_RE = /^-?(0|[1-9]\d*)(\.\d+)?$/;
-const READ_NAME_RE =
-  /(ticker|price|depth|book|kline|candle|exchange|symbol|time|info|funding|market|stats|avg|premium|index|trades?$)/i;
 const WRITE_NAME_RE =
   /(place|create|submit|cancel|transfer|withdraw|buy|sell|borrow|repay|redeem|subscribe|convert|new_?order|order_?new|close|modify|amend|replace)/i;
 
@@ -61,6 +60,7 @@ function sortKeys(value: unknown): unknown {
 }
 const canonical = (value: unknown): string => JSON.stringify(sortKeys(value));
 const sha256 = (s: string): string => createHash("sha256").update(s).digest("hex");
+const toolDefinitionHash = (tool: ToolLike): string => sha256(canonical(tool));
 const nowIso = (): string => new Date().toISOString();
 
 function sdkVersion(): string {
@@ -81,8 +81,9 @@ function classify(tool: ToolLike): "READ" | "WRITE" | "UNKNOWN" {
   const ro = tool.annotations?.readOnlyHint;
   if (ro === false || tool.annotations?.destructiveHint === true) return "WRITE";
   if (WRITE_NAME_RE.test(tool.name)) return "WRITE";
-  if (ro === true) return "READ";
-  if (READ_NAME_RE.test(tool.name)) return "READ";
+  if (REVIEWED_READ_TOOLS.some((entry) =>
+    entry.endpoint === ENDPOINT && entry.name === tool.name && entry.definition_hash === toolDefinitionHash(tool),
+  )) return "READ";
   return "UNKNOWN";
 }
 
@@ -220,6 +221,7 @@ async function cmdList(): Promise<void> {
     classification: classify(tool),
     annotations: tool.annotations ?? null,
     description_excerpt: (tool.description ?? "").slice(0, 240),
+    definition_hash: toolDefinitionHash(tool),
     input_schema_hash: sha256(canonical(tool.inputSchema ?? null)),
     input_required: tool.inputSchema?.required ?? [],
     input_properties: Object.keys(tool.inputSchema?.properties ?? {}),
@@ -244,47 +246,50 @@ async function cmdList(): Promise<void> {
 async function cmdCall(name: string, argsJson: string | undefined): Promise<void> {
   const args = JSON.parse(argsJson ?? "{}") as Record<string, unknown>;
   const { client, handshake } = await connect();
-  const tools = await listAllTools(client);
-  const tool = tools.find((x) => x.name === name);
-  if (!tool) throw new Error(`tool "${name}" is not in the server's tools/list; refusing to guess`);
-  if (classify(tool) !== "READ" || WRITE_NAME_RE.test(tool.name)) {
-    throw new Error(`tool "${name}" is not classified read-only; the spike refuses to call it`);
+  try {
+    const tools = await listAllTools(client);
+    const tool = tools.find((x) => x.name === name);
+    if (!tool) throw new Error(`tool "${name}" is not in the server's tools/list; refusing to guess`);
+    if (classify(tool) !== "READ") {
+      throw new Error(`tool "${name}" does not match a reviewed read-only mapping; the spike refuses to call it`);
+    }
+    const requestStartedAt = nowIso();
+    const t = performance.now();
+    const result = (await client.callTool({ name, arguments: args })) as {
+      content?: unknown;
+      structuredContent?: unknown;
+      isError?: boolean;
+    };
+    const receivedAt = nowIso();
+    const latency = Math.round(performance.now() - t);
+
+    writeJson(join(RAW_DIR, `call-${name}.raw.json`), { args, result });
+
+    const sample = {
+      tool: name,
+      arguments: args,
+      input_schema_hash: sha256(canonical(tool.inputSchema ?? null)),
+      request_started_at: requestStartedAt,
+      received_at: receivedAt,
+      latency_ms: latency,
+      is_error: result.isError ?? false,
+      content_kinds: ((result.content ?? []) as Array<{ type: string }>).map((c) => c.type),
+      has_structured_content: result.structuredContent !== undefined,
+      payload_hash: sha256(canonical(result)),
+      parse: parseResult(result),
+    };
+    writeJson(join(OUT_DIR, `sample-${name}.json`), { handshake, sample });
+
+    console.log(`\ntool        ${name}`);
+    console.log(`args        ${JSON.stringify(args)}`);
+    console.log(`timing      started ${requestStartedAt} received ${receivedAt} (${latency} ms)`);
+    console.log(`is_error    ${sample.is_error}`);
+    console.log(`parse       ${sample.parse.status}; numeric=${sample.parse.numeric_fields.length}`);
+    console.log(JSON.stringify(sample.parse, null, 2).slice(0, 4000));
+    console.log(`\nwrote ${join(OUT_DIR, `sample-${name}.json`)}`);
+  } finally {
+    await client.close();
   }
-  const requestStartedAt = nowIso();
-  const t = performance.now();
-  const result = (await client.callTool({ name, arguments: args })) as {
-    content?: unknown;
-    structuredContent?: unknown;
-    isError?: boolean;
-  };
-  const receivedAt = nowIso();
-  const latency = Math.round(performance.now() - t);
-  await client.close();
-
-  writeJson(join(RAW_DIR, `call-${name}.raw.json`), { args, result });
-
-  const sample = {
-    tool: name,
-    arguments: args,
-    input_schema_hash: sha256(canonical(tool.inputSchema ?? null)),
-    request_started_at: requestStartedAt,
-    received_at: receivedAt,
-    latency_ms: latency,
-    is_error: result.isError ?? false,
-    content_kinds: ((result.content ?? []) as Array<{ type: string }>).map((c) => c.type),
-    has_structured_content: result.structuredContent !== undefined,
-    payload_hash: sha256(canonical(result.content ?? null)),
-    parse: parseResult(result),
-  };
-  writeJson(join(OUT_DIR, `sample-${name}.json`), { handshake, sample });
-
-  console.log(`\ntool        ${name}`);
-  console.log(`args        ${JSON.stringify(args)}`);
-  console.log(`timing      started ${requestStartedAt} received ${receivedAt} (${latency} ms)`);
-  console.log(`is_error    ${sample.is_error}`);
-  console.log(`parse       ${sample.parse.status}; numeric=${sample.parse.numeric_fields.length}`);
-  console.log(JSON.stringify(sample.parse, null, 2).slice(0, 4000));
-  console.log(`\nwrote ${join(OUT_DIR, `sample-${name}.json`)}`);
 }
 
 const [cmd, a, b] = process.argv.slice(2);

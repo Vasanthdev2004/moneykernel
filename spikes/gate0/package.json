@@ -8,7 +8,8 @@
     "spike:login": "node mcp-spike.ts login",
     "spike:list": "node mcp-spike.ts list",
     "spike:call": "node mcp-spike.ts call",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-vm-modules --test *.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
