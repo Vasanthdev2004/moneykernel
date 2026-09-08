@@ -1,0 +1,21 @@
+{
+  "name": "@moneykernel/spike-gate0",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Gate 0 integration spike (prd.md section 2.4). Throwaway read-only MCP probe; not product runtime code.",
+  "scripts": {
+    "list": "tsx mcp-spike.ts list",
+    "call": "tsx mcp-spike.ts call",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  }
+}

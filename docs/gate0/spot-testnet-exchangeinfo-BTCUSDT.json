@@ -1,0 +1,111 @@
+{
+  "source": "binance-spot-testnet-public-rest",
+  "endpoint": "https://testnet.binance.vision/api/v3/exchangeInfo?symbol=BTCUSDT",
+  "authentication": "none (public read)",
+  "request_started_at": "2026-09-08T05:37:15.762Z",
+  "received_at": "2026-09-08T05:37:16.196Z",
+  "server_time_ms": 1788845835115,
+  "symbol": "BTCUSDT",
+  "status": "TRADING",
+  "base_asset": "BTC",
+  "quote_asset": "USDT",
+  "order_types": [
+    "LIMIT",
+    "LIMIT_MAKER",
+    "MARKET",
+    "STOP_LOSS",
+    "STOP_LOSS_LIMIT",
+    "TAKE_PROFIT",
+    "TAKE_PROFIT_LIMIT"
+  ],
+  "filters": [
+    {
+      "filterType": "PRICE_FILTER",
+      "minPrice": "0.01000000",
+      "maxPrice": "1000000.00000000",
+      "tickSize": "0.01000000"
+    },
+    {
+      "filterType": "LOT_SIZE",
+      "minQty": "0.00001000",
+      "maxQty": "9000.00000000",
+      "stepSize": "0.00001000"
+    },
+    {
+      "filterType": "ICEBERG_PARTS",
+      "limit": 100
+    },
+    {
+      "filterType": "MARKET_LOT_SIZE",
+      "minQty": "0.00000000",
+      "maxQty": "141.67845966",
+      "stepSize": "0.00000000"
+    },
+    {
+      "filterType": "TRAILING_DELTA",
+      "minTrailingAboveDelta": 10,
+      "maxTrailingAboveDelta": 2000,
+      "minTrailingBelowDelta": 10,
+      "maxTrailingBelowDelta": 2000
+    },
+    {
+      "filterType": "PERCENT_PRICE_BY_SIDE",
+      "bidMultiplierUp": "2",
+      "bidMultiplierDown": "0.5",
+      "askMultiplierUp": "2",
+      "askMultiplierDown": "0.5",
+      "avgPriceMins": 5
+    },
+    {
+      "filterType": "NOTIONAL",
+      "minNotional": "5.00000000",
+      "applyMinToMarket": true,
+      "maxNotional": "9000000.00000000",
+      "applyMaxToMarket": false,
+      "avgPriceMins": 5
+    },
+    {
+      "filterType": "MAX_NUM_ORDERS",
+      "maxNumOrders": 200
+    },
+    {
+      "filterType": "MAX_NUM_ORDER_LISTS",
+      "maxNumOrderLists": 20
+    },
+    {
+      "filterType": "MAX_NUM_ALGO_ORDERS",
+      "maxNumAlgoOrders": 5
+    },
+    {
+      "filterType": "MAX_NUM_ORDER_AMENDS",
+      "maxNumOrderAmends": 10
+    }
+  ],
+  "rate_limits": [
+    {
+      "rateLimitType": "REQUEST_WEIGHT",
+      "interval": "MINUTE",
+      "intervalNum": 1,
+      "limit": 6000
+    },
+    {
+      "rateLimitType": "ORDERS",
+      "interval": "SECOND",
+      "intervalNum": 10,
+      "limit": 50
+    },
+    {
+      "rateLimitType": "ORDERS",
+      "interval": "DAY",
+      "intervalNum": 1,
+      "limit": 160000
+    },
+    {
+      "rateLimitType": "RAW_REQUESTS",
+      "interval": "MINUTE",
+      "intervalNum": 5,
+      "limit": 300000
+    }
+  ],
+  "note": "Public read only. Proves Testnet market-data reachability and current filter shape. Not evidence of account, trading, or fee behaviour."
+}
