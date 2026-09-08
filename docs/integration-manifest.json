@@ -10,7 +10,13 @@
       "custom_client_oauth": "BLOCKED_BY_PLATFORM_ALLOWLIST",
       "supported_agent_session": "AVAILABLE_PENDING_OPERATOR_SETUP: operator adds the server to an interactive Claude Code session and authenticates; observations are then captured or relayed with explicit provenance",
       "impersonating_a_supported_agent_client_id": "REJECTED: circumvents the platform's access control; not used"
-    }
+    },
+    "supported_agent_setup": {
+      "documented_command": "claude mcp add binance-mcp-server --transport http https://agent.binance.com/mcp/agentic",
+      "then": "In an interactive Claude Code session run /mcp and complete the Binance consent in the browser. Market-data scope needs no sub-account funding.",
+      "product_use": "Observations obtained in that session are relayed to the kernel with provenance BINANCE_MCP_VIA_SUPPORTED_AGENT and cross-checked against the kernel's own BINANCE_PUBLIC_REST read; divergence raises an incident."
+    },
+    "self_built_agent_guidance_from_platform": "binance.com/agent-os says self-built agents should 'use MCP, APIs and ready-made skills'. No agent registration, whitelisting request, or API-key route into the MCP server was found in the docs, landing page, or launch blog (checked 2026-09-08)."
   },
   "endpoint": "https://agent.binance.com/mcp/agentic",
   "transport": "streamable-http",

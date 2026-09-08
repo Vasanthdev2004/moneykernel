@@ -8,17 +8,25 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 
 ## Status
 
-Gate 0 (integration and feasibility spike) is in progress. No runnable product code exists yet.
+Gate 0 (integration and feasibility spike) is complete. No runnable product code exists yet; Gate 1 (foundation) is next.
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
-- `docs/integration-manifest.json` will hold the recorded Binance Agent OS integration evidence once the spike completes.
+- `docs/integration-manifest.json` records the Binance Agent OS integration evidence and its limits.
+- `docs/decisions/` is the decision log.
 - `spikes/gate0/` is throwaway read-only probe tooling, not product runtime code.
+
+## Gate 0 outcome (2026-09-08)
+
+- The Binance MCP endpoint (`https://agent.binance.com/mcp/agentic`) requires an OAuth bearer token to open a session, even for market data.
+- Its authorization server accepts only allowlisted agent applications (Claude, Claude Code, Codex, ChatGPT, Cursor, VS Code). A custom client using a client ID metadata document was refused at the consent screen: "The AI Agent you are using is not currently supported."
+- Therefore the MoneyKernel backend does **not** own an Agent OS session, and this repository does not claim one. Real Agent OS observations can still be obtained through a supported agent session and passed to the kernel with explicit provenance; the kernel treats such data as untrusted agent context and derives execution-critical numbers from its own separately labelled public REST reads.
+- Spot Testnet public endpoints are reachable; Testnet execution stays P1 and untested until dedicated credentials exist.
 
 ## Non-negotiables (from the PRD)
 
 - Safety authority is deterministic application code, never an LLM.
 - Default mode is REPLAY: offline fixtures, virtual funds, no exchange credentials.
-- SHADOW mode uses real Binance MCP market observations with virtual funds and simulated execution.
+- SHADOW mode uses real market observations with virtual funds and simulated execution.
 - Binance Spot Testnet execution is a P1 extension, only after qualification.
 - Mainnet order execution is explicitly excluded from v0.1.
 - Only order primitive: Spot LIMIT with IOC time-in-force.
