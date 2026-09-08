@@ -1,10 +1,11 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Download, Ellipsis, Layers, LogOut, Pause, Play, RefreshCw } from "lucide-react";
+import { Download, Ellipsis, LogOut, Pause, Play, RefreshCw } from "lucide-react";
 import { fmtDuration } from "../format.ts";
 import type { StreamStatus } from "../hooks.ts";
 import { modeBadge, accountStatus as presentAccountStatus } from "../states.ts";
 import { ThemeToggle } from "../theme.tsx";
 import type { StatusResponse } from "../types.ts";
+import { Brand } from "./Brand.tsx";
 import { Badge } from "./common.tsx";
 
 export function TopBar({
@@ -51,12 +52,7 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-brand">
-        <span className="brand-mark" aria-hidden="true">
-          <Layers size={20} strokeWidth={1.8} />
-        </span>
-        <span className="brand">
-          Money<span className="brand-accent">Kernel</span>
-        </span>
+        <Brand />
         <Badge tone={mode.tone} glyph={mode.glyph} className="mode-badge" title="Execution mode and provenance">
           {mode.label}
         </Badge>

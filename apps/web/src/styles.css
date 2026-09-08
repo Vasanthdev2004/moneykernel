@@ -8,22 +8,24 @@
 
 :root {
   color-scheme: light;
-  --bg: #f6f8f7;
+  --bg: #f7f7f8;
   --bg-elev: #ffffff;
-  --bg-elev-2: #eef3f0;
-  --border: #e1e7e3;
-  --border-strong: #c2cdc6;
-  --fg: #22372c;
-  --fg-muted: #5d7165;
-  --fg-faint: #627268;
-  --gold: #236c4c;
-  --red: #b73338;
-  --amber: #946012;
-  --green: #23724e;
-  --accent-soft: #e7f1eb;
+  --bg-elev-2: #f0f1f2;
+  --border: #e3e5e8;
+  --border-strong: #c5c9cf;
+  --fg: #0b0e11;
+  --fg-muted: #5e6673;
+  --fg-faint: #707a8a;
+  --gold: #f0b90b;
+  --accent-text: #705600;
+  --red: #b4232b;
+  --amber: #855a00;
+  --green: #087a55;
+  --accent-soft: #fff5cf;
+  --success-soft: #e5f7ef;
   --danger-soft: #fcf0f0;
-  --warning-soft: #fcf6e9;
-  --on-accent: #ffffff;
+  --warning-soft: #fff4d6;
+  --on-accent: #0b0e11;
   --font-ui: "DM Sans", system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
   --radius: 8px;
@@ -31,22 +33,24 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121a16;
-  --bg-elev: #19231e;
-  --bg-elev-2: #24312a;
-  --border: #314036;
-  --border-strong: #526758;
-  --fg: #e7efe9;
-  --fg-muted: #a6b8ac;
-  --fg-faint: #a0b1a6;
-  --gold: #97d6b0;
-  --red: #ff9b9e;
-  --amber: #e9c17d;
-  --green: #97d6b0;
-  --accent-soft: #253e30;
-  --danger-soft: #382427;
-  --warning-soft: #372f21;
-  --on-accent: #15261b;
+  --bg: #0b0e11;
+  --bg-elev: #181a20;
+  --bg-elev-2: #20242c;
+  --border: #2b3139;
+  --border-strong: #474d57;
+  --fg: #f5f5f5;
+  --fg-muted: #b7bdc6;
+  --fg-faint: #989fac;
+  --gold: #f0b90b;
+  --accent-text: #f0b90b;
+  --red: #ff7075;
+  --amber: #f5b942;
+  --green: #3ddc97;
+  --accent-soft: #332b0f;
+  --success-soft: #123427;
+  --danger-soft: #3a2024;
+  --warning-soft: #362d16;
+  --on-accent: #0b0e11;
 }
 
 * {
@@ -96,7 +100,7 @@ textarea {
   caret-color: var(--gold);
 }
 :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent-text);
   outline-offset: 4px;
 }
 svg {
@@ -135,7 +139,7 @@ p {
   margin: 7px 0;
 }
 a {
-  color: var(--gold);
+  color: var(--accent-text);
   text-underline-offset: 3px;
 }
 .sr-only {
@@ -176,7 +180,7 @@ a {
   color: var(--green);
 }
 .tone-gold {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .tone-muted {
   color: var(--fg-muted);
@@ -213,6 +217,12 @@ a {
 .topbar-brand {
   gap: 12px;
 }
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .brand {
   font-size: 20px;
   font-weight: 650;
@@ -220,16 +230,14 @@ a {
   white-space: nowrap;
 }
 .brand-accent {
-  color: var(--fg);
+  color: var(--accent-text);
 }
 .brand-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 34px;
   height: 34px;
-  border-radius: 10px;
-  background: var(--gold);
-  color: var(--on-accent);
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 .topbar .mode-badge {
   margin-left: 16px;
@@ -349,7 +357,7 @@ a {
 }
 .workspace-nav button[data-state="active"] {
   background: var(--accent-soft);
-  color: var(--gold);
+  color: var(--accent-text);
   font-weight: 650;
 }
 .nav-count {
@@ -491,7 +499,7 @@ a {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: var(--accent-soft);
+  background: var(--success-soft);
   color: var(--green);
   margin-bottom: 16px;
 }
@@ -528,7 +536,7 @@ a {
   margin-top: 5px;
 }
 .attention-row:hover {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .account-health {
   display: flex;
@@ -548,7 +556,7 @@ a {
   gap: 6px;
   border: 0;
   background: none;
-  color: var(--gold);
+  color: var(--accent-text);
   padding: 0;
   font-size: 12px;
 }
@@ -682,10 +690,13 @@ a {
   background: var(--bg-elev-2);
   color: var(--fg-muted);
 }
-.badge-gold,
-.badge-green {
+.badge-gold {
   background: var(--accent-soft);
-  color: var(--gold);
+  color: var(--accent-text);
+}
+.badge-green {
+  background: var(--success-soft);
+  color: var(--green);
 }
 .badge-red {
   color: var(--red);
@@ -963,7 +974,7 @@ input[type="checkbox"] {
 .agent-details > summary,
 .form-disclosure > summary {
   cursor: pointer;
-  color: var(--gold);
+  color: var(--accent-text);
   font-size: 13px;
   padding: 8px 0;
 }
@@ -1225,6 +1236,13 @@ input[type="checkbox"] {
 .login-card .brand {
   font-size: 30px;
 }
+.login-card .brand-lockup {
+  gap: 14px;
+}
+.login-card .brand-mark {
+  width: 46px;
+  height: 46px;
+}
 .login-form {
   display: flex;
   flex-direction: column;
@@ -1249,7 +1267,7 @@ input[type="checkbox"] {
   width: min(760px, calc(100% - 32px));
 }
 .modal::backdrop {
-  background: #0a181370;
+  background: #0b0e1170;
 }
 .modal-header {
   display: flex;
@@ -1503,6 +1521,9 @@ input[type="checkbox"] {
   .brand-mark {
     width: 29px;
     height: 29px;
+  }
+  .brand-lockup {
+    gap: 7px;
   }
   .topbar .mode-badge {
     font-size: 10px;

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { describeError, type KernelClient } from "../api.ts";
 import { ThemeToggle } from "../theme.tsx";
 import type { SessionResponse } from "../types.ts";
+import { Brand } from "./Brand.tsx";
 import { Badge } from "./common.tsx";
 
 type Reachability = "checking" | "reachable" | "unreachable";
@@ -53,8 +54,8 @@ export function Login({
     <main className="login">
       <ThemeToggle className="login-theme" />
       <div className="login-card">
-        <h1 className="brand">
-          Money<span className="brand-accent">Kernel</span>
+        <h1 className="login-title">
+          <Brand />
         </h1>
         <p className="muted">Review agent requests and approve the trades you choose.</p>
         <p className="login-reach" role="status">

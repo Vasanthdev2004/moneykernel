@@ -2,7 +2,7 @@
 
 The owner-selected direction is a calm, light product dashboard, with a corresponding dark theme. Operate mode: make account state and the next required decision readable at a glance.
 
-Use Radix UI for accessible section navigation and the workspace menu, Lucide for consistent icons, and locally hosted DM Sans. Soft neutral surfaces, restrained green action color, clear text, light borders and generous section spacing. Red and amber indicate actual action risks and unresolved state, not decoration. Dark mode preserves exactly the same hierarchy and contrast.
+Use Radix UI for accessible section navigation and the workspace menu, Lucide for consistent icons, and locally hosted DM Sans. Neutral black, white and gray surfaces use Binance gold sparingly for brand and action emphasis, with dark ink on gold fills and an accessible darker gold for small text in light mode. Green is reserved for verified success states. Red and amber indicate actual action risks and unresolved state, not decoration. Dark mode preserves exactly the same hierarchy and contrast.
 
 Navigation: Overview, Approvals, Agents, Activity, System. Overview shows three cash figures, a compact attention list, holdings and recent activity. Administration, full audit payloads and integration diagnostics have dedicated destinations. Stop and unknown-state warnings remain available across every destination; the mode label always states the execution environment.
 
