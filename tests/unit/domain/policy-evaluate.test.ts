@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
  * Scenario A from prd.md 27.1, made balance-consistent: 110 USDT (100 usable
  * after the 10 USDT buffer), 2.2275 SOL at 100, 0.0066725 BTC at 100000,
  * marked equity 1000, remaining lease budget 40, order cap 50, max share 0.25.
+ * The PRD's combined 1 USDT reserve is 0.973 valuation buffer + the 0.027 candidate fee.
  */
 const NOW = "2026-09-08T12:00:00Z";
 const T_MINUS_1S = "2026-09-08T11:59:59Z";
@@ -59,7 +60,7 @@ function scenarioA(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
     now: NOW,
     intent: buyIntent(),
     agent: { id: "agent_alpha", status: "ACTIVE", revision: 1 },
-    account: { id: "acct_a", status: "READY", epoch: 1, quote_asset: "USDT" },
+    account: { id: "acct_a", status: "READY", epoch: 1, quote_asset: "USDT", outstanding_commands: 0 },
     lease: {
       id: "lease_alpha_01",
       revision: 1,
@@ -75,7 +76,7 @@ function scenarioA(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
       allowed_sides: ["BUY"],
       allowed_order_types: ["LIMIT_IOC"],
     },
-    policy: policyWith(),
+    policy: policyWith({ valuation_buffer_quote: "0.973" }),
     symbol_rules: SOL_RULES,
     observations: [
       {
@@ -110,6 +111,7 @@ function scenarioA(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
       lease_reserved_attempts: 0,
       agent_base_owned: "0",
       agent_base_reserved: "0",
+      account_base_reserved: "0",
       holdings: [
         { asset: "SOL", quantity: "2.2275" },
         { asset: "BTC", quantity: "0.0066725" },
@@ -191,7 +193,7 @@ describe("BUY sizing rules (prd.md 9.10, FR-04)", () => {
       fee_reserve_quote: "0.02",
       total_quote_reserved: "20.02",
     });
-    expect(check(result, RULE.SYMBOL_EXPOSURE_LIMIT)?.observed).toBe("0.242992992992992992");
+    expect(check(result, RULE.SYMBOL_EXPOSURE_LIMIT)?.observed).toBe("0.242991290351318859");
   });
 
   it("T-03: a candidate below the exchange minimum notional is denied, never rounded up", () => {
@@ -237,6 +239,67 @@ describe("BUY sizing rules (prd.md 9.10, FR-04)", () => {
     expect(result.outcome).toBe("COUNTERPROPOSE");
     expect(result.reason_codes).toEqual(["SIZE_NORMALIZED"]);
     expect(result.candidate).toMatchObject({ quantity: "0.27", limit_price: "100", notional_quote: "27" });
+  });
+
+  it("denies a BUY limit below one tick with a stable price-filter result", () => {
+    const result = evaluate(scenarioA({ intent: buyIntent({ limit_price: "0.001" }) }));
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["FILTER_PRICE_RANGE"]);
+    expect(result.candidate).toBeNull();
+    expect(check(result, RULE.PRICE_TICK)).toMatchObject({ result: "FAIL", observed: "0.001", limit: "0.01" });
+  });
+
+  it.each([
+    { mark: "100", quantity: "0.249", notional: "24.9", fee: "0.0249" },
+    { mark: "200", quantity: "0.124", notional: "12.4", fee: "0.0124" },
+  ])("includes candidate fees when bounding concentration with mark $mark", ({ mark, quantity, notional, fee }) => {
+    const base = scenarioA();
+    const result = evaluate({
+      ...base,
+      intent: buyIntent({ size: { kind: "QUOTE_NOTIONAL", quote_asset: "USDT", amount: "25" } }),
+      policy: policyWith({ valuation_buffer_quote: "0" }),
+      resources: { ...base.resources, quote_owned: "100", holdings: [] },
+      marks: base.marks.map((m) => (m.symbol === "SOLUSDT" ? { ...m, price: mark } : m)),
+    });
+    // At mark 100, the old 0.250 candidate gives 25 / (100 - 0.025) > 0.25.
+    // At mark 200, the next 0.125 lot also gives exposure 25 but pays 0.0125 in fees.
+    expect(result.outcome).toBe("COUNTERPROPOSE");
+    expect(result.reason_codes).toEqual(["SYMBOL_EXPOSURE_LIMIT"]);
+    expect(result.candidate).toMatchObject({ quantity, notional_quote: notional, fee_reserve_quote: fee });
+  });
+
+  it("reduces by one lot when rounding the candidate fee upward crosses the concentration boundary", () => {
+    const base = scenarioA();
+    const result = evaluate({
+      ...base,
+      intent: buyIntent({
+        size: { kind: "QUOTE_NOTIONAL", quote_asset: "USDT", amount: "0.1" },
+        limit_price: "1",
+      }),
+      policy: policyWith({
+        fee_rate: "0.333333333333333333",
+        max_symbol_share: "0.5",
+        min_quote_cash_buffer: "0",
+        valuation_buffer_quote: "0",
+      }),
+      symbol_rules: {
+        ...SOL_RULES,
+        step_size: "0.000000000000000001",
+        min_qty: "0.000000000000000001",
+        min_notional: "0.01",
+      },
+      resources: { ...base.resources, quote_owned: "0.2", holdings: [{ asset: "BTC", quantity: "0.1" }] },
+      marks: base.marks.map((m) => ({ ...m, price: m.symbol === "SOLUSDT" ? "1" : "0.333333333333333333" })),
+    });
+    // Equity is exactly .2333333333333333333. The analytical .1 SOL candidate
+    // pays a fee rounded to .033333333333333334, so its .1 exposure exceeds half
+    // of the resulting .1999999999999999993 floor. The immediately lower lot fits.
+    expect(result.outcome).toBe("COUNTERPROPOSE");
+    expect(result.reason_codes).toEqual(["SYMBOL_EXPOSURE_LIMIT"]);
+    expect(result.candidate).toMatchObject({
+      quantity: "0.099999999999999999",
+      fee_reserve_quote: "0.033333333333333333",
+    });
   });
 
   it("T-11 arithmetic: a second 80 request sees the first hold and shrinks so the pool is never exceeded", () => {
@@ -355,6 +418,22 @@ describe("non-resizable denials (prd.md 8, T-05 to T-08)", () => {
     ]);
   });
 
+  it("denies unreconciled execution even if the account status is READY", () => {
+    const base = scenarioA();
+    const result = evaluate({ ...base, account: { ...base.account, outstanding_commands: 1 } });
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["OUTCOME_UNKNOWN"]);
+    expect(result.checks.some((c) => c.rule === RULE.PRICE_TICK)).toBe(false);
+  });
+
+  it.each(["SOL", "BNB"])("denies unsupported BUY fee asset %s before sizing", (feeAsset) => {
+    const result = evaluate(scenarioA({ policy: policyWith({ fee_asset: feeAsset }) }));
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["FEE_MODEL_MISMATCH"]);
+    expect(result.candidate).toBeNull();
+    expect(result.checks.some((c) => c.rule === RULE.PRICE_TICK)).toBe(false);
+  });
+
   it("stale, future, or unknown observations fail closed", () => {
     const base = scenarioA();
     const observation = base.observations[0];
@@ -466,6 +545,46 @@ describe("SELL rules (INV-10, T-13)", () => {
       total_quote_reserved: "0",
       fee_reserve_quote: "0",
     });
+  });
+
+  it("applies the policy order cap to SELLs even when inventory is sufficient", () => {
+    const result = evaluate(scenarioB("0.001"));
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["ORDER_NOTIONAL_CAP"]);
+    expect(check(result, RULE.ORDER_NOTIONAL_CAP)).toMatchObject({ observed: "100", limit: "50", unit: "USDT" });
+    const atCap = evaluate(scenarioB("0.0005"));
+    expect(atCap.outcome).toBe("ALLOW_PROPOSAL");
+    expect(atCap.candidate?.notional_quote).toBe("50");
+  });
+
+  it.each(["BTC", "BNB"])("denies unsupported SELL fee asset %s", (feeAsset) => {
+    const base = scenarioB("0.0002");
+    const result = evaluate({ ...base, policy: policyWith({ fee_asset: feeAsset }) });
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["FEE_MODEL_MISMATCH"]);
+    expect(result.candidate).toBeNull();
+  });
+
+  it("limits SELLs to actual account holdings even if attribution is larger", () => {
+    const base = scenarioB("0.0002");
+    const result = evaluate({
+      ...base,
+      resources: { ...base.resources, holdings: [{ asset: "BTC", quantity: "0.0001" }] },
+    });
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["INSUFFICIENT_BASE"]);
+    expect(check(result, RULE.BASE_INVENTORY)?.limit).toBe("0.0001");
+    expect(evaluate({ ...base, resources: { ...base.resources, holdings: [] } }).reason_codes).toEqual([
+      "INSUFFICIENT_BASE",
+    ]);
+  });
+
+  it("deducts other agents' holds from account SELL capacity", () => {
+    const base = scenarioB("0.0002");
+    const result = evaluate({ ...base, resources: { ...base.resources, account_base_reserved: "0.0009" } });
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toEqual(["INSUFFICIENT_BASE"]);
+    expect(check(result, RULE.BASE_INVENTORY)?.limit).toBe("0.0001");
   });
 
   it("T-13: a SELL beyond attributed inventory is denied, never shorted or downsized", () => {

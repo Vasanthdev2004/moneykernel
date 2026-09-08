@@ -77,6 +77,7 @@ export function responseFrom(
   leaseRevision: number,
   policyVersion: number,
   accountEpoch: number,
+  strategyKind: string,
 ): DecisionResponse {
   return {
     intent_id: intentId,
@@ -92,7 +93,7 @@ export function responseFrom(
       account_epoch: accountEpoch,
       requires_operator_approval: true,
     },
-    provenance: provenanceFor(runtime.config),
+    provenance: provenanceFor(runtime.config, strategyKind),
     receipt_id: receipt.id,
     proposal_hash: proposal?.proposal_hash ?? null,
     expires_at: proposal?.expires_at.toISOString() ?? null,
@@ -127,10 +128,9 @@ export async function submitIntent(
     return withClient(pool, (client) => loadOutcome(runtime, client, existing.id, 200));
   }
 
-  await refreshInputsForSymbol(runtime, account.id, account.quote_asset, intent.symbol);
+  const refreshedRulesId = await refreshInputsForSymbol(runtime, account.id, account.quote_asset, intent.symbol);
 
   return withTransaction(pool, async (tx) => {
-    const now = runtime.clock();
     const accountRow = await lockAccountRow(tx, account.id);
     let agent = await lockAgentRow(tx, input.agent.id);
     if (agent === null || agent.account_id !== account.id)
@@ -148,11 +148,15 @@ export async function submitIntent(
     if (policyRow === null) throw new AdmissionError("NOT_READY", 503, "no policy version exists for this account");
     const policy = PolicySchema.parse(policyRow.canonical_policy);
 
+    const lease = await getLeaseById(tx, intent.lease_id, { lock: true });
+    // Admission time must follow all authority locks so waiting cannot extend
+    // lease validity or use an earlier burst-counting window for this request.
+    const now = runtime.clock();
+
     // Burst rule before evaluation: the request that crosses the limit is not admitted (prd.md 10.5).
     const burst = await enforceBurstThreshold(tx, { accountId: account.id, agent, policy, now });
     if (burst !== null) agent = burst.agent;
 
-    const lease = await getLeaseById(tx, intent.lease_id, { lock: true });
     if (lease === null || lease.account_id !== account.id) {
       await recordHardViolation(tx, {
         accountId: account.id,
@@ -174,6 +178,7 @@ export async function submitIntent(
       policy,
       intent,
       now,
+      refreshedRulesId,
     });
     const result = evaluate(evaluation);
     const response = await persistDecision(runtime, tx, {
@@ -273,6 +278,7 @@ export async function persistDecision(
     args.lease.revision,
     args.policy.version,
     args.accountEpoch,
+    await intentStrategyKind(tx, intentId, args.accountId),
   );
 }
 
@@ -432,6 +438,19 @@ export async function recordReceipt(
   };
 }
 
+/** Registered strategy kind has no mutation path; replay uses its persisted owner, not current provider config. */
+async function intentStrategyKind(client: PoolClient, intentId: string, accountId: string): Promise<string> {
+  const result = await client.query<{ strategy_kind: string }>(
+    `SELECT a.strategy_kind FROM intents i
+       JOIN agents a ON a.id = i.agent_id AND a.account_id = i.account_id
+      WHERE i.id = $1 AND i.account_id = $2`,
+    [intentId, accountId],
+  );
+  const owner = result.rows[0];
+  if (owner === undefined) throw new AdmissionError("INTERNAL", 500, "intent has no bound strategy identity");
+  return owner.strategy_kind;
+}
+
 export async function loadOutcome(
   runtime: KernelRuntime,
   client: PoolClient,
@@ -452,6 +471,7 @@ export async function loadOutcome(
       refs.lease_revision ?? 0,
       refs.policy_version ?? 0,
       refs.account_epoch ?? 0,
+      await intentStrategyKind(client, intentId, receipt.account_id),
     ),
   };
 }

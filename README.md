@@ -41,7 +41,7 @@ Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no databas
 
 ### Try the vertical slice (REPLAY)
 
-With the kernel running (`pnpm dev`), seed Scenario A and submit the oversized request from prd.md section 27.1:
+Set `MONEYKERNEL_ACCOUNT_ALIAS` in `.env` to a fresh run name, such as `replay-run-001`, before starting `pnpm dev`. With that kernel running, seed Scenario A once and submit the oversized request from prd.md section 27.1:
 
 ```bash
 pnpm demo:seed
@@ -53,7 +53,11 @@ The seed prints agent tokens once. Then, as the Alpha agent:
 curl -s http://127.0.0.1:8080/v1/agent/context -H "Authorization: Bearer <token>"
 ```
 
-Reference a returned `snapshot_id` and the printed `lease_id` in a `POST /v1/agent/intents` with an `Idempotency-Key` header. An 80 USDT SOL BUY comes back `COUNTERPROPOSE` with the exact 0.270 SOL candidate, its fee reserve, the limiting rule, and a receipt id. Every kernel restart pauses the account again; run the seed afterwards to resume it.
+Reference a returned `snapshot_id` and the printed `lease_id` in a `POST /v1/agent/intents` with an `Idempotency-Key` header. An 80 USDT SOL BUY comes back `COUNTERPROPOSE` with the exact 0.270 SOL candidate, its fee reserve, the limiting rule, and a receipt id.
+
+Seeding initializes a pristine paused account atomically, records its baseline ledger, and assigns remaining inventory to `UNASSIGNED`. It refuses repeated or concurrent initialization of the same account. For another demo run, stop the kernel, choose a new `MONEYKERNEL_ACCOUNT_ALIAS` in `.env`, start the kernel, and seed that new account. Existing runs, tokens, reservations, and receipts stay in their original namespace. For a different fixture, set `REPLAY_FIXTURE` before starting the kernel and pass the same scenario id to `pnpm demo:seed`.
+
+Every kernel restart pauses its account. Seeding cannot resume an existing run; use the operator API for explicit resume.
 
 Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
 

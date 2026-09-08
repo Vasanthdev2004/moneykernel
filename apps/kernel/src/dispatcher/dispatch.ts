@@ -89,7 +89,12 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
   if (candidate === null) return NO_ARM;
   const proposalPeek = await withClient(pool, (client) => getProposalById(client, candidate.proposal_id));
   if (proposalPeek === null) return NO_ARM;
-  await refreshInputsForSymbol(runtime, account.id, account.quote_asset, proposalPeek.normalized_order.symbol);
+  const refreshedRulesId = await refreshInputsForSymbol(
+    runtime,
+    account.id,
+    account.quote_asset,
+    proposalPeek.normalized_order.symbol,
+  );
 
   const armed = await withTransaction(
     pool,
@@ -185,6 +190,7 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
         policy,
         intent: exact,
         now,
+        refreshedRulesId,
         excludeProposalId: proposal.id,
       });
       const recheck = evaluate(input);

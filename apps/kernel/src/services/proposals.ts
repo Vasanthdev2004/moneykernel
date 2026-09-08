@@ -273,10 +273,16 @@ export async function resolveConflictRequest(
   if (pool === null || account === null) throw new ProposalError("NOT_READY", 503, "kernel has no loaded account");
 
   // Refresh inputs outside the transaction when a re-evaluation is coming.
+  let refreshedRulesId: string | null = null;
   if (request.action === "SELECT") {
     const selected = await withTransaction(pool, (tx) => getProposalById(tx, request.proposal_id));
     if (selected !== null)
-      await refreshInputsForSymbol(runtime, account.id, account.quote_asset, selected.normalized_order.symbol);
+      refreshedRulesId = await refreshInputsForSymbol(
+        runtime,
+        account.id,
+        account.quote_asset,
+        selected.normalized_order.symbol,
+      );
   }
 
   return withTransaction(pool, async (tx) => {
@@ -366,6 +372,7 @@ export async function resolveConflictRequest(
         policy,
         intent,
         now,
+        refreshedRulesId,
       });
       const result = evaluate(input);
       const revised = await recordProposalRevision(tx, {

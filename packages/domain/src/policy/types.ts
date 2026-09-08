@@ -26,6 +26,8 @@ export type AccountView = {
   status: "PAUSED" | "READY" | "RECONCILING" | "ERROR";
   epoch: number;
   quote_asset: string;
+  /** Armed, unknown, or accepted commands whose accounting is not fully reconciled. */
+  outstanding_commands: number;
 };
 
 export type LeaseView = {
@@ -92,6 +94,8 @@ export type ResourceView = {
   lease_reserved_attempts: number;
   agent_base_owned: string;
   agent_base_reserved: string;
+  /** Base holds across all account agents, excluding this proposal's own hold. */
+  account_base_reserved: string;
   /** Account-owned non-quote holdings, for equity valuation. */
   holdings: Array<{ asset: string; quantity: string }>;
   /** Conservative pending BUY exposure for the intent's symbol (quantity times max(mark, limit)). */

@@ -1,11 +1,11 @@
 /**
  * pnpm demo:seed [scenario-id]  (default: scenario-a-constrained-acquisition)
  *
- * Loads a synthetic scenario into the configured REPLAY/SHADOW account:
+ * Initializes a pristine configured REPLAY/SHADOW account exactly once:
  * policy version, virtual balances and attribution, symbol rules, agents with
- * fresh tokens, leases starting now, then operator resume. Run the kernel
- * first (`pnpm dev`) so the account exists and stays READY after seeding;
- * every kernel boot pauses the account again (prd.md 11.8).
+ * fresh tokens, leases starting now, then initial operator resume. Run the
+ * kernel first (`pnpm dev`) with a fresh MONEYKERNEL_ACCOUNT_ALIAS. Existing
+ * runs cannot be reset or resumed through this command.
  *
  * Tokens are printed ONCE. They are demo credentials for virtual funds only.
  */
@@ -48,6 +48,9 @@ try {
       );
     }
   }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 } finally {
   await runtime.shutdown();
 }

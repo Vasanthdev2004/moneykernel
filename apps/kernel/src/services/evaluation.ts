@@ -14,6 +14,7 @@ import type { PoolClient } from "@moneykernel/persistence";
 import {
   type AccountRow,
   type AgentRow,
+  countOutstandingCommands,
   countReservedAttemptsForLease,
   getSnapshotsByIds,
   type LeaseRow,
@@ -88,10 +89,11 @@ export async function refreshInputsForSymbol(
   accountId: string,
   quote: string,
   symbol: string,
-): Promise<void> {
+): Promise<string | null> {
   const held = await heldSymbols(runtime, accountId, quote);
   await refreshMarks(runtime, accountId, [symbol, ...held]);
-  await refreshSymbolRules(runtime, accountId, symbol, newId);
+  const refreshed = await refreshSymbolRules(runtime, accountId, symbol, newId);
+  return refreshed?.id ?? null;
 }
 
 export type EvaluationContext = {
@@ -103,6 +105,8 @@ export type EvaluationContext = {
   policy: Policy;
   intent: TradeIntent;
   now: Date;
+  /** Exact rules read for this evaluation attempt; null means the refresh failed. */
+  refreshedRulesId: string | null;
   /** The proposal whose own holds must be excluded when re-evaluating (prd.md 9.2, T-17). */
   excludeProposalId?: string;
 };
@@ -111,15 +115,17 @@ export type EvaluationContext = {
 export async function assembleEvaluationInput(
   ctx: EvaluationContext,
 ): Promise<{ input: EvaluationInput; baseAsset: string }> {
-  const { tx, accountRow, agent, lease, policyRow, policy, intent, now, excludeProposalId } = ctx;
+  const { tx, accountRow, agent, lease, policyRow, policy, intent, now, refreshedRulesId, excludeProposalId } = ctx;
   const quote = accountRow.quote_asset;
   const balances = await listAssetBalances(tx, accountRow.id);
   const held = balances
     .filter((b) => b.asset !== quote && dec(b.owned_quantity).gt(0))
     .map((b) => `${b.asset}${quote}`);
 
-  const rulesRow = await latestSnapshotsBySymbol(tx, accountRow.id, "SYMBOL_RULES", [intent.symbol]);
-  const rules = rulesFromSnapshot(rulesRow.get(intent.symbol));
+  const ruleRows = await getSnapshotsByIds(tx, accountRow.id, refreshedRulesId === null ? [] : [refreshedRulesId]);
+  const rules = rulesFromSnapshot(
+    ruleRows.find((row) => row.type === "SYMBOL_RULES" && row.payload.symbol === intent.symbol),
+  );
   const refRows = await getSnapshotsByIds(tx, accountRow.id, intent.observation_ids);
   const observations: ObservationView[] = refRows
     .filter((r) => r.type === "MARKET")
@@ -135,7 +141,7 @@ export async function assembleEvaluationInput(
 
   const quoteRow = balances.find((b) => b.asset === quote);
   const holdings = balances
-    .filter((b) => b.asset !== quote)
+    .filter((b) => b.asset !== quote && dec(b.owned_quantity).gt(0))
     .map((b) => ({ asset: b.asset, quantity: b.owned_quantity }));
   const baseAsset = rules?.base_asset ?? "";
   const allocations = await listInventoryAllocations(tx, accountRow.id, agent.id);
@@ -165,6 +171,7 @@ export async function assembleEvaluationInput(
       status: accountRow.status,
       epoch: accountRow.epoch,
       quote_asset: accountRow.quote_asset,
+      outstanding_commands: (await countOutstandingCommands(tx, accountRow.id)).total,
     },
     lease: {
       id: lease.id,
@@ -194,6 +201,8 @@ export async function assembleEvaluationInput(
       agent_base_owned: agentBase,
       agent_base_reserved:
         baseAsset === "" ? "0" : await sumReservedBase(tx, accountRow.id, agent.id, baseAsset, excludeProposalId),
+      account_base_reserved:
+        baseAsset === "" ? "0" : await sumReservedBase(tx, accountRow.id, null, baseAsset, excludeProposalId),
       holdings,
       pending_buy_exposure_quote: toDecimalString(pendingExposure),
       pending_fee_reserves_quote: toDecimalString(pendingFees),

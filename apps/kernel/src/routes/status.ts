@@ -27,8 +27,9 @@ function executionSourceFor(runtime: KernelRuntime): ExecutionSource {
   return runtime.config.environment === "TESTNET" ? "BINANCE_TESTNET" : "PAPER";
 }
 
-function modelSourceFor(runtime: KernelRuntime): ModelSource {
-  return runtime.config.modelProvider === "disabled" ? "DISABLED" : "LIVE_PROVIDER";
+function modelSourceFor(): ModelSource {
+  // Provider configuration is not evidence of a model invocation. G2 has no model runner.
+  return "DISABLED";
 }
 
 export async function statusRoutes(app: FastifyInstance, options: { runtime: KernelRuntime }): Promise<void> {
@@ -72,7 +73,7 @@ export async function statusRoutes(app: FastifyInstance, options: { runtime: Ker
       provenance: {
         execution_mode: env,
         market_source: marketSourceFor(runtime),
-        model_source: modelSourceFor(runtime),
+        model_source: modelSourceFor(),
         execution_source: executionSourceFor(runtime),
       },
       integration: {

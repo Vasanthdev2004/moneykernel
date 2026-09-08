@@ -405,10 +405,11 @@ describe("concurrent BUY admissions against one pool (T-11, T-12, INV-04)", () =
 
 describe("SELL inventory authority (T-13, T-14, INV-10)", () => {
   it("denies a SELL beyond attributed inventory and reserves base at most once under contention", async () => {
-    const h = await startHarness(
-      loadScenario("scenario-b-opposing-intents", FIXTURES_DIR),
-      "scenario-b-opposing-intents",
-    );
+    const scenario = loadScenario("scenario-b-opposing-intents", FIXTURES_DIR);
+    // This test isolates inventory contention; permit its 80 USDT SELL under
+    // an explicit 100 USDT order cap. The default 50 USDT cap is tested separately.
+    scenario.policy_overrides = { ...scenario.policy_overrides, max_order_notional_quote: "100" };
+    const h = await startHarness(scenario, "scenario-b-opposing-intents");
     harnesses.push(h);
     const guard = h.seed.agents.find((a) => a.fixture_agent_id === "agent_inventory_guard");
     if (guard === undefined) throw new Error("guard not seeded");

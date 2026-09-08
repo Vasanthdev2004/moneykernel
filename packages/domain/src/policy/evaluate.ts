@@ -7,12 +7,15 @@ import {
   eq,
   feeReserve,
   floorToStep,
+  fromLotCount,
   gt,
   gte,
   isPositive,
+  lotCount,
   lt,
   lte,
   max,
+  min,
   mul,
   notionalOf,
   ONE,
@@ -35,6 +38,7 @@ import type { EvaluationInput, EvaluationResult, InputRefs, MarkView, SymbolRule
 
 export const RULE = {
   ACCOUNT_STATUS: "ACCOUNT_STATUS",
+  EXECUTION_RECONCILIATION: "EXECUTION_RECONCILIATION",
   AGENT_STATUS: "AGENT_STATUS",
   LEASE_IDENTITY: "LEASE_IDENTITY",
   LEASE_STATUS: "LEASE_STATUS",
@@ -44,6 +48,7 @@ export const RULE = {
   SIDE_ALLOWED: "SIDE_ALLOWED",
   SYMBOL_RULES: "SYMBOL_RULES",
   FILTER_SUPPORT: "FILTER_SUPPORT",
+  FEE_MODEL: "FEE_MODEL",
   OBSERVATION_FRESHNESS: "OBSERVATION_FRESHNESS",
   VALUATION: "VALUATION",
   SUBMISSION_LIMIT: "SUBMISSION_LIMIT",
@@ -161,6 +166,10 @@ export function evaluate(input: EvaluationInput): EvaluationResult {
   if (account.status === "READY") log.pass(RULE.ACCOUNT_STATUS, account.status);
   else log.fail(RULE.ACCOUNT_STATUS, "ACCOUNT_PAUSED", account.status, "READY");
 
+  if (account.outstanding_commands > 0) {
+    log.fail(RULE.EXECUTION_RECONCILIATION, "OUTCOME_UNKNOWN", String(account.outstanding_commands), "0", "commands");
+  } else log.pass(RULE.EXECUTION_RECONCILIATION, "0", "0", "commands");
+
   if (agent.status === "ACTIVE") log.pass(RULE.AGENT_STATUS, agent.status);
   else
     log.fail(
@@ -218,6 +227,12 @@ export function evaluate(input: EvaluationInput): EvaluationResult {
   if (rules !== null && rules.unsupported_filters.length > 0) {
     log.fail(RULE.FILTER_SUPPORT, "FILTER_UNSUPPORTED", rules.unsupported_filters.join(","), "none");
   } else if (rules !== null) log.pass(RULE.FILTER_SUPPORT, "none");
+
+  // G2 qualifies quote-asset commissions only. Other fee assets need their own
+  // inventory/valuation envelopes before they can grant any authority (prd.md 9.8).
+  if (policy.fee_asset !== policy.quote_asset) {
+    log.fail(RULE.FEE_MODEL, "FEE_MODEL_MISMATCH", policy.fee_asset, policy.quote_asset);
+  } else log.pass(RULE.FEE_MODEL, policy.fee_asset, policy.quote_asset);
 
   // --- observation freshness (prd.md 13.8) ---
   const maxAge = policy.max_market_observation_age_ms;
@@ -294,6 +309,10 @@ function evaluateBuy(
   const feeFactor = add(ONE, feeRate);
 
   // Price: tick-normalized without weakening the limit (BUY rounds down).
+  if (lt(dec(intent.limit_price), tick)) {
+    log.fail(RULE.PRICE_TICK, "FILTER_PRICE_RANGE", intent.limit_price, rules.tick_size, rules.quote_asset);
+    return deny();
+  }
   const limit = roundPriceToTick(dec(intent.limit_price), tick, "BUY");
   log.pass(RULE.PRICE_TICK, toDecimalString(limit), rules.tick_size, rules.quote_asset);
 
@@ -341,15 +360,20 @@ function evaluateBuy(
   );
   const quoteCap = div(quoteAvailable, feeFactor);
 
-  const equityFloor = sub(sub(equity, dec(resources.pending_fee_reserves_quote)), dec(policy.valuation_buffer_quote));
+  const equityBeforeCandidateFee = sub(
+    sub(equity, dec(resources.pending_fee_reserves_quote)),
+    dec(policy.valuation_buffer_quote),
+  );
   const maxShare = dec(policy.max_symbol_share);
   const pendingExposure = dec(resources.pending_buy_exposure_quote);
   const currentExposure = add(existingSymbolExposure, pendingExposure);
   const unitExposure = max(dec(symbolMark.price), limit);
   let exposureCap = ZERO;
-  if (isPositive(equityFloor)) {
-    const headroom = max(ZERO, sub(mul(equityFloor, maxShare), currentExposure));
-    exposureCap = div(mul(headroom, limit), unitExposure);
+  if (isPositive(equityBeforeCandidateFee)) {
+    const headroom = max(ZERO, sub(mul(equityBeforeCandidateFee, maxShare), currentExposure));
+    // q * unitExposure + currentExposure <= share * (equityBeforeCandidateFee - q * limit * feeRate).
+    // Rounded-up fees are checked against integer lots below; this is the analytic upper bound.
+    exposureCap = div(mul(headroom, limit), add(unitExposure, mul(maxShare, mul(limit, feeRate))));
   }
 
   const caps: Array<{ rule: string; code: ReasonCode; cap: Dec; limit: string; unit: string }> = [
@@ -403,9 +427,28 @@ function evaluateBuy(
     quantity = floorToStep(maxQtyByLot, step);
     limiting = { rule: RULE.LOT_SIZE, code: "FILTER_LOT_RANGE" };
   }
+
+  const fitsConcentration = (q: Dec): boolean => {
+    const floor = sub(equityBeforeCandidateFee, feeReserve(notionalOf(q, limit), feeRate));
+    return isPositive(floor) && lte(add(currentExposure, mul(q, unitExposure)), mul(floor, maxShare));
+  };
+  // Fee rounding can make the analytic bound slightly too large. Find the
+  // largest valid lot count rather than denying a request that can be smaller.
+  if (!fitsConcentration(quantity)) {
+    let low = 0n;
+    let high = lotCount(quantity, step);
+    while (low < high) {
+      const middle = (low + high + 1n) / 2n;
+      if (fitsConcentration(fromLotCount(middle, step))) low = middle;
+      else high = middle - 1n;
+    }
+    quantity = fromLotCount(low, step);
+    limiting = { rule: RULE.SYMBOL_EXPOSURE_LIMIT, code: "SYMBOL_EXPOSURE_LIMIT" };
+  }
   const notional = notionalOf(quantity, limit);
   const fee = feeReserve(notional, feeRate);
   const total = add(notional, fee);
+  const equityFloor = sub(equityBeforeCandidateFee, fee);
   const projectedExposure = add(currentExposure, mul(quantity, unitExposure));
   const projectedShare = isPositive(equityFloor) ? ratio(projectedExposure, equityFloor) : null;
 
@@ -417,7 +460,7 @@ function evaluateBuy(
         ? projectedShare === null
           ? "n/a"
           : toDisplayString(projectedShare)
-        : toDecimalString(total);
+        : toDecimalString(c.rule === RULE.ORDER_NOTIONAL_CAP ? notional : total);
     if (bound) log.limiting(c.rule, observed, c.limit, c.unit);
     else log.pass(c.rule, observed, c.limit, c.unit);
   }
@@ -443,11 +486,11 @@ function evaluateBuy(
   log.pass(RULE.MIN_NOTIONAL, toDecimalString(notional), rules.min_notional, rules.quote_asset);
 
   // Defensive rechecks of the exact candidate against every envelope (prd.md 9.10 "independently rechecked").
-  if (projectedShare !== null && gt(projectedShare, maxShare)) {
+  if (!fitsConcentration(quantity)) {
     log.fail(
       RULE.SYMBOL_EXPOSURE_LIMIT,
       "SYMBOL_EXPOSURE_LIMIT",
-      toDisplayString(projectedShare),
+      projectedShare === null ? "n/a" : toDisplayString(projectedShare),
       policy.max_symbol_share,
       "RATIO",
     );
@@ -505,7 +548,7 @@ function evaluateSell(
   log: CheckLog,
   finish: Finish,
 ): EvaluationResult {
-  const { intent, resources } = input;
+  const { intent, policy, resources } = input;
   const deny = (): EvaluationResult => finish({ outcome: "DENY", limiting_rule: null, candidate: null });
   if (intent.size.kind !== "BASE_QUANTITY") return deny();
 
@@ -516,7 +559,12 @@ function evaluateSell(
 
   const requested = dec(intent.size.amount);
   const quantity = floorToStep(requested, step);
-  const availableBase = max(ZERO, sub(dec(resources.agent_base_owned), dec(resources.agent_base_reserved)));
+  const agentAvailable = max(ZERO, sub(dec(resources.agent_base_owned), dec(resources.agent_base_reserved)));
+  const accountOwned = resources.holdings
+    .filter((holding) => holding.asset === rules.base_asset)
+    .reduce((total, holding) => add(total, dec(holding.quantity)), ZERO);
+  const accountAvailable = max(ZERO, sub(accountOwned, dec(resources.account_base_reserved)));
+  const availableBase = min(agentAvailable, accountAvailable);
 
   // SELL authority never exceeds agent-attributed, unreserved inventory (INV-10). No downsizing: deny (T-13).
   if (gt(quantity, availableBase)) {
@@ -544,6 +592,17 @@ function evaluateSell(
   log.pass(RULE.LOT_SIZE, toDecimalString(quantity), `${rules.min_qty}..${rules.max_qty}`, rules.base_asset);
 
   const notional = notionalOf(quantity, limit);
+  if (gt(notional, dec(policy.max_order_notional_quote))) {
+    log.fail(
+      RULE.ORDER_NOTIONAL_CAP,
+      "ORDER_NOTIONAL_CAP",
+      toDecimalString(notional),
+      policy.max_order_notional_quote,
+      rules.quote_asset,
+    );
+    return deny();
+  }
+  log.pass(RULE.ORDER_NOTIONAL_CAP, toDecimalString(notional), policy.max_order_notional_quote, rules.quote_asset);
   if (lt(notional, dec(rules.min_notional))) {
     log.fail(
       RULE.MIN_NOTIONAL,

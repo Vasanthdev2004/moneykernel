@@ -344,13 +344,13 @@ export async function countReservedAttemptsForLease(
 export async function sumReservedBase(
   client: PoolClient,
   accountId: string,
-  agentId: string,
+  agentId: string | null,
   asset: string,
   excludeProposalId?: string,
 ): Promise<string> {
   const result = await client.query<{ total: string }>(
     `SELECT COALESCE(SUM(amount), 0)::text AS total FROM reservations
-      WHERE account_id = $1 AND agent_id = $2 AND asset = $3 AND kind = 'BASE' AND state = ANY($4::text[])
+      WHERE account_id = $1 AND ($2::text IS NULL OR agent_id = $2) AND asset = $3 AND kind = 'BASE' AND state = ANY($4::text[])
         AND ($5::text IS NULL OR proposal_id <> $5)`,
     [accountId, agentId, asset, OUTSTANDING, excludeProposalId ?? null],
   );

@@ -15,7 +15,8 @@ export const PolicySchema = z.strictObject({
   /** Upper bound per candidate before fees. */
   max_order_notional_quote: PositiveDecimalStringSchema,
   /** Admission-time marked concentration, as a ratio of the equity floor. */
-  max_symbol_share: PositiveDecimalStringSchema.refine((v) => Number.parseFloat(v) <= 1, {
+  // The preceding schema canonicalizes positive decimals, so only 1 and 0.x are <= 1.
+  max_symbol_share: PositiveDecimalStringSchema.refine((v) => v === "1" || v.startsWith("0."), {
     message: "max_symbol_share is a ratio and cannot exceed 1",
   }),
   /** Quote cash excluded from strategy-spendable funds. */
