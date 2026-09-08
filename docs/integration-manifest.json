@@ -1,11 +1,16 @@
 {
   "schema_version": "1",
   "adapter": "binance-mcp",
-  "checked_at": "2026-09-08T05:45:00Z",
+  "checked_at": "2026-09-08T05:58:00Z",
   "gate0": {
-    "status": "IN_PROGRESS",
-    "decision": "PENDING: custom MCP client reaches the endpoint and completes discovery, but the first authenticated tools/list and one market-data read still require the operator's OAuth consent",
-    "prd_reference": "prd.md section 2.4"
+    "status": "CUSTOM_CLIENT_BLOCKED",
+    "decision": "Custom TypeScript MCP client cannot obtain an Agent OS session: the Binance authorization server accepts only allowlisted agents. Per prd.md section 2.4 this is the 'stop claiming Agent OS integration' branch for the custom client. Real Agent OS observations remain obtainable through a supported agent session (Claude Code); see routes below.",
+    "prd_reference": "prd.md section 2.4",
+    "routes": {
+      "custom_client_oauth": "BLOCKED_BY_PLATFORM_ALLOWLIST",
+      "supported_agent_session": "AVAILABLE_PENDING_OPERATOR_SETUP: operator adds the server to an interactive Claude Code session and authenticates; observations are then captured or relayed with explicit provenance",
+      "impersonating_a_supported_agent_client_id": "REJECTED: circumvents the platform's access control; not used"
+    }
   },
   "endpoint": "https://agent.binance.com/mcp/agentic",
   "transport": "streamable-http",
@@ -19,7 +24,7 @@
   },
   "protocol_version": null,
   "authentication": {
-    "status": "PENDING_OPERATOR_CONSENT",
+    "status": "BLOCKED_BY_PLATFORM_ALLOWLIST",
     "observed": "HTTP 401 with Content-Length 0 on the MCP initialize POST when no bearer token is sent",
     "observed_at": "2026-09-08T05:38:53Z",
     "www_authenticate": "Bearer resource_metadata=\"https://agent.binance.com/.well-known/oauth-protected-resource/gateway-mcp\"",
@@ -41,14 +46,18 @@
       "client_id_metadata_document_supported": true,
       "registration_endpoint": null
     },
-    "custom_client_route": "OAuth 2.1 authorization_code + PKCE S256 as a public client; client_id is the HTTPS URL of a hosted client ID metadata document because no dynamic client registration endpoint is advertised",
-    "client_id_metadata_document": "https://vasanthdev2004.github.io/moneykernel/oauth-client.json",
-    "client_id_metadata_source": "docs/oauth-client.json served by GitHub Pages (verified HTTP 200, application/json)",
-    "redirect_uri": "http://127.0.0.1:8765/callback",
-    "scope_requested": null,
-    "scope_note": "Scope names are not published in the server metadata; none requested. Documentation describes selectable scopes (market data, account, trade, transfer) on the consent screen.",
-    "platform_statement_vs_observation": "Documentation describes market data as public with no auth. Observation: a custom client still needs a bearer token to complete the MCP initialize handshake. The scope statement and the transport-level requirement are different things; do not claim unauthenticated MCP reads.",
-    "token_storage": "spikes/gate0/raw/oauth-tokens.json (gitignored); never exported"
+    "custom_client_attempt": {
+      "flow": "OAuth 2.1 authorization_code + PKCE S256 as a public client; client_id = HTTPS URL of a hosted client ID metadata document",
+      "client_id_metadata_document": "https://vasanthdev2004.github.io/moneykernel/oauth-client.json",
+      "client_id_metadata_source": "docs/oauth-client.json served by GitHub Pages (verified HTTP 200, application/json)",
+      "redirect_uri": "http://127.0.0.1:8765/callback",
+      "scope_requested": null,
+      "authorize_request_sent_at": "2026-09-08T05:47:00Z",
+      "result": "Consent page 'Agentic Account Access' rendered, then modal: 'The AI Agent you are using is not currently supported. Please connect using a supported Agent to continue. (3346001-3aa5543c)'. No authorization code was issued; the loopback callback never fired.",
+      "interpretation": "The authorization server allowlists agent identities. A syntactically valid metadata document from an unknown origin is refused before consent. Scope names remain unobserved."
+    },
+    "platform_statement_vs_observation": "Documentation describes market data as public with no auth. Observation: a custom client cannot even open the MCP session. Do not claim unauthenticated or custom-client MCP reads.",
+    "token_storage": "spikes/gate0/raw/oauth-tokens.json (gitignored); no token was ever issued"
   },
   "operations": {
     "read_market_context": {
@@ -56,7 +65,7 @@
       "upstream_tool": null,
       "input_schema_hash": null,
       "output_parser_version": null,
-      "note": "Set only after an authenticated tools/list and one successful read with deterministic numeric parsing"
+      "note": "Can only be set from a supported-agent session. Record the actual tool name, schema hash, and a sanitized response with timestamps when captured."
     }
   },
   "discovered_tools": null,
@@ -92,12 +101,13 @@
     "typescript_in_spike": "7.0.2",
     "docker_cli": "29.7.2",
     "docker_compose": "v5.4.0",
-    "docker_engine": "NOT_RUNNING at check time; Docker Desktop processes present but engine pipe absent",
-    "postgres": "not provisioned yet; Gate 1 uses Docker Compose"
+    "docker_engine": "Desktop backend crashed at startup: 'initializing Ingest server: listening on unix://.../Docker/run/sailor-ingest.sock: remove ...: The file cannot be accessed by the system.' Stale socket file; fix attempted during Gate 0.",
+    "postgres": "not provisioned yet; Gate 1 uses Docker Compose, with an embedded-Postgres fallback if Docker stays down"
   },
   "evidence_files": [
     "docs/gate0/spot-testnet-exchangeinfo-BTCUSDT.json",
     "docs/oauth-client.json",
+    "docs/decisions/0001-gate0-custom-mcp-client-oauth.md",
     "spikes/gate0/mcp-spike.ts",
     "spikes/gate0/oauth.ts"
   ]

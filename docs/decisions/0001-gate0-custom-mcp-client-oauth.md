@@ -36,6 +36,17 @@ The operator performs login and consent in their own browser. The spike never ha
 - No scope names are published. The first successful consent will reveal what the token actually grants; the manifest records that rather than assuming.
 - If the authorization server rejects unknown metadata-document clients, Gate 0 falls to the PRD's "stop claiming Agent OS integration" branch and the gap is disclosed.
 
+## Outcome (2026-09-08, about 05:50 UTC)
+
+The authorize request reached the Binance "Agentic Account Access" consent page, which then showed a modal: "The AI Agent you are using is not currently supported. Please connect using a supported Agent to continue. (3346001-3aa5543c)". No authorization code was issued. The authorization server allowlists agent identities; a valid metadata document from an unknown origin is refused before consent.
+
+Consequences:
+
+- Option 3 is closed for now. The custom client cannot open an Agent OS session, so the product must not claim a backend-owned MCP connection.
+- Impersonating a supported agent's client identity was considered and rejected: it circumvents the platform's access control.
+- Remaining legitimate path: a supported agent session (Claude Code) authenticates to the Binance MCP server; observations obtained there are either captured as provenance-labelled fixtures or relayed into the kernel through an authenticated agent endpoint. In either case the kernel treats relayed market data as untrusted agent context (PRD section 6.1) and derives execution-critical numbers from its own separately labelled public REST read adapter (PRD section 13.4), cross-checking the two and raising an incident on divergence.
+- Gate 0 verdict for the custom client: "stop claiming Agent OS integration" (PRD section 2.4). The kernel build continues offline; the integration gap is disclosed in the README and manifest.
+
 ## Revisit when
 
 Binance publishes scope names, a registration endpoint, or an API-key alternative for custom clients.
