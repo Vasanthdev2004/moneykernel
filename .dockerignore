@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.moneykernel
+node_modules
+**/dist
+coverage
+playwright-report
+test-results
+*.log
+*.pem
+*.key
+secrets
+spikes
+docs/evidence

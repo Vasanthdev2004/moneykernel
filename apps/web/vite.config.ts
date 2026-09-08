@@ -16,10 +16,11 @@ export default defineConfig({
     proxy: {
       "/v1": { target: kernelOrigin, changeOrigin: false },
       "/health": { target: kernelOrigin, changeOrigin: false },
+      "/metrics": { target: kernelOrigin, changeOrigin: false },
     },
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: process.env.SOURCE_MAPS === "true",
   },
 });

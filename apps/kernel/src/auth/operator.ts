@@ -105,12 +105,13 @@ export function rejectPublicMutation(runtime: KernelRuntime, request: FastifyReq
   return true;
 }
 
-function originAllowed(request: FastifyRequest): boolean {
+export function originAllowed(runtime: KernelRuntime, request: FastifyRequest): boolean {
   const origin = request.headers.origin;
   if (typeof origin !== "string") return true;
   const host = request.headers.host;
   try {
     const url = new URL(origin);
+    if (runtime.config.publicOrigin !== null) return url.origin === runtime.config.publicOrigin;
     return typeof host === "string" && url.host === host;
   } catch {
     return false;
@@ -143,7 +144,7 @@ export function requireOperator(runtime: KernelRuntime) {
     }
     if (viaCookie && MUTATING.has(request.method)) {
       const csrf = request.headers["x-csrf-token"];
-      if (csrf !== session.csrf || !originAllowed(request)) {
+      if (csrf !== session.csrf || !originAllowed(runtime, request)) {
         reply.code(403).send(errorEnvelope("FORBIDDEN", "CSRF token or origin check failed", request.id));
         return;
       }
