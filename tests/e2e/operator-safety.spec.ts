@@ -44,6 +44,12 @@ async function login(page: Page): Promise<void> {
   await expect(page.getByTestId("account-status")).toContainText("READY");
 }
 
+async function navigate(page: Page, section: "approvals" | "agents"): Promise<void> {
+  const tab = page.getByTestId(`nav-${section}`);
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-current", "page");
+}
+
 async function get<T>(request: APIRequestContext, token: string, path: string): Promise<T> {
   const response = await request.get(`${API}${path}`, { headers: { authorization: `Bearer ${token}` } });
   expect(response.status(), await response.text()).toBe(200);
@@ -159,6 +165,7 @@ async function propose(request: APIRequestContext, agent: TestAgent): Promise<De
 }
 
 async function heldPair(page: Page, request: APIRequestContext, buyer: TestAgent, seller: TestAgent) {
+  await navigate(page, "approvals");
   const buy = await propose(request, buyer);
   const sell = await propose(request, seller);
   expect(buy.proposal_id).not.toBeNull();
@@ -240,14 +247,18 @@ test("operator quarantine invalidates pending authority and refuses the same age
     await login(page);
     const pending = await propose(request, agent);
     expect(pending.proposal_id).not.toBeNull();
+    await navigate(page, "approvals");
     const proposalRow = page.locator(`[data-testid="proposal-row"][data-proposal-id="${pending.proposal_id}"]`);
     await expect(proposalRow).toHaveAttribute("data-state", "AWAITING_APPROVAL");
+    await navigate(page, "agents");
     const row = page.getByTestId("agent-row").filter({ hasText: agent.name });
+    await row.getByText("Manage agent", { exact: true }).click();
     await row.getByRole("button", { name: "Quarantine", exact: true }).click();
     await page.getByTestId("quarantine-dialog").getByRole("button", { name: "Quarantine agent", exact: true }).click();
     await expect(row).toContainText("QUARANTINED");
-    await expect(proposalRow).toHaveCount(0);
     await expect(row).toContainText("0.0002 BTC");
+    await navigate(page, "approvals");
+    await expect(proposalRow).toHaveCount(0);
     await expectReleased(request, token, pending.intent_id);
 
     const denied = await propose(request, agent);

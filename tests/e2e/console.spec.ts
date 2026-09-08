@@ -40,11 +40,23 @@ test.beforeAll(() => {
 const eventRows = (page: Page, type: string) =>
   page.locator(`[data-testid="timeline-event"][data-event-type="${type}"]`);
 
+const sections = ["overview", "approvals", "agents", "activity", "system"] as const;
+async function navigate(page: Page, section: (typeof sections)[number]): Promise<void> {
+  const tab = page.getByTestId(`nav-${section}`);
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-current", "page");
+}
+
 async function login(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByTestId("login-secret").fill(SECRET);
   await page.getByTestId("login-submit").click();
   await expect(page.getByTestId("account-status")).toBeVisible();
+}
+
+async function logout(page: Page): Promise<void> {
+  await page.getByTestId("workspace-menu").click();
+  await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
 }
 
 test("approve an exact candidate, watch it settle, export the receipt, reload without duplicates", async ({
@@ -54,6 +66,19 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
   await login(page);
   await expect(page.getByTestId("account-status")).toContainText("READY");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.getByTestId("account-status")).toContainText("READY");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  for (const section of sections) {
+    await navigate(page, section);
+    await expect(page.getByTestId("stop-button")).toBeInViewport();
+  }
+  await navigate(page, "overview");
   await expect(page.getByTestId("stop-button")).toBeVisible();
   await expect(page.getByTestId("available-quote")).toHaveText("100 USDT");
   await expect(page.getByTestId("cash-buffer-quote")).toHaveText("10 USDT");
@@ -91,6 +116,7 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   expect(decision.candidate.quantity).toBe("0.27");
 
   // Counterproposed is not approved: the queue shows the exact candidate awaiting a human.
+  await navigate(page, "approvals");
   const row = page
     .getByTestId("proposal-row")
     .filter({ hasText: decision.proposal_id.slice(0, 12) })
@@ -106,15 +132,29 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   await page.keyboard.press("Enter");
 
   // Approved is not submitted; accepted is not filled. The command settles and the fill events land on the timeline.
+  await navigate(page, "activity");
   const command = page.getByTestId("command-row").first();
   await expect(command).toHaveAttribute("data-state", "ACCEPTED");
   await expect(command).toContainText("ACCEPTED");
   await expect(command).not.toContainText("NOT FILLED");
   await expect(eventRows(page, "FILL_RECONCILED")).toHaveCount(1);
+  await navigate(page, "overview");
   await expect(page.getByTestId("unresolved")).toContainText("0");
 
-  // Rule names and financial values remain readable within the narrow receipt column.
+  await navigate(page, "activity");
+  await eventRows(page, "DECISION_RECORDED").first().getByRole("button", { name: "open receipt", exact: true }).click();
+  // The receipt leads with the human-readable request, adjustment and reason.
+  const receipt = page.locator("#receipt");
+  await expect(receipt).toContainText("Alpha asked to buy SOLUSDT");
+  await expect(receipt).toContainText("80 USDT");
+  await expect(receipt).toContainText("27 USDT");
+  await expect(receipt).toContainText("Portfolio concentration");
+  await expect(receipt.locator(".technical-evidence")).not.toHaveAttribute("open", "");
+
+  // Complete policy proof remains available on demand, with rule names and values readable in one line.
+  await receipt.locator(".technical-evidence > summary").click();
   const rule = page.locator(".checks tbody tr").first().locator("td").nth(1).locator(".mono");
+  await expect(rule).toBeVisible();
   const ruleLines = await rule.evaluate(
     (element) =>
       element.getBoundingClientRect().height /
@@ -130,6 +170,7 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   expect((await download).suggestedFilename()).toMatch(/^receipt-.*\.json$/);
 
   const runDownload = page.waitForEvent("download");
+  await page.getByTestId("workspace-menu").click();
   await page.getByTestId("export-run").click();
   const exported = await runDownload;
   expect(exported.suggestedFilename()).toMatch(/^moneykernel-run-.*\.json$/);
@@ -146,23 +187,33 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   // T-53: a reload catches up from the durable log without duplicating committed events.
   await page.reload();
   await expect(page.getByTestId("account-status")).toBeVisible();
+  await navigate(page, "activity");
   await expect(eventRows(page, "FILL_RECONCILED")).toHaveCount(1);
   await expect(eventRows(page, "COMMAND_ARMED")).toHaveCount(1);
 });
 
-test("mode and stop remain visible at tablet and phone widths with keyboard dialog controls", async ({ page }) => {
+test("Overview keeps administration separate and navigation preserves mode and Stop at tablet and phone widths", async ({
+  page,
+}) => {
   test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
   await login(page);
+  await expect(page.getByTestId("nav-overview")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#agent-name")).toHaveCount(0);
+  await expect(page.locator("#lease-budget")).toHaveCount(0);
+  await expect(page.locator("#policy")).toHaveCount(0);
   for (const width of [1024, 390]) {
     await page.setViewportSize({ width, height: 844 });
-    const size = await page.locator("html").evaluate((element) => ({
-      content: element.scrollWidth,
-      viewport: element.clientWidth,
-    }));
-    expect(size.content).toBeLessThanOrEqual(size.viewport);
-    await page.locator(".footer").scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("stop-button")).toBeInViewport();
-    await expect(page.locator(".topbar").getByText("REPLAY · SYNTHETIC FIXTURE", { exact: true })).toBeInViewport();
+    for (const section of sections) {
+      await navigate(page, section);
+      const size = await page.locator("html").evaluate((element) => ({
+        content: element.scrollWidth,
+        viewport: element.clientWidth,
+      }));
+      expect(size.content).toBeLessThanOrEqual(size.viewport);
+      await page.locator(".footer").scrollIntoViewIfNeeded();
+      await expect(page.getByTestId("stop-button")).toBeInViewport();
+      await expect(page.locator(".topbar").getByText("REPLAY · SYNTHETIC FIXTURE", { exact: true })).toBeInViewport();
+    }
     await page.getByTestId("stop-button").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("stop-confirm")).toBeInViewport();
@@ -191,7 +242,7 @@ test("stop is always available and resume is readiness-gated", async ({ page }) 
 test("logout revokes the server session and a reload stays logged out", async ({ page }) => {
   test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
   await login(page);
-  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await logout(page);
   await expect(page.getByTestId("login-submit")).toBeVisible();
   const session = await page.request.get("/v1/auth/session");
   expect(session.status()).toBe(401);
@@ -206,12 +257,12 @@ test("failed logout keeps the session visible until the operator retries", async
     if (route.request().method() === "DELETE") await route.abort("connectionfailed");
     else await route.continue();
   });
-  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await logout(page);
   await expect(page.getByText("Log out failed", { exact: true })).toBeVisible();
   await expect(page.getByTestId("account-status")).toBeVisible();
   expect((await page.request.get("/v1/auth/session")).status()).toBe(200);
   await page.unroute("**/v1/auth/session");
-  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await logout(page);
   await expect(page.getByTestId("login-submit")).toBeVisible();
   expect((await page.request.get("/v1/auth/session")).status()).toBe(401);
 });

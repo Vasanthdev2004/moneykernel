@@ -1,15 +1,12 @@
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Download, Ellipsis, LogOut, Pause, Play, RefreshCw } from "lucide-react";
 import { fmtDuration } from "../format.ts";
 import type { StreamStatus } from "../hooks.ts";
-import { integrationState, modeBadge } from "../states.ts";
-import type { IntegrationKey, StatusResponse } from "../types.ts";
+import { modeBadge, accountStatus as presentAccountStatus } from "../states.ts";
+import { ThemeToggle } from "../theme.tsx";
+import type { StatusResponse } from "../types.ts";
+import { Brand } from "./Brand.tsx";
 import { Badge } from "./common.tsx";
-
-const INTEGRATIONS: ReadonlyArray<[IntegrationKey, string, string]> = [
-  ["agent_os_mcp", "MCP", "Agent OS MCP"],
-  ["market_data", "MARKET", "Market data"],
-  ["execution", "EXEC", "Execution"],
-  ["model", "MODEL", "Model"],
-];
 
 export function TopBar({
   status,
@@ -42,66 +39,39 @@ export function TopBar({
 }) {
   const mode = modeBadge(status?.mode ?? null);
   const accountStatus = status?.account.status ?? null;
+  const account = presentAccountStatus(accountStatus);
   const stream =
     streamStatus === "live"
-      ? { tone: "neutral" as const, glyph: "●", label: "live" }
+      ? { tone: "neutral" as const, glyph: "●", label: "Live" }
       : streamStatus === "reconnecting"
-        ? { tone: "amber" as const, glyph: "↻", label: "reconnecting" }
+        ? { tone: "amber" as const, glyph: "↻", label: "Reconnecting" }
         : streamStatus === "loading"
-          ? { tone: "muted" as const, glyph: "…", label: "loading events" }
-          : { tone: "muted" as const, glyph: "○", label: "stream off" };
+          ? { tone: "muted" as const, glyph: "…", label: "Loading events" }
+          : { tone: "muted" as const, glyph: "○", label: "Stream off" };
 
   return (
     <header className="topbar">
       <div className="topbar-brand">
-        <span className="brand">
-          Money<span className="brand-accent">Kernel</span>
-        </span>
+        <Brand />
         <Badge tone={mode.tone} glyph={mode.glyph} className="mode-badge" title="Execution mode and provenance">
           {mode.label}
         </Badge>
       </div>
-      <section className="topbar-integrations" aria-label="Integration state">
-        {INTEGRATIONS.map(([key, short, full]) => {
-          const entry = status?.integration[key];
-          const presentation = entry ? integrationState(entry.state) : null;
-          return presentation ? (
-            <Badge
-              key={key}
-              tone={presentation.tone}
-              glyph={presentation.glyph}
-              title={`${full}: ${entry?.detail ?? ""}`}
-            >
-              {short} · {presentation.label}
-            </Badge>
-          ) : (
-            <Badge key={key} tone="muted" glyph="–" title={full}>
-              {short} · unknown
-            </Badge>
-          );
-        })}
-      </section>
       <div className="topbar-controls">
-        <span className="stream-indicator" title="Event stream">
+        <span className="stream-indicator" title="Event stream" aria-live="polite">
           <Badge tone={stream.tone} glyph={stream.glyph}>
             {stream.label}
           </Badge>
         </span>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={onExport}
-          data-testid="export-run"
-          title="Download the sanitized run export for pnpm verify:receipt"
+        <Badge
+          tone={account.tone}
+          glyph={account.glyph}
+          title={account.note ?? "Account status"}
+          testId="account-status"
+          className="topbar-account"
         >
-          Export run
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onRefresh} disabled={refreshing}>
-          {refreshing ? "Refreshing…" : "Refresh"}
-          {lastRefreshAt !== null && (
-            <span className="muted small"> · {fmtDuration(Math.max(0, now - lastRefreshAt))} ago</span>
-          )}
-        </button>
+          {account.label}
+        </Badge>
         <button
           type="button"
           className="btn btn-danger"
@@ -110,27 +80,64 @@ export function TopBar({
           disabled={stopInFlight}
           aria-label="Stop new orders"
         >
-          <span className="glyph" aria-hidden="true">
-            ▮▮
-          </span>{" "}
-          {stopInFlight ? "STOPPING…" : "STOP NEW ORDERS"}
+          <Pause size={15} aria-hidden="true" />
+          {stopInFlight ? "Stopping…" : "Stop new orders"}
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn btn-ghost resume-button"
           data-testid="resume-button"
           onClick={onResume}
           disabled={resumeInFlight || accountStatus === "READY"}
           title={accountStatus === "READY" ? "Account is already READY" : "Resume requires zero outstanding commands"}
         >
+          <Play size={14} aria-hidden="true" />
           {resumeInFlight ? "Resuming…" : "Resume"}
         </button>
-        <span className="operator muted small" title="Operator session">
-          {operatorId}
-        </span>
-        <button type="button" className="btn btn-ghost" onClick={onLogout}>
-          Log out
-        </button>
+        <ThemeToggle />
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              className="btn btn-ghost workspace-trigger"
+              aria-label="Workspace menu"
+              title="Workspace menu"
+              data-testid="workspace-menu"
+            >
+              <Ellipsis size={20} aria-hidden="true" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content className="workspace-menu" align="end" sideOffset={8} collisionPadding={12}>
+              <DropdownMenu.Label className="menu-label">
+                <span>Operator</span>
+                <strong>{operatorId}</strong>
+              </DropdownMenu.Label>
+              <DropdownMenu.Separator className="menu-separator" />
+              <DropdownMenu.Item
+                className="menu-item"
+                onSelect={onExport}
+                data-testid="export-run"
+                title="Download the sanitized run export for pnpm verify:receipt"
+              >
+                <Download size={16} aria-hidden="true" />
+                Export run
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className="menu-item" onSelect={onRefresh} disabled={refreshing}>
+                <RefreshCw size={16} aria-hidden="true" />
+                {refreshing ? "Refreshing…" : "Refresh"}
+                {lastRefreshAt !== null && (
+                  <span className="muted small">{fmtDuration(Math.max(0, now - lastRefreshAt))} ago</span>
+                )}
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator className="menu-separator" />
+              <DropdownMenu.Item className="menu-item" onSelect={onLogout}>
+                <LogOut size={16} aria-hidden="true" />
+                Log out
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </div>
     </header>
   );

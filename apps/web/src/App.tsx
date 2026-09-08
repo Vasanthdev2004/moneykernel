@@ -1,3 +1,4 @@
+import * as Tabs from "@radix-ui/react-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient, describeError, type KernelClient, KernelError, type RestoredSession } from "./api.ts";
 import { AgentsPanel, type AgentTokenReveal } from "./components/AgentsPanel.tsx";
@@ -9,13 +10,14 @@ import { DecisionQueue } from "./components/DecisionQueue.tsx";
 import { IncidentsPanel } from "./components/IncidentsPanel.tsx";
 import { IntegrationPanel } from "./components/IntegrationPanel.tsx";
 import { Login } from "./components/Login.tsx";
+import { Overview } from "./components/Overview.tsx";
 import { PolicyPanel } from "./components/PolicyPanel.tsx";
 import { ReceiptView, type Selection } from "./components/ReceiptView.tsx";
-import { StatusStrip } from "./components/StatusStrip.tsx";
 import { Timeline } from "./components/Timeline.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { UnknownBanner } from "./components/UnknownBanner.tsx";
-import { downloadJson, type EventRefs, shortId } from "./format.ts";
+import { WorkspaceNavigation, type WorkspacePage, workspacePages } from "./components/WorkspaceNavigation.tsx";
+import { downloadJson, type EventRefs, eventRefs, shortId } from "./format.ts";
 import { ACTION, mergeEvents, useDetail, useEventStream, useKernelData, useMutationRunner, useNow } from "./hooks.ts";
 import { incidentSeverity } from "./states.ts";
 import type {
@@ -293,6 +295,30 @@ export function App() {
   const now = useNow(1000);
   const serverNow = now + snapshot.serverOffsetMs;
 
+  const [page, setPage] = useState<WorkspacePage>("overview");
+  const [verticalNavigation, setVerticalNavigation] = useState(false);
+  const navigate = (next: WorkspacePage): void => {
+    setPage(next);
+    window.history.replaceState(null, "", `#${next}`);
+  };
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1000px)");
+    const update = () => setVerticalNavigation(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const followAnchor = () => {
+      const anchor = window.location.hash.slice(1);
+      if (workspacePages.some((item) => item.id === anchor)) setPage(anchor as WorkspacePage);
+      else if (["commands", "incidents", "timeline", "receipt"].includes(anchor)) setPage("activity");
+      else if (["queue", "conflicts"].includes(anchor)) setPage("approvals");
+    };
+    window.addEventListener("hashchange", followAnchor);
+    return () => window.removeEventListener("hashchange", followAnchor);
+  }, []);
+
   const [selection, setSelection] = useState<Selection | null>(null);
   const detailKey = loggedIn && selection !== null ? `${selection.kind}:${selection.id}` : null;
   const detail = useDetail(client, detailKey, fetchDocument);
@@ -335,6 +361,7 @@ export function App() {
 
   useEffect(() => {
     if (loggedIn) return;
+    setPage("overview");
     setEvents([]);
     setSelection(null);
     setExpandedCommandId(null);
@@ -543,7 +570,8 @@ export function App() {
     if (refs.proposal_id !== null) setSelection({ kind: "proposal", id: refs.proposal_id });
     else if (refs.intent_id !== null) setSelection({ kind: "intent", id: refs.intent_id });
     else return;
-    document.getElementById("receipt")?.scrollIntoView({ block: "nearest" });
+    navigate("activity");
+    window.requestAnimationFrame(() => document.getElementById("receipt")?.scrollIntoView({ block: "nearest" }));
   };
 
   const exportReceipt = (): void => {
@@ -565,8 +593,26 @@ export function App() {
   const inFlightCommands = snapshot.overview?.in_flight_commands ?? snapshot.status?.in_flight_commands ?? 0;
   const unresolvedCommands = snapshot.overview?.unresolved_commands ?? snapshot.status?.unresolved_commands ?? 0;
 
+  const currentPage = workspacePages.find((item) => item.id === page) ?? workspacePages[0];
+  const receiptPanel =
+    selection !== null ? (
+      <ReceiptView
+        selection={selection}
+        doc={detail.data}
+        loading={detail.loading}
+        error={detail.error}
+        serverNow={serverNow}
+        agentsById={agentsById}
+        onExport={exportReceipt}
+      />
+    ) : null;
   return (
-    <div className="console">
+    <Tabs.Root
+      className="console"
+      value={page}
+      onValueChange={(value) => navigate(value as WorkspacePage)}
+      orientation={verticalNavigation ? "vertical" : "horizontal"}
+    >
       <TopBar
         status={snapshot.status}
         streamStatus={stream.status}
@@ -594,7 +640,6 @@ export function App() {
         }}
         onLogout={() => void logout()}
       />
-      <StatusStrip status={snapshot.status} overview={snapshot.overview} />
       {Object.keys(snapshot.errors).length > 0 && (
         <p className="banner banner-error" role="alert">
           <span className="glyph" aria-hidden="true">
@@ -609,103 +654,138 @@ export function App() {
         </p>
       )}
       <UnknownBanner unknownCount={unknownCount} accountStatus={account?.status ?? null} />
-      <main className="columns">
-        <div className="column column-left">
-          <AgentsPanel
-            agents={snapshot.agents}
-            leases={snapshot.leases}
-            quoteAsset={quoteAsset}
-            serverNow={serverNow}
-            tokenReveal={tokenReveal}
-            onDismissToken={() => setTokenReveal(null)}
-            onQuarantine={(agent) => setDialog({ kind: "quarantine", agent })}
-            onRevokeLease={(lease) => setDialog({ kind: "revoke", lease })}
-            onRegister={registerAgent}
-            onIssueLease={issueLease}
-            isInFlight={runner.isInFlight}
-            error={snapshot.errors.agents ?? snapshot.errors.leases}
-          />
-          <IntegrationPanel status={snapshot.status} serverNow={serverNow} error={snapshot.errors.status} />
-        </div>
-        <div className="column column-center">
-          <DecisionQueue
-            proposals={proposals}
-            agentsById={agentsById}
-            quoteAsset={quoteAsset}
-            serverNow={serverNow}
-            selectedProposalId={selectedProposal?.proposal_id ?? null}
-            onSelect={(proposalId) => setSelection({ kind: "proposal", id: proposalId })}
-            error={snapshot.errors.proposals}
-            loaded={snapshot.proposals !== null}
-          >
-            {selectedProposal !== undefined && (
-              <ApprovalDrawer
-                key={`${selectedProposal.proposal_id}:${selectedProposal.revision}:${selectedProposal.proposal_hash}`}
-                proposal={selectedProposal}
-                doc={detail.data}
-                loading={detail.loading}
-                error={detail.error}
-                agentName={agentsById.get(selectedProposal.agent_id)?.name ?? shortId(selectedProposal.agent_id)}
-                quoteAsset={quoteAsset}
-                serverNow={serverNow}
-                policyVersion={snapshot.policy?.version ?? null}
-                approveInFlight={runner.isInFlight(
-                  ACTION.approve(selectedProposal.proposal_id, selectedProposal.revision),
-                )}
-                rejectInFlight={runner.isInFlight(ACTION.reject(selectedProposal.proposal_id))}
-                onApprove={(proposal) => void approve(proposal)}
-                onReject={(proposal, reason) => void reject(proposal, reason)}
-                onClose={() => setSelection(null)}
-              />
-            )}
-            {selection?.kind === "proposal" && selectedProposal === undefined && (
-              <p className="muted small drawer-note">
-                Proposal <Mono>{shortId(selection.id)}</Mono> is no longer in the pre-arm queue; its receipt and linkage
-                stay available on the right.
-              </p>
-            )}
-          </DecisionQueue>
-          <ConflictPanel
-            conflicts={conflicts}
-            proposalsById={proposalsById}
-            agentsById={agentsById}
-            quoteAsset={quoteAsset}
-            onSelect={(conflict, proposalId) => void selectConflict(conflict, proposalId)}
-            onRejectBoth={(conflict) => setDialog({ kind: "reject-both", conflict })}
-            isInFlight={runner.isInFlight}
-          />
-          <CommandsPanel
-            commands={snapshot.commands}
-            expandedId={expandedCommandId}
-            onToggle={(id) => setExpandedCommandId((prev) => (prev === id ? null : id))}
-            detail={commandDetail.data}
-            detailLoading={commandDetail.loading}
-            detailError={commandDetail.error}
-            onReconcile={(command) => void reconcile(command)}
-            isInFlight={runner.isInFlight}
-            error={snapshot.errors.commands}
-          />
-          <IncidentsPanel incidents={snapshot.incidents} agentsById={agentsById} error={snapshot.errors.incidents} />
-        </div>
-        <div className="column column-right">
-          <ReceiptView
-            selection={selection}
-            doc={detail.data}
-            loading={detail.loading}
-            error={detail.error}
-            serverNow={serverNow}
-            agentsById={agentsById}
-            onExport={exportReceipt}
-          />
-          <PolicyPanel policy={snapshot.policy} missing={snapshot.policyMissing} error={snapshot.errors.policy} />
-        </div>
-      </main>
-      <Timeline events={events} streamStatus={stream.status} lastSeq={stream.lastSeq} onOpen={openFromTimeline} />
-      <footer className="footer muted small">
-        MoneyKernel console ·{" "}
-        {snapshot.status ? `engine ${snapshot.status.engine_version}` : "kernel status not loaded"} · session expires{" "}
-        <Mono>{session.expiresAt}</Mono> · every decision here is a kernel API call; the browser holds no authority.
-      </footer>
+      <div className="workspace-layout">
+        <WorkspaceNavigation
+          page={page}
+          pending={snapshot.overview ? snapshot.overview.pending_approvals + snapshot.overview.open_conflicts : null}
+        />
+        <main className="workspace-main">
+          <div className="page-heading">
+            <div>
+              <h1>{currentPage.label}</h1>
+              <p>{currentPage.description}</p>
+            </div>
+            <span className="workspace-account" title={account?.alias}>
+              {account?.environment === "REPLAY" ? "Demo workspace" : (account?.alias ?? "Connecting…")}
+            </span>
+          </div>
+          <Tabs.Content value="overview">
+            <Overview
+              overview={snapshot.overview}
+              status={snapshot.status}
+              agents={snapshot.agents}
+              proposals={proposals}
+              events={events}
+              serverNow={serverNow}
+              onNavigate={navigate}
+              onProposal={(id) => {
+                setSelection({ kind: "proposal", id });
+                navigate("approvals");
+              }}
+              onEvent={(event) => openFromTimeline(eventRefs(event))}
+            />
+          </Tabs.Content>
+          <Tabs.Content value="approvals" className="page-stack">
+            <DecisionQueue
+              proposals={proposals}
+              agentsById={agentsById}
+              quoteAsset={quoteAsset}
+              serverNow={serverNow}
+              selectedProposalId={selectedProposal?.proposal_id ?? null}
+              onSelect={(proposalId) => setSelection({ kind: "proposal", id: proposalId })}
+              error={snapshot.errors.proposals}
+              loaded={snapshot.proposals !== null}
+            >
+              {selectedProposal !== undefined && (
+                <ApprovalDrawer
+                  key={`${selectedProposal.proposal_id}:${selectedProposal.revision}:${selectedProposal.proposal_hash}`}
+                  proposal={selectedProposal}
+                  doc={detail.data}
+                  loading={detail.loading}
+                  error={detail.error}
+                  agentName={agentsById.get(selectedProposal.agent_id)?.name ?? shortId(selectedProposal.agent_id)}
+                  quoteAsset={quoteAsset}
+                  serverNow={serverNow}
+                  policyVersion={snapshot.policy?.version ?? null}
+                  approveInFlight={runner.isInFlight(
+                    ACTION.approve(selectedProposal.proposal_id, selectedProposal.revision),
+                  )}
+                  rejectInFlight={runner.isInFlight(ACTION.reject(selectedProposal.proposal_id))}
+                  onApprove={(proposal) => void approve(proposal)}
+                  onReject={(proposal, reason) => void reject(proposal, reason)}
+                  onClose={() => setSelection(null)}
+                />
+              )}
+              {selection?.kind === "proposal" && selectedProposal === undefined && (
+                <p className="muted small drawer-note">
+                  Proposal <Mono>{shortId(selection.id)}</Mono> is no longer in the pre-arm queue; its receipt and
+                  linkage remain available below.
+                </p>
+              )}
+            </DecisionQueue>
+            <ConflictPanel
+              conflicts={conflicts}
+              proposalsById={proposalsById}
+              agentsById={agentsById}
+              quoteAsset={quoteAsset}
+              onSelect={(conflict, proposalId) => void selectConflict(conflict, proposalId)}
+              onRejectBoth={(conflict) => setDialog({ kind: "reject-both", conflict })}
+              isInFlight={runner.isInFlight}
+            />
+            {receiptPanel}
+          </Tabs.Content>
+          <Tabs.Content value="agents" className="page-stack">
+            <AgentsPanel
+              agents={snapshot.agents}
+              leases={snapshot.leases}
+              quoteAsset={quoteAsset}
+              serverNow={serverNow}
+              tokenReveal={tokenReveal}
+              onDismissToken={() => setTokenReveal(null)}
+              onQuarantine={(agent) => setDialog({ kind: "quarantine", agent })}
+              onRevokeLease={(lease) => setDialog({ kind: "revoke", lease })}
+              onRegister={registerAgent}
+              onIssueLease={issueLease}
+              isInFlight={runner.isInFlight}
+              error={snapshot.errors.agents ?? snapshot.errors.leases}
+            />
+          </Tabs.Content>
+          <Tabs.Content value="activity" className="page-stack">
+            <Timeline
+              events={events}
+              streamStatus={stream.status}
+              lastSeq={stream.lastSeq}
+              serverNow={serverNow}
+              onOpen={openFromTimeline}
+            />
+            {receiptPanel}
+            <CommandsPanel
+              commands={snapshot.commands}
+              expandedId={expandedCommandId}
+              onToggle={(id) => setExpandedCommandId((prev) => (prev === id ? null : id))}
+              detail={commandDetail.data}
+              detailLoading={commandDetail.loading}
+              detailError={commandDetail.error}
+              onReconcile={(command) => void reconcile(command)}
+              isInFlight={runner.isInFlight}
+              error={snapshot.errors.commands}
+            />
+            <IncidentsPanel incidents={snapshot.incidents} agentsById={agentsById} error={snapshot.errors.incidents} />
+          </Tabs.Content>
+          <Tabs.Content value="system" className="page-stack">
+            <IntegrationPanel status={snapshot.status} serverNow={serverNow} error={snapshot.errors.status} />
+            <PolicyPanel policy={snapshot.policy} missing={snapshot.policyMissing} error={snapshot.errors.policy} />
+            <p className="system-meta">
+              Account <Mono>{account?.alias ?? "unknown"}</Mono> · epoch {account?.epoch ?? "—"} · session expires{" "}
+              <Mono>{session.expiresAt}</Mono>
+            </p>
+          </Tabs.Content>
+          <footer className="footer muted small">
+            MoneyKernel · {snapshot.status ? `engine ${snapshot.status.engine_version}` : "Connecting to kernel"} ·
+            exact approval for every trade
+          </footer>
+        </main>
+      </div>
 
       {dialog?.kind === "stop" && (
         <StopDialog
@@ -761,6 +841,6 @@ export function App() {
         />
       )}
       <Toasts toasts={toasts} onDismiss={dismissToast} />
-    </div>
+    </Tabs.Root>
   );
 }

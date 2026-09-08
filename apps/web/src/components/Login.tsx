@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { describeError, type KernelClient } from "../api.ts";
+import { ThemeToggle } from "../theme.tsx";
 import type { SessionResponse } from "../types.ts";
+import { Brand } from "./Brand.tsx";
 import { Badge } from "./common.tsx";
 
 type Reachability = "checking" | "reachable" | "unreachable";
@@ -50,25 +52,19 @@ export function Login({
 
   return (
     <main className="login">
+      <ThemeToggle className="login-theme" />
       <div className="login-card">
-        <h1 className="brand">
-          Money<span className="brand-accent">Kernel</span>
+        <h1 className="login-title">
+          <Brand />
         </h1>
-        <p className="muted">Operator console. Renders kernel state and provenance; holds no financial authority.</p>
-        <p className="login-reach">
-          Kernel:{" "}
+        <p className="muted">Review agent requests and approve the trades you choose.</p>
+        <p className="login-reach" role="status">
           {reachability === "checking" ? (
-            <Badge tone="muted" glyph="…">
-              checking
-            </Badge>
+            <Badge tone="muted">Checking connection…</Badge>
           ) : reachability === "reachable" ? (
-            <Badge tone="neutral" glyph="●">
-              reachable
-            </Badge>
+            <Badge tone="neutral">Kernel reachable</Badge>
           ) : (
-            <Badge tone="amber" glyph="○">
-              not reachable
-            </Badge>
+            <Badge tone="amber">Kernel unavailable</Badge>
           )}
         </p>
         <form onSubmit={(event) => void submit(event)} className="login-form">
@@ -89,20 +85,16 @@ export function Login({
             className="btn btn-primary"
             disabled={busy || secret.length === 0}
           >
-            {busy ? "Opening session…" : "Open operator session"}
+            {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
         {error !== null && (
           <p className="error-note" role="alert">
-            <span className="glyph" aria-hidden="true">
-              ✕
-            </span>
             {error}
           </p>
         )}
         <p className="muted small">
-          Not connected. No session means the kernel's state is not shown; it does not mean the account is empty. The
-          secret is exchanged for a short-lived HttpOnly session cookie and is never stored in the browser.
+          Account details appear after you sign in. Your secret is not saved in the browser.
         </p>
       </div>
     </main>
