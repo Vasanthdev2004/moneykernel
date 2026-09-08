@@ -53,6 +53,8 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   await login(page);
   await expect(page.getByTestId("account-status")).toContainText("READY");
   await expect(page.getByTestId("stop-button")).toBeVisible();
+  await expect(page.getByTestId("available-quote")).toHaveText("100 USDT");
+  await expect(page.getByTestId("cash-buffer-quote")).toHaveText("10 USDT");
 
   // The agent proposes through its own API; the console never holds agent tokens.
   const alpha = seed.agents.find((a) => a.fixture_agent_id === "agent_alpha");
@@ -95,15 +97,28 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   await expect(row).toContainText("0.27");
   await row.click();
   await expect(page.getByTestId("approve-button")).toBeDisabled();
-  await page.getByTestId("approve-confirm").check();
-  await page.getByTestId("approve-button").click();
+  await page.getByTestId("approve-confirm").focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("approve-confirm")).toBeChecked();
+  await page.getByTestId("approve-button").focus();
+  await page.keyboard.press("Enter");
 
   // Approved is not submitted; accepted is not filled. The command settles and the fill events land on the timeline.
   const command = page.getByTestId("command-row").first();
   await expect(command).toHaveAttribute("data-state", "ACCEPTED");
-  await expect(command).toContainText("NOT FILLED");
+  await expect(command).toContainText("ACCEPTED");
+  await expect(command).not.toContainText("NOT FILLED");
   await expect(eventRows(page, "FILL_RECONCILED")).toHaveCount(1);
   await expect(page.getByTestId("unresolved")).toContainText("0");
+
+  // Rule names and financial values remain readable within the narrow receipt column.
+  const rule = page.locator(".checks tbody tr").first().locator("td").nth(1).locator(".mono");
+  const ruleLines = await rule.evaluate(
+    (element) =>
+      element.getBoundingClientRect().height /
+      Number.parseFloat(element.ownerDocument.defaultView?.getComputedStyle(element).lineHeight ?? "0"),
+  );
+  expect(ruleLines).toBeLessThanOrEqual(1.2);
 
   // Evidence for the submission package: the real console after a settled fill (prd.md 23.4).
   await page.screenshot({ path: "docs/evidence/console-after-settlement.png", fullPage: true });
@@ -117,6 +132,28 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
   await expect(page.getByTestId("account-status")).toBeVisible();
   await expect(eventRows(page, "FILL_RECONCILED")).toHaveCount(1);
   await expect(eventRows(page, "COMMAND_ARMED")).toHaveCount(1);
+});
+
+test("mode and stop remain visible at tablet and phone widths with keyboard dialog controls", async ({ page }) => {
+  test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
+  await login(page);
+  for (const width of [1024, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const size = await page.locator("html").evaluate((element) => ({
+      content: element.scrollWidth,
+      viewport: element.clientWidth,
+    }));
+    expect(size.content).toBeLessThanOrEqual(size.viewport);
+    await page.locator(".footer").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("stop-button")).toBeInViewport();
+    await expect(page.locator(".topbar").getByText("REPLAY · SYNTHETIC FIXTURE", { exact: true })).toBeInViewport();
+    await page.getByTestId("stop-button").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("stop-confirm")).toBeInViewport();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("stop-dialog")).not.toBeVisible();
+    await expect(page.getByTestId("stop-button")).toBeFocused();
+  }
 });
 
 test("stop is always available and resume is readiness-gated", async ({ page }) => {
@@ -133,4 +170,32 @@ test("stop is always available and resume is readiness-gated", async ({ page }) 
   await expect(resumeConfirm).toBeEnabled();
   await resumeConfirm.click();
   await expect(page.getByTestId("account-status")).toContainText("READY");
+});
+
+test("logout revokes the server session and a reload stays logged out", async ({ page }) => {
+  test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
+  await login(page);
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(page.getByTestId("login-submit")).toBeVisible();
+  const session = await page.request.get("/v1/auth/session");
+  expect(session.status()).toBe(401);
+  await page.reload();
+  await expect(page.getByTestId("login-submit")).toBeVisible();
+});
+
+test("failed logout keeps the session visible until the operator retries", async ({ page }) => {
+  test.skip(SECRET.length === 0, "OPERATOR_BOOTSTRAP_SECRET missing");
+  await login(page);
+  await page.route("**/v1/auth/session", async (route) => {
+    if (route.request().method() === "DELETE") await route.abort("connectionfailed");
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(page.getByText("Log out failed", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("account-status")).toBeVisible();
+  expect((await page.request.get("/v1/auth/session")).status()).toBe(200);
+  await page.unroute("**/v1/auth/session");
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(page.getByTestId("login-submit")).toBeVisible();
+  expect((await page.request.get("/v1/auth/session")).status()).toBe(401);
 });

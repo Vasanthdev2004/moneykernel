@@ -96,7 +96,7 @@ export function proposalState(state: ProposalState | string): Presentation {
         tone: "neutral",
         glyph: "▷",
         label: "COMMAND CREATED",
-        note: "approved, awaiting dispatch (not submitted, not filled)",
+        note: "approved command exists; see command and order for execution status",
       };
     case "RECEIVED":
       return { tone: "muted", glyph: "·", label: "RECEIVED" };
@@ -118,9 +118,19 @@ export function commandState(state: CommandState | string): Presentation {
     case "READY":
       return { tone: "neutral", glyph: "○", label: "READY", note: "not armed" };
     case "ARMED":
-      return { tone: "amber", glyph: "◉", label: "ARMED", note: "sent once; venue outcome pending" };
+      return {
+        tone: "amber",
+        glyph: "◉",
+        label: "ARMED",
+        note: "durable arm recorded; dispatch or venue response may be pending",
+      };
     case "ACCEPTED":
-      return { tone: "neutral", glyph: "◎", label: "ACCEPTED · NOT FILLED", note: "venue accepted the order" };
+      return {
+        tone: "neutral",
+        glyph: "◎",
+        label: "ACCEPTED",
+        note: "venue accepted the order; fill status is shown separately",
+      };
     case "REJECTED_CONFIRMED":
       return { tone: "red", glyph: "✕", label: "REJECTED · CONFIRMED" };
     case "OUTCOME_UNKNOWN":

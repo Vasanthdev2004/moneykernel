@@ -41,7 +41,7 @@ export function StatusStrip({
         </dd>
       </div>
       <div className="strip-item">
-        <dt>Available</dt>
+        <dt title="Owned cash minus reservations and the policy cash buffer">Available</dt>
         <dd>
           <Mono className="data">
             <span data-testid="available-quote">{overview ? amount(overview.available_quote, quote) : "–"}</span>
@@ -53,6 +53,14 @@ export function StatusStrip({
         <dd>
           <Mono className="data">
             <span data-testid="reserved-quote">{overview ? amount(overview.reserved_quote, quote) : "–"}</span>
+          </Mono>
+        </dd>
+      </div>
+      <div className="strip-item">
+        <dt>Cash buffer</dt>
+        <dd>
+          <Mono className="data">
+            <span data-testid="cash-buffer-quote">{overview ? amount(overview.cash_buffer_quote, quote) : "–"}</span>
           </Mono>
         </dd>
       </div>

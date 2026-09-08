@@ -398,8 +398,11 @@ export function App() {
   const logout = async (): Promise<void> => {
     try {
       await client.logout();
-    } catch {
-      // The session is dropped locally regardless; the cookie expires server-side.
+    } catch (error) {
+      if (!(error instanceof KernelError && error.status === 401)) {
+        pushToast("error", "Log out failed", `${describeError(error)}. Retry to end the server session.`);
+        return;
+      }
     }
     csrfRef.current = null;
     setSession(null);

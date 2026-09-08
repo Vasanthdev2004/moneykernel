@@ -110,7 +110,9 @@ export function CommandsPanel({
     <Panel id="commands" title="Commands" subtitle={`${commands.length} total · ${outstanding} unreconciled`}>
       <ErrorNote message={error} prefix="commands" />
       {sorted.length === 0 ? (
-        <Empty>No commands. A command exists only after an approval is consumed at dispatch.</Empty>
+        <Empty>
+          No commands. Operator approval creates a READY command; the approval is consumed only when it arms.
+        </Empty>
       ) : (
         <ul className="list">
           {sorted.map((command) => {
