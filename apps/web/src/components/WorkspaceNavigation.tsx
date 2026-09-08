@@ -14,7 +14,7 @@ export const workspacePages = [
   {
     id: "activity",
     label: "Activity",
-    description: "Follow every decision from request to settlement.",
+    description: "See what happened and why MoneyKernel made each decision.",
     icon: Activity,
   },
   {

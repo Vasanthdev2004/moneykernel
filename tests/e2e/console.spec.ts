@@ -143,8 +143,18 @@ test("approve an exact candidate, watch it settle, export the receipt, reload wi
 
   await navigate(page, "activity");
   await eventRows(page, "DECISION_RECORDED").first().getByRole("button", { name: "open receipt", exact: true }).click();
-  // Rule names and financial values remain readable in the selected receipt.
+  // The receipt leads with the human-readable request, adjustment and reason.
+  const receipt = page.locator("#receipt");
+  await expect(receipt).toContainText("Alpha asked to buy SOLUSDT");
+  await expect(receipt).toContainText("80 USDT");
+  await expect(receipt).toContainText("27 USDT");
+  await expect(receipt).toContainText("Portfolio concentration");
+  await expect(receipt.locator(".technical-evidence")).not.toHaveAttribute("open", "");
+
+  // Complete policy proof remains available on demand, with rule names and values readable in one line.
+  await receipt.locator(".technical-evidence > summary").click();
   const rule = page.locator(".checks tbody tr").first().locator("td").nth(1).locator(".mono");
+  await expect(rule).toBeVisible();
   const ruleLines = await rule.evaluate(
     (element) =>
       element.getBoundingClientRect().height /

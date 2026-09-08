@@ -1,28 +1,8 @@
 import { ArrowRight, Check, CircleDashed, Inbox } from "lucide-react";
-import { amount, describeSize, eventRefs, fmtAge } from "../format.ts";
+import { amount, describeSize, eventLabel, eventRefs, fmtAge } from "../format.ts";
 import type { Agent, AuditEvent, OverviewResponse, ProposalListItem, StatusResponse } from "../types.ts";
 import { StatusStrip } from "./StatusStrip.tsx";
 import type { WorkspacePage } from "./WorkspaceNavigation.tsx";
-
-const eventLabels: Record<string, string> = {
-  ACCOUNT_CREATED: "Account created",
-  ACCOUNT_RESUMED: "Account resumed",
-  ACCOUNT_PAUSED: "Account paused",
-  AGENT_REGISTERED: "Agent registered",
-  LEASE_ISSUED: "Spending lease issued",
-  LEASE_REVOKED: "Lease revoked",
-  POLICY_UPDATED: "Policy updated",
-  INTENT_RECEIVED: "Trade request received",
-  DECISION_RECORDED: "Request evaluated",
-  RESERVATION_CREATED: "Funds reserved",
-  RESERVATION_RELEASED: "Funds released",
-  INVENTORY_ASSIGNED: "Holdings assigned",
-  PROPOSAL_STATE_CHANGED: "Proposal updated",
-  COMMAND_CREATED: "Approved trade queued",
-  COMMAND_ARMED: "Trade armed",
-  FILL_RECONCILED: "Fill reconciled",
-  AGENT_QUARANTINED: "Agent quarantined",
-};
 
 export function Overview({
   overview,
@@ -204,9 +184,7 @@ export function Overview({
               return (
                 <li key={event.id}>
                   <CircleDashed size={18} aria-hidden="true" />
-                  <span className="recent-title">
-                    {eventLabels[event.type] ?? event.type.toLowerCase().replaceAll("_", " ")}
-                  </span>
+                  <span className="recent-title">{eventLabel(event.type)}</span>
                   <span className="muted small">{fmtAge(event.occurred_at, serverNow)}</span>
                   {canOpen && (
                     <button className="text-button" type="button" onClick={() => onEvent(event)}>

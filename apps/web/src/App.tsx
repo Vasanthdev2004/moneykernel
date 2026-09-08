@@ -751,6 +751,14 @@ export function App() {
             />
           </Tabs.Content>
           <Tabs.Content value="activity" className="page-stack">
+            <Timeline
+              events={events}
+              streamStatus={stream.status}
+              lastSeq={stream.lastSeq}
+              serverNow={serverNow}
+              onOpen={openFromTimeline}
+            />
+            {receiptPanel}
             <CommandsPanel
               commands={snapshot.commands}
               expandedId={expandedCommandId}
@@ -763,8 +771,6 @@ export function App() {
               error={snapshot.errors.commands}
             />
             <IncidentsPanel incidents={snapshot.incidents} agentsById={agentsById} error={snapshot.errors.incidents} />
-            <Timeline events={events} streamStatus={stream.status} lastSeq={stream.lastSeq} onOpen={openFromTimeline} />
-            {receiptPanel}
           </Tabs.Content>
           <Tabs.Content value="system" className="page-stack">
             <IntegrationPanel status={snapshot.status} serverNow={serverNow} error={snapshot.errors.status} />

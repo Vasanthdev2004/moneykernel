@@ -56,21 +56,29 @@ export function IncidentsPanel({
   const open = incidents.filter((incident) => incident.status === "OPEN").sort(byNewest);
   const resolved = incidents.filter((incident) => incident.status !== "OPEN").sort(byNewest);
   return (
-    <Panel id="incidents" title="Incidents" subtitle={`${open.length} open · ${resolved.length} resolved`}>
+    <Panel
+      id="incidents"
+      title="Safety issues"
+      subtitle={open.length === 0 ? "Nothing needs attention" : `${open.length} need attention`}
+    >
       <ErrorNote message={error} prefix="incidents" />
-      <p className="muted small prerequisites">
-        Recovery prerequisites — OUTCOME_UNKNOWN: reconcile the command (Commands panel), then resume. QUARANTINE:
-        acknowledge the incident in Resume; the agent stays quarantined until an operator reviews it. Resume always
-        requires zero outstanding commands.
-      </p>
       {open.length === 0 ? (
-        <Empty>No open incidents.</Empty>
+        <Empty>No open safety issues.</Empty>
       ) : (
-        <ul className="list">
-          {open.map((incident) => (
-            <IncidentRow key={incident.id} incident={incident} agentsById={agentsById} />
-          ))}
-        </ul>
+        <>
+          <ul className="list">
+            {open.map((incident) => (
+              <IncidentRow key={incident.id} incident={incident} agentsById={agentsById} />
+            ))}
+          </ul>
+          <details className="details recovery-guide">
+            <summary>How recovery works</summary>
+            <p className="muted small">
+              Reconcile any unknown command first. Quarantined agents stay blocked until you review the issue and
+              acknowledge it while resuming the account.
+            </p>
+          </details>
+        </>
       )}
       {resolved.length > 0 && (
         <details className="details">
