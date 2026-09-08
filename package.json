@@ -1,0 +1,45 @@
+{
+  "name": "moneykernel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic capital-control gateway for AI trading agents",
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "doctor": "node --env-file-if-exists=.env scripts/doctor.ts",
+    "db:migrate": "node --env-file-if-exists=.env packages/persistence/src/cli.ts up",
+    "db:status": "node --env-file-if-exists=.env packages/persistence/src/cli.ts status",
+    "dev": "pnpm --filter @moneykernel/kernel dev",
+    "dev:web": "pnpm --filter @moneykernel/web dev",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:property": "vitest run --project property",
+    "test:contracts": "vitest run --project contracts",
+    "test:integration": "vitest run --project integration",
+    "test:fault": "vitest run --project fault",
+    "test:e2e": "node scripts/not-implemented.ts test:e2e G5",
+    "build": "pnpm typecheck && pnpm --filter @moneykernel/web build",
+    "demo:seed": "node scripts/not-implemented.ts demo:seed G2",
+    "demo:replay": "node scripts/not-implemented.ts demo:replay G6",
+    "verify:receipt": "node scripts/not-implemented.ts verify:receipt G6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@types/node": "26.4.1",
+    "fast-check": "4.9.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "@moneykernel/contracts": "workspace:*",
+    "@moneykernel/domain": "workspace:*",
+    "@moneykernel/integrations": "workspace:*",
+    "@moneykernel/persistence": "workspace:*"
+  }
+}

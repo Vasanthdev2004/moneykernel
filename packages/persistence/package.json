@@ -1,0 +1,19 @@
+{
+  "name": "@moneykernel/persistence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PostgreSQL transactions, locks, repositories, and sequential SQL migrations.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

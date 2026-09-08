@@ -1,0 +1,7 @@
+{
+  "name": "@moneykernel/agents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Strategy runner: context consumption, bounded model calls, proposal generation. Holds no operator tokens or exchange access.",
+  "type": "module"
+}

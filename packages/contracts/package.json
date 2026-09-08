@@ -1,0 +1,16 @@
+{
+  "name": "@moneykernel/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Request/response/event schemas, reason codes, canonicalization, and adapter interfaces. No side effects.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}

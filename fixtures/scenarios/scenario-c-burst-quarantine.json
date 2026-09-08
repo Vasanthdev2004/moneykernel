@@ -1,0 +1,62 @@
+{
+  "scenario_id": "scenario-c-burst-quarantine",
+  "prd_reference": "prd.md 27.3 and 10.4",
+  "description": "The scripted chaos identity sends 11 distinct authenticated intents within one virtual second. The unique-intent burst counter (more than 10 in a trailing 60 seconds) triggers on request 11, which is not admitted. Exact retries of an earlier idempotency key return the recorded outcome without counting as new intents.",
+  "environment": "REPLAY",
+  "virtual_clock_start": "2026-09-08T12:00:00Z",
+  "policy_overrides": { "max_unique_intents_per_60s": 10, "max_hard_violations_per_60s": 3 },
+  "symbol_rules_ref": "scenario-a-constrained-acquisition",
+  "market_snapshots_ref": "scenario-a-constrained-acquisition",
+  "account": {
+    "alias": "scenario-c",
+    "quote_asset": "USDT",
+    "balances": { "USDT": "1000" },
+    "inventory_allocations": {}
+  },
+  "agents": [
+    {
+      "agent_id": "agent_chaos",
+      "name": "Chaos",
+      "strategy_kind": "SCRIPTED",
+      "lease": {
+        "lease_id": "lease_chaos_c",
+        "acquisition_budget_quote": "40",
+        "max_submission_attempts": 2,
+        "allowed_symbols": ["SOLUSDT"],
+        "allowed_sides": ["BUY"],
+        "allowed_order_types": ["LIMIT_IOC"],
+        "starts_at": "2026-09-08T12:00:00Z",
+        "expires_at": "2026-09-08T12:20:00Z"
+      }
+    }
+  ],
+  "burst": {
+    "count": 11,
+    "spacing_ms": 50,
+    "idempotency_key_prefix": "scenario-c-chaos-",
+    "intent_template": {
+      "schema_version": "1",
+      "lease_id": "lease_chaos_c",
+      "symbol": "SOLUSDT",
+      "side": "BUY",
+      "order_type": "LIMIT_IOC",
+      "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "7" },
+      "limit_price": "100",
+      "observation_ids": ["snapshot_fixture_sol_01"]
+    },
+    "distinguishing_field": "rationale"
+  },
+  "post_burst_steps": [
+    { "action": "RETRY_EXACT", "idempotency_key": "scenario-c-chaos-3", "expect": "SAME_INTENT_RECORDED_OUTCOME" },
+    { "action": "SUBMIT_NEW", "idempotency_key": "scenario-c-chaos-12", "expect": "DENIED_AGENT_QUARANTINED" }
+  ],
+  "expected": {
+    "quarantine_triggered_on_request": 11,
+    "request_11_admitted": false,
+    "agent_status_after": "QUARANTINED",
+    "undispatched_holds_released": true,
+    "armed_commands_affected": 0,
+    "later_requests_acquire_authority": false,
+    "no_approvals_given_during_burst": true
+  }
+}

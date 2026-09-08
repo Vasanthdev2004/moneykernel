@@ -1,0 +1,121 @@
+{
+  "scenario_id": "scenario-a-constrained-acquisition",
+  "prd_reference": "prd.md 27.1",
+  "description": "An agent requests an 80 USDT SOL acquisition; projected symbol concentration limits the largest valid smaller order to 27 USDT. All numbers are synthetic and chosen for easy audit. Balances are consistent with the PRD table: 110 USDT (100 usable after the 10 USDT cash buffer), 2.2275 SOL marked at 100, and 0.0066725 BTC marked at 100000, giving 1000 USDT marked equity.",
+  "environment": "REPLAY",
+  "virtual_clock_start": "2026-09-08T12:00:00Z",
+  "policy": {
+    "max_order_notional_quote": "50",
+    "max_symbol_share": "0.25",
+    "min_quote_cash_buffer": "10",
+    "valuation_buffer_quote": "1",
+    "max_proposal_age_ms": 120000,
+    "max_market_observation_age_ms": 5000,
+    "max_account_observation_age_ms": 5000,
+    "max_price_drift_bps": "50",
+    "conflict_collection_window_ms": 750,
+    "max_unique_intents_per_60s": 10,
+    "max_hard_violations_per_60s": 3,
+    "fee_rate": "0.001",
+    "fee_asset": "USDT"
+  },
+  "symbol_rules": {
+    "SOLUSDT": {
+      "symbol": "SOLUSDT",
+      "base_asset": "SOL",
+      "quote_asset": "USDT",
+      "status": "TRADING",
+      "tick_size": "0.01",
+      "step_size": "0.001",
+      "min_qty": "0.001",
+      "max_qty": "9000",
+      "min_notional": "5",
+      "max_notional": null,
+      "base_precision": 8,
+      "quote_precision": 8,
+      "unsupported_filters": []
+    }
+  },
+  "market_snapshots": [
+    {
+      "snapshot_id": "snapshot_fixture_sol_01",
+      "symbol": "SOLUSDT",
+      "source": "SYNTHETIC_FIXTURE",
+      "source_timestamp": "2026-09-08T12:00:00Z",
+      "bids": [{ "price": "99.99", "quantity": "50" }],
+      "asks": [{ "price": "100", "quantity": "50" }],
+      "last_price": "100"
+    }
+  ],
+  "marks": { "SOLUSDT": "100", "BTCUSDT": "100000" },
+  "account": {
+    "alias": "scenario-a",
+    "quote_asset": "USDT",
+    "balances": { "USDT": "110", "SOL": "2.2275", "BTC": "0.0066725" },
+    "inventory_allocations": { "UNASSIGNED": { "SOL": "2.2275", "BTC": "0.0066725" } },
+    "expected_marked_equity_quote": "1000",
+    "expected_existing_exposure": { "SOLUSDT": "222.75" }
+  },
+  "agents": [
+    {
+      "agent_id": "agent_alpha",
+      "name": "Alpha",
+      "strategy_kind": "SCRIPTED",
+      "lease": {
+        "lease_id": "lease_alpha_01",
+        "acquisition_budget_quote": "40",
+        "max_submission_attempts": 2,
+        "allowed_symbols": ["BTCUSDT", "SOLUSDT"],
+        "allowed_sides": ["BUY"],
+        "allowed_order_types": ["LIMIT_IOC"],
+        "starts_at": "2026-09-08T12:00:00Z",
+        "expires_at": "2026-09-08T12:20:00Z"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "at": "2026-09-08T12:00:00Z",
+      "action": "SUBMIT_INTENT",
+      "agent_id": "agent_alpha",
+      "idempotency_key": "scenario-a-intent-001",
+      "intent": {
+        "schema_version": "1",
+        "lease_id": "lease_alpha_01",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "80" },
+        "limit_price": "100",
+        "observation_ids": ["snapshot_fixture_sol_01"],
+        "rationale": "Example fixture proposal; the kernel must size it independently.",
+        "strategy_run_id": "strategy_run_01"
+      }
+    }
+  ],
+  "expected": {
+    "outcome": "COUNTERPROPOSE",
+    "limiting_reason": "SYMBOL_EXPOSURE_LIMIT",
+    "arithmetic": {
+      "equity_floor": "999",
+      "max_symbol_exposure": "249.75",
+      "additional_headroom": "27",
+      "notional_cap_inputs": ["80", "50", "39.960039960039960039", "99.900099900099900099", "27"],
+      "notional_cap": "27"
+    },
+    "candidate": {
+      "symbol": "SOLUSDT",
+      "side": "BUY",
+      "order_type": "LIMIT_IOC",
+      "quantity": "0.27",
+      "limit_price": "100",
+      "notional_quote": "27",
+      "fee_reserve_quote": "0.027",
+      "total_quote_reserved": "27.027",
+      "base_reserved": "0"
+    },
+    "projected_symbol_share": "0.25",
+    "original_intent_unchanged": true,
+    "requires_operator_approval": true
+  }
+}

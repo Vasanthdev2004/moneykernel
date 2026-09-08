@@ -1,0 +1,55 @@
+# Architecture
+
+MoneyKernel is a modular monolith with a separate strategy process (prd.md section 12). Policy, reservations, approvals, dispatch state, and accounting share one PostgreSQL consistency boundary.
+
+## Packages and layering
+
+```
+apps/web        React + Vite operator console. Renders state and provenance. No financial authority.
+apps/kernel     Fastify backend: config, boot, readiness, routes, services, dispatcher, reconciliation, events.
+apps/agents     Strategy runner: bounded model calls, proposal generation. No operator tokens, no exchange access.
+packages/contracts     Zod schemas, reason codes, canonical JSON + hashing, adapter interfaces. Frozen after Gate 1.
+packages/domain        Pure decisions and decimal math (decimal.js). No IO.
+packages/persistence   pg pool, transactions, advisory/row locks, sequential SQL migrations, repositories.
+packages/integrations  Paper executor, Binance public REST reads, Testnet adapter (P1). Normalization only.
+```
+
+Dependency direction: `contracts <- domain <- persistence <- kernel`; `integrations` depends only on `contracts`. The browser and the strategy runner talk to the kernel over HTTP.
+
+## Runtime conventions
+
+- TypeScript strict with `erasableSyntaxOnly`. Node 24 executes `.ts` files directly (type stripping), so there is no build step for the backend; `pnpm build` typechecks and builds the web bundle.
+- Every financial number is a canonical decimal string at API boundaries (`canonicalizeDecimal`) and a decimal.js value inside `domain`. `canonicalJson` rejects floats outright.
+- Workspace packages export their `src/index.ts` directly; imports of local files carry the `.ts` extension.
+
+## Boot (prd.md 11.8, Gate 1 subset)
+
+1. Load and validate configuration; forbidden options (`BINANCE_MAINNET_API_KEY`, `LIVE`, `SKIP_SAFETY_CHECKS`) abort startup.
+2. Reach the database and verify migrations are current; the app never migrates itself (`pnpm db:migrate`).
+3. Take the single-writer advisory session lock `moneykernel:writer:<mode>:<alias>` on a dedicated connection. A second process cannot take it; there is no automatic hot failover.
+4. Ensure the account row for `(mode, alias)` exists, set it `PAUSED`, and increment its control epoch. Append `ACCOUNT_CREATED` or `ACCOUNT_BOOTED` to the hash-chained audit log.
+5. Count armed and unknown commands; any of them blocks readiness until reconciled.
+6. Serve `/health/live`, `/health/ready`, `/v1/status`. The account stays `PAUSED` until an operator resumes it.
+
+## Modes (prd.md 13.1)
+
+| Mode | Market context | Funds and orders | Adapter selected at construction time |
+|---|---|---|---|
+| REPLAY | Synthetic or archived fixtures | Virtual, deterministic | Paper executor |
+| SHADOW | Binance public REST reads, labelled as such | Virtual ledger, paper fills | Paper executor |
+| TESTNET | Testnet reads | External Testnet orders (P1, unqualified) | Refuses to start until qualified |
+
+There is no LIVE mode and no configuration option that creates one. Agent OS MCP observations cannot be obtained by the backend itself (Gate 0 finding); if relayed through a supported agent session they are labelled `BINANCE_MCP_VIA_SUPPORTED_AGENT` and treated as untrusted agent context.
+
+## Local operation
+
+```
+pnpm install --frozen-lockfile
+docker compose up -d db        # host port from MK_DB_HOST_PORT in .env (default 5432)
+pnpm db:migrate
+pnpm doctor
+pnpm dev                       # kernel on http://127.0.0.1:8080
+pnpm dev:web                   # console on http://127.0.0.1:5173, proxied to the kernel
+```
+
+Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` need no database; `pnpm test:integration` and `pnpm test:fault` use `DATABASE_URL_TEST`.

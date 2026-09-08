@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["apps/kernel/src", "apps/agents/src", "packages/*/src", "scripts", "tests", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "spikes", "apps/web"]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@moneykernel/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Market observation and execution adapters (paper, Binance public REST, Binance Testnet). No authority decisions.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@moneykernel/contracts": "workspace:*"
+  }
+}

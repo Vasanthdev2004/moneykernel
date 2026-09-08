@@ -8,12 +8,36 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 
 ## Status
 
-Gate 0 (integration and feasibility spike) is complete. No runnable product code exists yet; Gate 1 (foundation) is next.
+| Gate | State |
+|---|---|
+| G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; see below. |
+| G1 foundation | In progress: workspace, contracts, decimal math, migrations, REPLAY boot, doctor. |
+| G2 deterministic vertical slice | Not started. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
+- `docs/architecture.md` describes the layering, boot sequence, and modes.
 - `docs/integration-manifest.json` records the Binance Agent OS integration evidence and its limits.
-- `docs/decisions/` is the decision log.
+- `docs/decisions/` is the decision log. `docs/test-evidence.md` records test runs.
+- `fixtures/scenarios/` holds the synthetic scenarios from prd.md section 27.
 - `spikes/gate0/` is throwaway read-only probe tooling, not product runtime code.
+
+## Quick start (REPLAY, no exchange or model keys)
+
+Prerequisites: Node 24 (see `.nvmrc`), pnpm 12, Docker with Compose.
+
+```bash
+pnpm install --frozen-lockfile
+cp .env.example .env          # set OPERATOR_BOOTSTRAP_SECRET; change MK_DB_HOST_PORT if 5432 is taken
+docker compose up -d db
+pnpm db:migrate
+pnpm doctor
+pnpm dev                      # kernel on http://127.0.0.1:8080 (account starts PAUSED)
+pnpm dev:web                  # console on http://127.0.0.1:5173
+```
+
+Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+
+Commands the PRD requires but a later gate implements (`demo:seed`, `demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
 
 ## Gate 0 outcome (2026-09-08)
 
@@ -28,12 +52,9 @@ Gate 0 (integration and feasibility spike) is complete. No runnable product code
 - Default mode is REPLAY: offline fixtures, virtual funds, no exchange credentials.
 - SHADOW mode uses real market observations with virtual funds and simulated execution.
 - Binance Spot Testnet execution is a P1 extension, only after qualification.
-- Mainnet order execution is explicitly excluded from v0.1.
+- Mainnet order execution is explicitly excluded from v0.1. `BINANCE_MAINNET_API_KEY`, `LIVE`, and `SKIP_SAFETY_CHECKS` abort startup if present.
 - Only order primitive: Spot LIMIT with IOC time-in-force.
-
-## Planned layout
-
-See `prd.md` section 12.4. The pnpm workspace (`apps/kernel`, `apps/web`, `apps/agents`, `packages/contracts|domain|persistence|integrations`) is created in Gate 1.
+- All financial numbers are decimal strings; floats are rejected at the contract boundary.
 
 ## License
 

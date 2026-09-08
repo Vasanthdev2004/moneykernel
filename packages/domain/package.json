@@ -1,0 +1,17 @@
+{
+  "name": "@moneykernel/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure decisions, decimal math, state-transition rules. No network, database, or secrets.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@moneykernel/contracts": "workspace:*",
+    "decimal.js": "10.6.0"
+  }
+}

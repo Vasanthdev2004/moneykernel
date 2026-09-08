@@ -1,0 +1,134 @@
+{
+  "scenario_id": "scenario-b-opposing-intents",
+  "prd_reference": "prd.md 27.2",
+  "description": "Alpha proposes a BTC BUY while InventoryGuard proposes a BTC SELL from inventory attributed to it. Both are individually valid; both must be CONFLICT_HELD before approval or dispatch. No SHORT appears anywhere.",
+  "environment": "REPLAY",
+  "virtual_clock_start": "2026-09-08T12:00:00Z",
+  "policy": {
+    "max_order_notional_quote": "50",
+    "max_symbol_share": "0.25",
+    "min_quote_cash_buffer": "10",
+    "valuation_buffer_quote": "1",
+    "max_proposal_age_ms": 120000,
+    "max_market_observation_age_ms": 5000,
+    "max_account_observation_age_ms": 5000,
+    "max_price_drift_bps": "50",
+    "conflict_collection_window_ms": 750,
+    "max_unique_intents_per_60s": 10,
+    "max_hard_violations_per_60s": 3,
+    "fee_rate": "0.001",
+    "fee_asset": "USDT"
+  },
+  "symbol_rules": {
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "status": "TRADING",
+      "tick_size": "0.01",
+      "step_size": "0.00001",
+      "min_qty": "0.00001",
+      "max_qty": "9000",
+      "min_notional": "5",
+      "max_notional": null,
+      "base_precision": 8,
+      "quote_precision": 8,
+      "unsupported_filters": []
+    }
+  },
+  "market_snapshots": [
+    {
+      "snapshot_id": "snapshot_fixture_btc_01",
+      "symbol": "BTCUSDT",
+      "source": "SYNTHETIC_FIXTURE",
+      "source_timestamp": "2026-09-08T12:00:00Z",
+      "bids": [{ "price": "100000", "quantity": "1" }],
+      "asks": [{ "price": "100000", "quantity": "1" }],
+      "last_price": "100000"
+    }
+  ],
+  "marks": { "BTCUSDT": "100000" },
+  "account": {
+    "alias": "scenario-b",
+    "quote_asset": "USDT",
+    "balances": { "USDT": "900", "BTC": "0.001" },
+    "inventory_allocations": { "agent_inventory_guard": { "BTC": "0.001" } },
+    "expected_marked_equity_quote": "1000"
+  },
+  "agents": [
+    {
+      "agent_id": "agent_alpha",
+      "name": "Alpha",
+      "strategy_kind": "SCRIPTED",
+      "lease": {
+        "lease_id": "lease_alpha_b",
+        "acquisition_budget_quote": "60",
+        "max_submission_attempts": 2,
+        "allowed_symbols": ["BTCUSDT"],
+        "allowed_sides": ["BUY"],
+        "allowed_order_types": ["LIMIT_IOC"],
+        "starts_at": "2026-09-08T12:00:00Z",
+        "expires_at": "2026-09-08T12:20:00Z"
+      }
+    },
+    {
+      "agent_id": "agent_inventory_guard",
+      "name": "InventoryGuard",
+      "strategy_kind": "SCRIPTED",
+      "lease": {
+        "lease_id": "lease_guard_b",
+        "acquisition_budget_quote": "0",
+        "max_submission_attempts": 2,
+        "allowed_symbols": ["BTCUSDT"],
+        "allowed_sides": ["SELL"],
+        "allowed_order_types": ["LIMIT_IOC"],
+        "assigned_inventory": { "BTC": "0.001" },
+        "starts_at": "2026-09-08T12:00:00Z",
+        "expires_at": "2026-09-08T12:20:00Z"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "at": "2026-09-08T12:00:00.000Z",
+      "action": "SUBMIT_INTENT",
+      "agent_id": "agent_alpha",
+      "idempotency_key": "scenario-b-alpha-001",
+      "intent": {
+        "schema_version": "1",
+        "lease_id": "lease_alpha_b",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "50" },
+        "limit_price": "100000",
+        "observation_ids": ["snapshot_fixture_btc_01"]
+      }
+    },
+    {
+      "at": "2026-09-08T12:00:00.100Z",
+      "action": "SUBMIT_INTENT",
+      "agent_id": "agent_inventory_guard",
+      "idempotency_key": "scenario-b-guard-001",
+      "intent": {
+        "schema_version": "1",
+        "lease_id": "lease_guard_b",
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "order_type": "LIMIT_IOC",
+        "size": { "kind": "BASE_QUANTITY", "base_asset": "BTC", "amount": "0.0002" },
+        "limit_price": "100000",
+        "observation_ids": ["snapshot_fixture_btc_01"]
+      }
+    }
+  ],
+  "expected": {
+    "alpha_candidate_quantity": "0.0005",
+    "guard_candidate_quantity": "0.0002",
+    "both_states_after_collection_window": "CONFLICT_HELD",
+    "conflict_created": true,
+    "reject_both_releases_only_never_armed_reservations": true,
+    "select_one_revalidates_and_requests_exact_approval": true,
+    "short_operations": 0
+  }
+}

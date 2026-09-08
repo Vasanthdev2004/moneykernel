@@ -1,0 +1,77 @@
+{
+  "scenario_id": "scenario-d-lost-response",
+  "prd_reference": "prd.md 27.4, 11.7, 11.8",
+  "description": "The paper fault adapter accepts an armed BUY, records a partial fill, expires the unfilled remainder, and drops the client response. The kernel restarts before the response is persisted. Expected: one submit invocation, the same client order id, unresolved state on boot, then reconciliation of that same order and fill. Executed cost is consumed, the unused remainder is released after terminal reconciliation, and no replacement order is created.",
+  "environment": "REPLAY",
+  "virtual_clock_start": "2026-09-08T12:00:00Z",
+  "symbol_rules_ref": "scenario-a-constrained-acquisition",
+  "market_snapshots_ref": "scenario-a-constrained-acquisition",
+  "account": {
+    "alias": "scenario-d",
+    "quote_asset": "USDT",
+    "balances": { "USDT": "1000" },
+    "inventory_allocations": {}
+  },
+  "agents": [
+    {
+      "agent_id": "agent_alpha",
+      "name": "Alpha",
+      "strategy_kind": "SCRIPTED",
+      "lease": {
+        "lease_id": "lease_alpha_d",
+        "acquisition_budget_quote": "40",
+        "max_submission_attempts": 2,
+        "allowed_symbols": ["SOLUSDT"],
+        "allowed_sides": ["BUY"],
+        "allowed_order_types": ["LIMIT_IOC"],
+        "starts_at": "2026-09-08T12:00:00Z",
+        "expires_at": "2026-09-08T12:20:00Z"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "at": "2026-09-08T12:00:00Z",
+      "action": "SUBMIT_INTENT",
+      "agent_id": "agent_alpha",
+      "idempotency_key": "scenario-d-intent-001",
+      "intent": {
+        "schema_version": "1",
+        "lease_id": "lease_alpha_d",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "20" },
+        "limit_price": "100",
+        "observation_ids": ["snapshot_fixture_sol_01"]
+      }
+    },
+    { "at": "2026-09-08T12:00:01Z", "action": "OPERATOR_APPROVE_EXACT" },
+    {
+      "at": "2026-09-08T12:00:02Z",
+      "action": "DISPATCH",
+      "fault": {
+        "kind": "DROP_RESPONSE_AFTER_ACCEPT",
+        "paper_execution": { "filled_quantity": "0.12", "fill_price": "100", "remainder": "EXPIRED" }
+      }
+    },
+    { "at": "2026-09-08T12:00:03Z", "action": "CRASH_BEFORE_RESPONSE_PERSISTED" },
+    { "at": "2026-09-08T12:00:10Z", "action": "RESTART" },
+    { "at": "2026-09-08T12:00:11Z", "action": "RECONCILE" }
+  ],
+  "expected": {
+    "submit_invocations": 1,
+    "client_order_id_stable": true,
+    "state_on_boot": "OUTCOME_UNKNOWN",
+    "account_status_on_boot": "PAUSED",
+    "after_reconciliation": {
+      "order_status": "EXPIRED",
+      "executed_base": "0.12",
+      "executed_quote": "12",
+      "fee_quote": "0.012",
+      "lease_consumed_quote": "12.012",
+      "reservation_released_quote": "8.008",
+      "replacement_orders": 0
+    }
+  }
+}

@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17
+    container_name: moneykernel-db
+    environment:
+      POSTGRES_USER: moneykernel
+      POSTGRES_PASSWORD: LOCAL_DEV_ONLY
+      POSTGRES_DB: moneykernel
+    ports:
+      - "127.0.0.1:${MK_DB_HOST_PORT:-5432}:5432"
+    volumes:
+      - moneykernel-pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneykernel -d moneykernel"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  moneykernel-pgdata:
