@@ -19,7 +19,6 @@ function unreadyRuntime(): KernelRuntime {
     market: null,
     execution: null,
     sessions: new SessionStore(),
-    operatorIdempotency: new Map(),
     bootChecks: [
       { name: "configuration", ok: true, detail: "mode=REPLAY" },
       { name: "database", ok: false, detail: "connection refused" },

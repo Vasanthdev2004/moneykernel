@@ -1,13 +1,13 @@
 import {
   type ArmedCommand,
-  type CandidateOrder,
   type ExecutionResult,
+  hashCanonical,
   type NormalizedFill,
   PolicySchema,
   type ReasonCode,
   TradeIntentSchema,
 } from "@moneykernel/contracts";
-import { bpsDrift, dec, evaluate, gt, toDecimalString } from "@moneykernel/domain";
+import { bpsDrift, dec, eq, evaluate, gt, toDisplayString } from "@moneykernel/domain";
 import {
   appendAuditEvent,
   type CommandRow,
@@ -26,6 +26,7 @@ import {
   insertIncident,
   insertOrder,
   latestSnapshotsBySymbol,
+  listReservationsForProposal,
   lockAccountRow,
   selectReadyCommand,
   setAccountStatus,
@@ -36,8 +37,10 @@ import {
 } from "@moneykernel/persistence";
 import type { KernelRuntime } from "../boot.ts";
 import { newId } from "../ids.ts";
+import { type ApprovedCommandPayload, exactPayloadForProposal, proposalBindingHash } from "../services/approvals.ts";
 import { assembleEvaluationInput, markFromSnapshot, refreshInputsForSymbol } from "../services/evaluation.ts";
-import { endProposalInTx } from "../services/proposals.ts";
+import { endProposalInTx, sweepProposalsInTx } from "../services/proposals.ts";
+import { hasLiveWriterLease } from "../services/writer.ts";
 
 export type DispatchReport =
   | { kind: "IDLE"; detail: string }
@@ -46,25 +49,21 @@ export type DispatchReport =
 
 const NO_ARM: DispatchReport = { kind: "IDLE", detail: "nothing to dispatch" };
 
-function armedPayload(
-  command: CommandRow,
-  order: CandidateOrder,
-  runtime: KernelRuntime,
-  accountId: string,
-  armedAt: Date,
-): ArmedCommand {
+function armedPayload(command: CommandRow, armedAt: Date): ArmedCommand {
+  // exact_payload is compared against the approved proposal before arming.
+  const persisted = command.exact_payload as ApprovedCommandPayload;
   return {
     command_id: command.id,
-    environment: runtime.config.environment,
-    account_id: accountId,
-    client_order_id: command.client_order_id,
-    symbol: order.symbol,
-    side: order.side,
-    order_type: order.order_type,
-    quantity: order.quantity,
-    limit_price: order.limit_price,
+    environment: persisted.environment,
+    account_id: persisted.account_id,
+    client_order_id: persisted.client_order_id,
+    symbol: persisted.symbol,
+    side: persisted.side,
+    order_type: persisted.order_type,
+    quantity: persisted.quantity,
+    limit_price: persisted.limit_price,
     armed_at: armedAt.toISOString(),
-    payload_hash: typeof command.exact_payload.proposal_hash === "string" ? command.exact_payload.proposal_hash : "",
+    payload_hash: persisted.proposal_hash,
   };
 }
 
@@ -77,7 +76,7 @@ function armedPayload(
  * arm the command, consume the attempt slot, and commit. Only after commit is
  * the exact persisted payload sent once; the outcome is persisted as observed.
  */
-export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<DispatchReport> {
+export async function dispatchOnce(runtime: KernelRuntime, _requestedAt: Date): Promise<DispatchReport> {
   const pool = runtime.pool;
   const account = runtime.account;
   const execution = runtime.execution;
@@ -100,10 +99,28 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
     pool,
     async (tx): Promise<{ payload: ArmedCommand; command: CommandRow } | DispatchReport> => {
       const accountRow = await lockAccountRow(tx, account.id);
+      if (!(await hasLiveWriterLease(runtime)))
+        return { kind: "IDLE", detail: "writer ownership lost; arming blocked" };
+      await sweepProposalsInTx(tx, runtime, runtime.clock());
       const command = await getCommandById(tx, candidate.id, { lock: true });
-      if (command === null || command.state !== "READY") return NO_ARM;
+      if (command === null) return NO_ARM;
+      if (command.state === "ABORTED_PRE_ARM") {
+        const expiredProposal = await getProposalById(tx, command.proposal_id);
+        const expiredIntent = expiredProposal === null ? null : await getIntentById(tx, expiredProposal.intent_id);
+        const expiredLease = expiredIntent === null ? null : await getLeaseById(tx, expiredIntent.lease_id);
+        return {
+          kind: "ABORTED_PRE_ARM",
+          command_id: command.id,
+          reason_codes:
+            expiredLease !== null && expiredLease.expires_at.getTime() <= runtime.clock().getTime()
+              ? ["STALE_APPROVAL", "LEASE_EXPIRED"]
+              : ["STALE_APPROVAL"],
+        };
+      }
+      if (command.state !== "READY") return NO_ARM;
       const proposal = await getProposalById(tx, command.proposal_id, { lock: true });
       if (proposal === null) return NO_ARM;
+      let now = runtime.clock();
       const order = proposal.normalized_order;
       const abort = async (codes: ReasonCode[]): Promise<DispatchReport> => {
         await endProposalInTx(
@@ -125,21 +142,31 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
         return { kind: "IDLE", detail: "one external in-flight command per account" };
 
       const codes: ReasonCode[] = [];
+      if (command.account_id !== account.id || proposal.account_id !== account.id) codes.push("STALE_APPROVAL");
       if (proposal.state !== "COMMAND_CREATED") codes.push("STALE_APPROVAL");
       if (proposal.account_epoch !== accountRow.epoch) codes.push("STALE_APPROVAL");
-      if (proposal.expires_at.getTime() <= now.getTime()) codes.push("STALE_APPROVAL");
       const approval = await getActiveApproval(tx, proposal.id);
       if (
         approval === null ||
         approval.id !== command.approval_id ||
+        approval.account_id !== account.id ||
+        approval.proposal_revision !== proposal.revision ||
         approval.proposal_hash !== proposal.proposal_hash ||
-        approval.account_epoch !== accountRow.epoch ||
-        approval.expires_at.getTime() <= now.getTime()
+        approval.account_epoch !== accountRow.epoch
       ) {
         codes.push("STALE_APPROVAL");
       }
       const policyRow = await getCurrentPolicy(tx, account.id);
       if (policyRow === null || policyRow.id !== proposal.policy_id) codes.push("STALE_APPROVAL");
+      else if (proposalBindingHash(proposal, policyRow.version, runtime.config.environment) !== proposal.proposal_hash)
+        codes.push("STALE_APPROVAL");
+      if (
+        hashCanonical(command.exact_payload) !==
+        hashCanonical(
+          exactPayloadForProposal(runtime.config.environment, account.id, proposal, command.client_order_id),
+        )
+      )
+        codes.push("STALE_APPROVAL");
       const intentRow = await getIntentById(tx, proposal.intent_id);
       const lease = intentRow === null ? null : await getLeaseById(tx, intentRow.lease_id, { lock: true });
       if (lease === null) codes.push("LEASE_EXPIRED");
@@ -148,11 +175,17 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
           codes.push(lease.status === "REVOKED" ? "LEASE_REVOKED" : "STALE_APPROVAL");
         if (lease.status === "REVOKED") codes.push("LEASE_REVOKED");
         else if (lease.status !== "ACTIVE") codes.push("LEASE_EXPIRED");
-        if (lease.expires_at.getTime() <= now.getTime()) codes.push("LEASE_EXPIRED");
       }
       const agent = intentRow === null ? null : await getAgentById(tx, intentRow.agent_id);
       if (agent === null || agent.status !== "ACTIVE")
         codes.push(agent?.status === "QUARANTINED" ? "AGENT_QUARANTINED" : "AGENT_DISABLED");
+      now = runtime.clock();
+      if (
+        proposal.expires_at.getTime() <= now.getTime() ||
+        (approval !== null && approval.expires_at.getTime() <= now.getTime())
+      )
+        codes.push("STALE_APPROVAL");
+      if (lease !== null && lease.expires_at.getTime() <= now.getTime()) codes.push("LEASE_EXPIRED");
       if ((await findOpenConflictForProposal(tx, proposal.id)) !== null) codes.push("OPPOSING_INTENT");
       if (codes.length > 0) return abort([...new Set(codes)]);
       if (lease === null || agent === null || policyRow === null || intentRow === null || approval === null)
@@ -181,7 +214,7 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
               },
         observation_ids: [],
       });
-      const { input } = await assembleEvaluationInput({
+      const { input, baseAsset } = await assembleEvaluationInput({
         tx,
         accountRow,
         agent,
@@ -205,14 +238,35 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
         return abort([...new Set(reasons)]);
       }
 
+      // Re-evaluating capacity does not prove this proposal still owns the
+      // exact financial hold and single attempt slot granted at admission.
+      const reservations = await listReservationsForProposal(tx, proposal.id);
+      const attemptHold = reservations.find((r) => r.kind === "ATTEMPT");
+      const fundsHold = reservations.find((r) => r.kind === (order.side === "BUY" ? "QUOTE" : "BASE"));
+      if (
+        reservations.length !== 2 ||
+        reservations.some((r) => r.state !== "HELD" || r.account_id !== account.id || r.agent_id !== agent.id) ||
+        attemptHold === undefined ||
+        attemptHold.asset !== "ATTEMPT" ||
+        !eq(dec(attemptHold.amount), dec("1")) ||
+        fundsHold === undefined ||
+        fundsHold.asset !== (order.side === "BUY" ? account.quote_asset : baseAsset) ||
+        !eq(dec(fundsHold.amount), dec(order.side === "BUY" ? order.total_quote_reserved : order.base_reserved))
+      )
+        return abort(["STALE_APPROVAL"]);
+
+      if (!(await hasLiveWriterLease(runtime)))
+        return { kind: "IDLE", detail: "writer ownership lost; arming blocked" };
+
       // Arm: linearization point (prd.md 11.2). Consumes the approval and the attempt slot exactly once.
       const consumed = await consumeApproval(tx, approval.id, now);
       if (consumed === null) return abort(["STALE_APPROVAL"]);
       await consumeLeaseAttempt(tx, lease.id, now);
-      await transitionReservations(tx, proposal.id, ["HELD"], "CONSUMED", now, ["ATTEMPT"]);
-      await transitionReservations(tx, proposal.id, ["HELD"], "ARMED", now, ["QUOTE", "BASE"]);
+      const consumedSlots = await transitionReservations(tx, proposal.id, ["HELD"], "CONSUMED", now, ["ATTEMPT"]);
+      const armedHolds = await transitionReservations(tx, proposal.id, ["HELD"], "ARMED", now, ["QUOTE", "BASE"]);
+      if (consumedSlots !== 1 || armedHolds !== 1) throw new Error("reservation ownership changed during arm");
       const armedCommand = await updateCommandState(tx, command.id, "ARMED", now, { armedAt: now });
-      const payload = armedPayload(armedCommand, order, runtime, account.id, now);
+      const payload = armedPayload(armedCommand, now);
       await appendAuditEvent(tx, {
         id: newId("evt"),
         accountId: account.id,
@@ -223,7 +277,7 @@ export async function dispatchOnce(runtime: KernelRuntime, now: Date): Promise<D
           approval_id: approval.id,
           client_order_id: command.client_order_id,
           exact_payload: payload,
-          drift_bps: toDecimalString(drift),
+          drift_bps: toDisplayString(drift),
         },
         occurredAt: now,
       });

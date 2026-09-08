@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import type { CommandRow } from "./coordination.ts";
 
 export type CommandState =
   | "READY"
@@ -37,6 +38,15 @@ export type OutstandingCommandCounts = {
   total: number;
 };
 
+const ACCEPTED_UNRECONCILED = `c.state = 'ACCEPTED' AND (
+  c.reconciled_at IS NULL
+  OR NOT EXISTS (SELECT 1 FROM orders o WHERE o.command_id = c.id AND o.account_id = c.account_id)
+  OR EXISTS (SELECT 1 FROM orders o WHERE o.command_id = c.id
+             AND (o.account_id <> c.account_id OR o.status IN ('NEW', 'PARTIALLY_FILLED')))
+  OR EXISTS (SELECT 1 FROM reservations r WHERE r.proposal_id = c.proposal_id
+             AND r.state IN ('HELD', 'ARMED'))
+)`;
+
 /**
  * Authority remains blocked until external effects are reconciled (prd.md
  * 11.6/11.8). A terminal order alone is insufficient: fills, fees, and holds
@@ -52,18 +62,22 @@ export async function countOutstandingCommands(
     `SELECT
        count(*) FILTER (WHERE c.state = 'ARMED')::int AS armed,
        count(*) FILTER (WHERE c.state = 'OUTCOME_UNKNOWN')::int AS unknown,
-       count(*) FILTER (WHERE c.state = 'ACCEPTED' AND (
-         c.reconciled_at IS NULL
-         OR NOT EXISTS (SELECT 1 FROM orders o WHERE o.command_id = c.id AND o.account_id = c.account_id)
-         OR EXISTS (SELECT 1 FROM orders o WHERE o.command_id = c.id
-                    AND (o.account_id <> c.account_id OR o.status IN ('NEW', 'PARTIALLY_FILLED')))
-         OR EXISTS (SELECT 1 FROM reservations r WHERE r.proposal_id = c.proposal_id
-                    AND r.state IN ('HELD', 'ARMED'))
-       ))::int AS accepted_unreconciled
+       count(*) FILTER (WHERE ${ACCEPTED_UNRECONCILED})::int AS accepted_unreconciled
      FROM commands c WHERE c.account_id = $1`,
     [accountId],
   );
   const counts = result.rows[0];
   if (counts === undefined) throw new Error("outstanding command count returned no row");
   return { ...counts, total: counts.armed + counts.unknown + counts.accepted_unreconciled };
+}
+
+/** The exact commands that block readiness, for stop acknowledgements and operator resume. */
+export async function listOutstandingCommands(client: PoolClient, accountId: string): Promise<CommandRow[]> {
+  const result = await client.query<CommandRow>(
+    `SELECT c.* FROM commands c
+      WHERE c.account_id = $1 AND (c.state IN ('ARMED', 'OUTCOME_UNKNOWN') OR (${ACCEPTED_UNRECONCILED}))
+      ORDER BY c.created_at, c.id`,
+    [accountId],
+  );
+  return result.rows;
 }

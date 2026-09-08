@@ -13,6 +13,7 @@ import {
   findOpenConflictForProposal,
   findOpenConflictForSymbol,
   getAgentById,
+  getCommandForProposal,
   getConflictById,
   getCurrentPolicy,
   getIntentById,
@@ -64,6 +65,10 @@ export async function endProposalInTx(
   now: Date,
   extra: Record<string, unknown> = {},
 ): Promise<void> {
+  const command = await getCommandForProposal(tx, proposal.id);
+  if (command !== null && (command.armed_at !== null || !["READY", "ABORTED_PRE_ARM"].includes(command.state))) {
+    throw new ProposalError("STATE_CONFLICT", 409, "proposal already armed; its order requires reconciliation");
+  }
   await updateProposalState(tx, proposal.id, state, now);
   const invalidated = await invalidateApprovalsForProposal(
     tx,
@@ -117,96 +122,104 @@ const OPPOSABLE: ProposalRow["state"][] = [
  * same symbol is still pre-arm. A proposal whose opposite side is already in
  * flight stays held until reconciliation. Runs under the account lock.
  */
-export async function sweepProposals(runtime: KernelRuntime, now: Date): Promise<SweepReport> {
+export async function sweepProposals(runtime: KernelRuntime, _now: Date): Promise<SweepReport> {
   const pool = runtime.pool;
   const account = runtime.account;
   const report: SweepReport = { promoted: [], conflicted: [], expired: [], held: [] };
   if (pool === null || account === null) return report;
   return withTransaction(pool, async (tx) => {
     await lockAccountRow(tx, account.id);
-    const policyRow = await getCurrentPolicy(tx, account.id);
-    const windowMs =
-      policyRow === null ? 750 : PolicySchema.parse(policyRow.canonical_policy).conflict_collection_window_ms;
-    const open = await listPreArmProposals(tx, account.id);
-    const live: ProposalRow[] = [];
-    for (const proposal of open) {
-      if (proposal.expires_at.getTime() <= now.getTime()) {
-        await endProposalInTx(tx, runtime, proposal, "EXPIRED", "proposal TTL elapsed before dispatch", now);
-        report.expired.push(proposal.id);
-      } else live.push(proposal);
+    return sweepProposalsInTx(tx, runtime, runtime.clock());
+  });
+}
+
+/** Discover opposition synchronously with admission/approval/arming under the account lock. */
+export async function sweepProposalsInTx(tx: PoolClient, runtime: KernelRuntime, now: Date): Promise<SweepReport> {
+  const account = runtime.account;
+  const report: SweepReport = { promoted: [], conflicted: [], expired: [], held: [] };
+  if (account === null) return report;
+  const policyRow = await getCurrentPolicy(tx, account.id);
+  const windowMs =
+    policyRow === null ? 750 : PolicySchema.parse(policyRow.canonical_policy).conflict_collection_window_ms;
+  const open = await listPreArmProposals(tx, account.id);
+  const live: ProposalRow[] = [];
+  for (const proposal of open) {
+    if (proposal.expires_at.getTime() <= now.getTime()) {
+      await endProposalInTx(tx, runtime, proposal, "EXPIRED", "proposal TTL elapsed before dispatch", now);
+      report.expired.push(proposal.id);
+    } else live.push(proposal);
+  }
+  for (const proposal of live) {
+    if (proposal.state !== "COLLECTING") continue;
+    const order = proposal.normalized_order;
+    if (await hasInFlightOppositeCommand(tx, account.id, order.symbol, order.side)) {
+      report.held.push(proposal.id);
+      continue;
     }
-    for (const proposal of live) {
-      if (proposal.state !== "COLLECTING") continue;
+    const opposing = live.filter(
+      (other) =>
+        other.id !== proposal.id &&
+        other.normalized_order.symbol === order.symbol &&
+        other.normalized_order.side !== order.side &&
+        OPPOSABLE.includes(other.state),
+    );
+    if (opposing.length === 0) {
       if (proposal.created_at.getTime() + windowMs > now.getTime()) continue;
-      const order = proposal.normalized_order;
-      if (await hasInFlightOppositeCommand(tx, account.id, order.symbol, order.side)) {
-        report.held.push(proposal.id);
-        continue;
-      }
-      const opposing = live.filter(
-        (other) =>
-          other.id !== proposal.id &&
-          other.normalized_order.symbol === order.symbol &&
-          other.normalized_order.side !== order.side &&
-          OPPOSABLE.includes(other.state),
-      );
-      if (opposing.length === 0) {
-        await updateProposalState(tx, proposal.id, "AWAITING_APPROVAL", now);
-        proposal.state = "AWAITING_APPROVAL";
-        await appendAuditEvent(tx, {
-          id: newId("evt"),
-          accountId: account.id,
-          type: "PROPOSAL_STATE_CHANGED",
-          payload: {
-            proposal_id: proposal.id,
-            from: "COLLECTING",
-            to: "AWAITING_APPROVAL",
-            reason: "collection window elapsed; no opposing pending intent",
-          },
-          occurredAt: now,
-        });
-        report.promoted.push(proposal.id);
-        continue;
-      }
-      const conflict =
-        (await findOpenConflictForSymbol(tx, account.id, order.symbol)) ??
-        (await insertConflict(tx, { id: newId("conflict"), accountId: account.id, symbol: order.symbol, now }));
-      const members = [proposal, ...opposing];
-      for (const member of members) {
-        await addConflictMember(tx, conflict.id, member.id);
-        if (member.state === "CONFLICT_HELD") continue;
-        const from = member.state;
-        const invalidated = await invalidateApprovalsForProposal(tx, member.id, "INVALIDATED");
-        const aborted = await abortReadyCommandForProposal(tx, member.id, now);
-        await updateProposalState(tx, member.id, "CONFLICT_HELD", now);
-        member.state = "CONFLICT_HELD";
-        await appendAuditEvent(tx, {
-          id: newId("evt"),
-          accountId: account.id,
-          type: "PROPOSAL_STATE_CHANGED",
-          payload: {
-            proposal_id: member.id,
-            from,
-            to: "CONFLICT_HELD",
-            conflict_id: conflict.id,
-            invalidated_approvals: invalidated,
-            aborted_commands: aborted,
-            reason: "opposing pending intents require review",
-          },
-          occurredAt: now,
-        });
-        report.conflicted.push(member.id);
-      }
+      await updateProposalState(tx, proposal.id, "AWAITING_APPROVAL", now);
+      proposal.state = "AWAITING_APPROVAL";
       await appendAuditEvent(tx, {
         id: newId("evt"),
         accountId: account.id,
-        type: "CONFLICT_CREATED",
-        payload: { conflict_id: conflict.id, symbol: order.symbol, proposal_ids: members.map((m) => m.id) },
+        type: "PROPOSAL_STATE_CHANGED",
+        payload: {
+          proposal_id: proposal.id,
+          from: "COLLECTING",
+          to: "AWAITING_APPROVAL",
+          reason: "collection window elapsed; no opposing pending intent",
+        },
         occurredAt: now,
       });
+      report.promoted.push(proposal.id);
+      continue;
     }
-    return report;
-  });
+    const conflict =
+      (await findOpenConflictForSymbol(tx, account.id, order.symbol)) ??
+      (await insertConflict(tx, { id: newId("conflict"), accountId: account.id, symbol: order.symbol, now }));
+    const members = [proposal, ...opposing];
+    for (const member of members) {
+      await addConflictMember(tx, conflict.id, member.id);
+      if (member.state === "CONFLICT_HELD") continue;
+      const from = member.state;
+      const invalidated = await invalidateApprovalsForProposal(tx, member.id, "INVALIDATED");
+      const aborted = await abortReadyCommandForProposal(tx, member.id, now);
+      await updateProposalState(tx, member.id, "CONFLICT_HELD", now);
+      member.state = "CONFLICT_HELD";
+      await appendAuditEvent(tx, {
+        id: newId("evt"),
+        accountId: account.id,
+        type: "PROPOSAL_STATE_CHANGED",
+        payload: {
+          proposal_id: member.id,
+          from,
+          to: "CONFLICT_HELD",
+          conflict_id: conflict.id,
+          invalidated_approvals: invalidated,
+          aborted_commands: aborted,
+          reason: "opposing pending intents require review",
+        },
+        occurredAt: now,
+      });
+      report.conflicted.push(member.id);
+    }
+    await appendAuditEvent(tx, {
+      id: newId("evt"),
+      accountId: account.id,
+      type: "CONFLICT_CREATED",
+      payload: { conflict_id: conflict.id, symbol: order.symbol, proposal_ids: members.map((m) => m.id) },
+      occurredAt: now,
+    });
+  }
+  return report;
 }
 
 /** Operator rejection of an undispatched candidate. */
@@ -215,7 +228,7 @@ export async function rejectProposal(
   proposalId: string,
   operatorId: string,
   reason: string | undefined,
-  now: Date,
+  _now: Date,
 ): Promise<ProposalRow> {
   const pool = runtime.pool;
   const account = runtime.account;
@@ -223,6 +236,7 @@ export async function rejectProposal(
   return withTransaction(pool, async (tx) => {
     await lockAccountRow(tx, account.id);
     const proposal = await getProposalById(tx, proposalId, { lock: true });
+    const now = runtime.clock();
     if (proposal === null || proposal.account_id !== account.id)
       throw new ProposalError("NOT_FOUND", 404, "proposal not found");
     if (!OPPOSABLE.includes(proposal.state)) {
@@ -266,7 +280,7 @@ export async function resolveConflictRequest(
   conflictId: string,
   request: ConflictResolutionRequest,
   operatorId: string,
-  now: Date,
+  _now: Date,
 ): Promise<ConflictResolutionResult> {
   const pool = runtime.pool;
   const account = runtime.account;
@@ -297,6 +311,7 @@ export async function resolveConflictRequest(
       const row = await getProposalById(tx, id, { lock: true });
       if (row !== null) members.push(row);
     }
+    let now = runtime.clock();
 
     if (request.action === "REJECT_BOTH") {
       const rejected: string[] = [];
@@ -359,6 +374,7 @@ export async function resolveConflictRequest(
     const agent = intentRow === null ? null : await getAgentById(tx, intentRow.agent_id);
     const lease = intentRow === null ? null : await getLeaseById(tx, intentRow.lease_id, { lock: true });
     const policyRow = await getCurrentPolicy(tx, account.id);
+    now = runtime.clock();
     let selected: ConflictResolutionResult["selected"] = null;
     if (intentRow !== null && agent !== null && lease !== null && policyRow !== null) {
       const intent = TradeIntentSchema.parse(intentRow.canonical_payload);

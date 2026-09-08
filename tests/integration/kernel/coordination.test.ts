@@ -361,9 +361,10 @@ describe("opposing pending intents (FR-06, T-24, T-25, T-28)", () => {
       sellIntent(guard.lease_id, "BTCUSDT", "BTC", "0.0002", "100000", obsG),
     );
     expect([buy.body.outcome, sell.body.outcome]).toEqual(["ALLOW_PROPOSAL", "ALLOW_PROPOSAL"]);
+    expect(sell.body.state).toBe("CONFLICT_HELD");
     h.tick(800);
     const swept = await sweepProposals(h.runtime, new Date(h.clock.now));
-    expect(swept.conflicted.sort()).toEqual([buy.body.proposal_id, sell.body.proposal_id].sort());
+    expect(swept.conflicted).toEqual([]);
     const queue = await proposalsOf(h, op.token);
     expect(queue.conflicts.length).toBe(1);
     expect(queue.proposals.every((p) => p.state === "CONFLICT_HELD")).toBe(true);
@@ -423,9 +424,8 @@ describe("opposing pending intents (FR-06, T-24, T-25, T-28)", () => {
       "t25-sell-001",
       sellIntent(guard.lease_id, "BTCUSDT", "BTC", "0.0002", "100000", await observationFor(h, guard.token, "BTCUSDT")),
     );
-    h.tick(800);
-    const swept = await sweepProposals(h.runtime, new Date(h.clock.now));
-    expect(swept.conflicted.sort()).toEqual([buy.body.proposal_id, sell.body.proposal_id].sort());
+    // Opposition must revoke unused approval before the background collection sweep.
+    expect(sell.body.state).toBe("CONFLICT_HELD");
     const pool = h.runtime.pool;
     if (pool === null) throw new Error("no pool");
     expect((await withClient(pool, (c) => listCommands(c, h.accountId))).map((c) => c.state)).toEqual([

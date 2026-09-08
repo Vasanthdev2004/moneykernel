@@ -3,6 +3,7 @@ import { type AgentRow, findAgentByTokenHash, withClient } from "@moneykernel/pe
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { KernelRuntime } from "../boot.ts";
 import { hashAgentToken } from "../services/registry.ts";
+import { rejectPublicMutation } from "./operator.ts";
 
 const BEARER_RE = /^Bearer\s+(mka_[A-Za-z0-9_-]{32,})$/;
 
@@ -30,6 +31,7 @@ export function requireAgent(runtime: KernelRuntime) {
       reply.code(401).send(errorEnvelope("UNAUTHENTICATED", "missing or invalid agent token", request.id));
       return;
     }
+    if (rejectPublicMutation(runtime, request, reply)) return;
     request.agent = agent;
   };
 }

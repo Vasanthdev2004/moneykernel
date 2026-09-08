@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { errorEnvelope } from "@moneykernel/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { KernelRuntime } from "../boot.ts";
@@ -94,6 +95,16 @@ function cookieValue(header: string | undefined, name: string): string | null {
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/** Remote sessions may read and log out, but financial/product mutations require the explicit public setting. */
+export function rejectPublicMutation(runtime: KernelRuntime, request: FastifyRequest, reply: FastifyReply): boolean {
+  if (!MUTATING.has(request.method) || request.routeOptions.url === "/v1/auth/session") return false;
+  const ip = request.ip.startsWith("::ffff:") ? request.ip.slice(7) : request.ip;
+  const loopback = ip === "::1" || (isIP(ip) === 4 && ip.startsWith("127."));
+  if (runtime.config.enablePublicMutations || loopback) return false;
+  reply.code(403).send(errorEnvelope("FORBIDDEN", "public mutations are disabled for this kernel", request.id));
+  return true;
+}
+
 function originAllowed(request: FastifyRequest): boolean {
   const origin = request.headers.origin;
   if (typeof origin !== "string") return true;
@@ -137,6 +148,7 @@ export function requireOperator(runtime: KernelRuntime) {
         return;
       }
     }
+    if (rejectPublicMutation(runtime, request, reply)) return;
     request.operator = { id: session.operator_id, token: session.token };
   };
 }

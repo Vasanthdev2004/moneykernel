@@ -34,8 +34,6 @@ export type KernelRuntime = {
   /** Execution adapter selected by mode at construction time; null until qualified (REPLAY/SHADOW: paper). */
   execution: ExecutionAdapter | null;
   sessions: SessionStore;
-  /** Operator idempotency replay cache; durable state machines make repeats safe regardless. */
-  operatorIdempotency: Map<string, { status: number; body: unknown }>;
   /** Checks established at boot that do not change while the process runs. */
   bootChecks: ReadinessCheck[];
   startedAt: Date;
@@ -91,7 +89,6 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
   let market: MarketAdapter | null = null;
   let execution: ExecutionAdapter | null = null;
   const sessions = new SessionStore();
-  const operatorIdempotency = new Map<string, { status: number; body: unknown }>();
 
   const shutdown = async (): Promise<void> => {
     if (writer !== null) {
@@ -117,7 +114,6 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
     market,
     execution,
     sessions,
-    operatorIdempotency,
     bootChecks: checks,
     startedAt,
     clock,

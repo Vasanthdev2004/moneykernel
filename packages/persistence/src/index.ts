@@ -11,4 +11,5 @@ export * from "./repositories/audit-events.ts";
 export * from "./repositories/commands.ts";
 export * from "./repositories/coordination.ts";
 export * from "./repositories/market.ts";
+export * from "./repositories/operator-requests.ts";
 export * from "./repositories/registry.ts";
