@@ -79,7 +79,18 @@ describe("event hash chain (prd.md 14.5, T-54)", () => {
 describe("decision fingerprint (prd.md 15.6, T-55)", () => {
   const material = {
     engine_version: "0.1.0",
-    normalized_request: { symbol: "SOLUSDT", side: "BUY", amount: "80", limit_price: "100" },
+    normalized_request: {
+      account_id: "account_fixture_01",
+      agent_id: "agent_alpha_01",
+      lease_id: "lease_alpha_01",
+      symbol: "SOLUSDT",
+      side: "BUY",
+      order_type: "LIMIT_IOC",
+      size: { kind: "QUOTE_NOTIONAL", quote_asset: "USDT", amount: "80" },
+      limit_price: "100",
+      observation_ids: ["snapshot_fixture_sol_01"],
+      strategy_run_id: null,
+    },
     input_refs: {
       policy_version: 1,
       lease_revision: 1,
@@ -94,6 +105,20 @@ describe("decision fingerprint (prd.md 15.6, T-55)", () => {
     evaluated_at: "2026-09-08T12:00:00Z",
   };
 
+  const receiptFor = (
+    normalized_request: unknown = material.normalized_request,
+    input_refs: unknown = material.input_refs,
+  ) => ({
+    schema_version: "1",
+    decision_id: "receipt_01",
+    intent_id: "intent_01",
+    proposal_id: "proposal_01",
+    ...material,
+    normalized_request,
+    input_refs,
+    decision_fingerprint: decisionFingerprint(material),
+  });
+
   it("is identical for identical canonical material and ignores display ids", () => {
     const fp = decisionFingerprint(material);
     const receipt: DecisionReceipt = DecisionReceiptSchema.parse({
@@ -106,6 +131,75 @@ describe("decision fingerprint (prd.md 15.6, T-55)", () => {
     });
     expect(verifyReceiptFingerprint(receipt)).toBe(true);
     expect(verifyReceiptFingerprint({ ...receipt, decision_id: "receipt_99", intent_id: "intent_99" })).toBe(true);
+  });
+
+  it("canonicalizes equivalent financial encodings before parsing and hashing", () => {
+    const equivalent = {
+      ...material.normalized_request,
+      size: { ...material.normalized_request.size, amount: "080.000" },
+      limit_price: "0100.00",
+    };
+    expect(decisionFingerprint({ ...material, normalized_request: equivalent })).toBe(decisionFingerprint(material));
+    const receipt = DecisionReceiptSchema.parse(receiptFor(equivalent));
+    expect(receipt.normalized_request).toEqual(material.normalized_request);
+    expect(verifyReceiptFingerprint(receiptFor(equivalent))).toBe(true);
+  });
+
+  it.each([
+    { ...material.normalized_request, size: { ...material.normalized_request.size, amount: 80.01 } },
+    { ...material.normalized_request, limit_price: 100.01 },
+    { ...material.normalized_request, size: { ...material.normalized_request.size, amount: "8e1" } },
+    { ...material.normalized_request, override_policy: true },
+    { ...material.normalized_request, size: { ...material.normalized_request.size, override_policy: true } },
+    { ...material.normalized_request, side: "SELL" },
+    { ...material.normalized_request, size: { kind: "BASE_QUANTITY", base_asset: "SOL", amount: "1" } },
+  ])("rejects malformed normalized request %# before hashing or verifying", (normalized_request) => {
+    expect(DecisionReceiptSchema.safeParse(receiptFor(normalized_request)).success).toBe(false);
+    expect(() => decisionFingerprint({ ...material, normalized_request })).toThrow();
+    expect(verifyReceiptFingerprint(receiptFor(normalized_request))).toBe(false);
+  });
+
+  it("requires one content hash for each snapshot reference", () => {
+    const { snapshot_hashes: _hashes, ...withoutHashes } = material.input_refs;
+    const malformedRefs = [
+      withoutHashes,
+      { ...material.input_refs, snapshot_hashes: [] },
+      { ...material.input_refs, snapshot_hashes: ["a".repeat(64), "b".repeat(64)] },
+      { ...material.input_refs, snapshot_hashes: ["invalid"] },
+    ];
+    for (const input_refs of malformedRefs) {
+      expect(DecisionReceiptSchema.safeParse(receiptFor(material.normalized_request, input_refs)).success).toBe(false);
+      expect(() => decisionFingerprint({ ...material, input_refs })).toThrow();
+      expect(verifyReceiptFingerprint(receiptFor(material.normalized_request, input_refs))).toBe(false);
+    }
+    expect(
+      DecisionReceiptSchema.safeParse(
+        receiptFor(material.normalized_request, {
+          ...material.input_refs,
+          snapshot_ids: [],
+          snapshot_hashes: [],
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("returns false for malformed external receipts and validly shaped tampering", () => {
+    for (const receipt of [null, undefined, [], {}, { ...receiptFor(), unexpected: true }]) {
+      expect(verifyReceiptFingerprint(receipt)).toBe(false);
+    }
+    const changedRequest = {
+      ...material.normalized_request,
+      size: { ...material.normalized_request.size, amount: "81" },
+    };
+    expect(verifyReceiptFingerprint(receiptFor(changedRequest))).toBe(false);
+    expect(
+      verifyReceiptFingerprint(
+        receiptFor(material.normalized_request, {
+          ...material.input_refs,
+          snapshot_hashes: ["b".repeat(64)],
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("changes when any material input changes", () => {

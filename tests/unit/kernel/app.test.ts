@@ -15,6 +15,7 @@ function unreadyRuntime(): KernelRuntime {
     pool: null,
     writer: null,
     account: null,
+    market: null,
     bootChecks: [
       { name: "configuration", ok: true, detail: "mode=REPLAY" },
       { name: "database", ok: false, detail: "connection refused" },

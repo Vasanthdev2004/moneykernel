@@ -1,3 +1,8 @@
-// Adapters arrive in G4 (paper executor, Binance public REST reads) and P1 (Testnet).
-// This package owns observation/execution normalization only; never authority decisions.
-export const INTEGRATIONS_VERSION = "0.0.0-placeholder";
+/**
+ * @moneykernel/integrations — observation and execution adapters. Owns
+ * normalization and provenance only; never authority decisions (prd.md 12.3).
+ */
+export const INTEGRATIONS_VERSION = "0.1.0";
+
+export * from "./fixture/market-adapter.ts";
+export * from "./fixture/scenario.ts";

@@ -1,5 +1,5 @@
 /**
- * pnpm doctor — WP-01 completion evidence (prd.md 21.4): supported runtime,
+ * pnpm run doctor — WP-01 completion evidence (prd.md 21.4): supported runtime,
  * database, selected mode, and no unexpected secrets. Exit 0 only when every
  * required check passes. Run with: node --env-file-if-exists=.env scripts/doctor.ts
  */

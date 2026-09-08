@@ -1,5 +1,5 @@
 import type { Readiness } from "@moneykernel/contracts";
-import { countCommandsByState, withClient } from "@moneykernel/persistence";
+import { countOutstandingCommands, withClient } from "@moneykernel/persistence";
 import type { KernelRuntime, ReadinessCheck } from "./boot.ts";
 
 function errorMessage(error: unknown): string {
@@ -39,12 +39,11 @@ export async function computeReadiness(runtime: KernelRuntime): Promise<Readines
   if (runtime.pool !== null && runtime.account !== null) {
     try {
       const accountId = runtime.account.id;
-      const counts = await withClient(runtime.pool, (client) => countCommandsByState(client, accountId));
-      const blocking = counts.ARMED + counts.OUTCOME_UNKNOWN;
+      const counts = await withClient(runtime.pool, (client) => countOutstandingCommands(client, accountId));
       live.push({
         name: "unresolved_commands",
-        ok: blocking === 0,
-        detail: `armed=${counts.ARMED} unknown=${counts.OUTCOME_UNKNOWN}`,
+        ok: counts.total === 0,
+        detail: `armed=${counts.armed} unknown=${counts.unknown} accepted_unreconciled=${counts.accepted_unreconciled}`,
       });
     } catch (error) {
       live.push({ name: "unresolved_commands", ok: false, detail: errorMessage(error) });

@@ -1,4 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import {
   AccountNotFoundError,
   createPool,
@@ -75,6 +78,37 @@ function insertLease(pool: Pool, id: string, accountId: string, agentId: string,
   );
 }
 
+async function seedCommand(pool: Pool, suffix: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO intents (id, account_id, agent_id, lease_id, idempotency_key, canonical_payload, payload_hash, account_seq, created_at)
+     VALUES ($1, 'acct_upgrade', 'agent_upgrade', 'lease_upgrade', $1, '{}', 'payload', 1, $2)`,
+    [`intent_${suffix}`, NOW],
+  );
+  await pool.query(
+    `INSERT INTO proposals (id, intent_id, account_id, revision, normalized_order, proposal_hash, state, expires_at, policy_id, lease_revision, account_epoch, created_at, updated_at)
+     VALUES ($1, $2, 'acct_upgrade', 1, '{}', 'proposal', 'COMMAND_CREATED', $3, 'policy_upgrade', 1, 1, $3, $3)`,
+    [`proposal_${suffix}`, `intent_${suffix}`, NOW],
+  );
+  await pool.query(
+    `INSERT INTO approvals (id, account_id, proposal_id, proposal_revision, proposal_hash, operator_id, account_epoch, expires_at, status, consumed_at, created_at)
+     VALUES ($1, 'acct_upgrade', $2, 1, 'proposal', 'operator', 1, $3, 'CONSUMED', $3, $3)`,
+    [`approval_${suffix}`, `proposal_${suffix}`, NOW],
+  );
+  await pool.query(
+    `INSERT INTO commands (id, account_id, proposal_id, approval_id, client_order_id, state, exact_payload, created_at, updated_at)
+     VALUES ($1, 'acct_upgrade', $2, $3, $4, 'ACCEPTED', '{}', $5, $5)`,
+    [`command_${suffix}`, `proposal_${suffix}`, `approval_${suffix}`, `client_${suffix}`, NOW],
+  );
+}
+
+function insertObservedOrder(pool: Pool, suffix: string, symbol: string): Promise<unknown> {
+  return pool.query(
+    `INSERT INTO orders (id, account_id, command_id, exchange_order_id, client_order_id, symbol, status, executed_base, executed_quote, last_observed_at)
+     VALUES ($1, 'acct_upgrade', $2, '123', $3, $4, 'FILLED', '1', '100', $5)`,
+    [`order_${suffix}`, `command_${suffix}`, `client_${suffix}`, symbol, NOW],
+  );
+}
+
 describe("migrations and schema constraints (prd.md 14.2, 14.6)", () => {
   let admin: Pool;
   let pool: Pool;
@@ -120,6 +154,84 @@ describe("migrations and schema constraints (prd.md 14.2, 14.6)", () => {
     await expect(migrate(pool)).rejects.toBeInstanceOf(MigrationDriftError);
     await pool.query("UPDATE schema_migrations SET checksum = $1 WHERE version = 1", [original.rows[0]?.checksum]);
     expect((await migrationStatus(pool)).drift).toEqual([]);
+  });
+
+  it("rejects unknown applied versions before executing a pending migration", async () => {
+    const files = listMigrationFiles();
+    const pendingVersion = files.length + 1;
+    const unknownVersion = pendingVersion + 1;
+    const dir = mkdtempSync(join(tmpdir(), "mk-migration-compat-"));
+    try {
+      for (const file of files) copyFileSync(file.path, join(dir, basename(file.path)));
+      writeFileSync(
+        join(dir, `${String(pendingVersion).padStart(4, "0")}_pending_probe.sql`),
+        "CREATE TABLE migration_should_not_run (id INTEGER);",
+      );
+      await pool.query(
+        "INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, 'unknown_future', 'future')",
+        [unknownVersion],
+      );
+
+      const currentStatus = await migrationStatus(pool);
+      expect(currentStatus.pending).toEqual([]);
+      expect(currentStatus.drift.map((entry) => entry.version)).toEqual([unknownVersion]);
+      await expect(migrate(pool)).rejects.toBeInstanceOf(MigrationDriftError);
+
+      const status = await migrationStatus(pool, dir);
+      expect(status.pending.map((file) => file.version)).toEqual([pendingVersion]);
+      expect(status.drift).toContainEqual({ version: unknownVersion, expected: "future", actual: "missing file" });
+      await expect(migrate(pool, dir)).rejects.toBeInstanceOf(MigrationDriftError);
+      const probe = await pool.query<{ relation: string | null }>(
+        "SELECT to_regclass('public.migration_should_not_run')::text AS relation",
+      );
+      expect(probe.rows[0]?.relation).toBeNull();
+      const applied = await pool.query("SELECT version FROM schema_migrations WHERE version = $1", [pendingVersion]);
+      expect(applied.rows).toEqual([]);
+    } finally {
+      await pool.query("DELETE FROM schema_migrations WHERE version = $1", [unknownVersion]);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("upgrades existing orders to symbol-scoped exchange identities without losing data", async () => {
+    const upgradeDbName = `mk_upgrade_${randomBytes(4).toString("hex")}`;
+    const dir = mkdtempSync(join(tmpdir(), "mk-migration-upgrade-"));
+    let upgradePool: Pool | undefined;
+    await admin.query(`CREATE DATABASE ${upgradeDbName}`);
+    try {
+      upgradePool = createPool(urlFor(upgradeDbName), { max: 2, applicationName: "mk-upgrade-test" });
+      const initial = listMigrationFiles()[0];
+      if (initial === undefined) throw new Error("initial migration missing");
+      copyFileSync(initial.path, join(dir, basename(initial.path)));
+      expect((await migrate(upgradePool, dir)).applied.map((file) => file.version)).toEqual([1]);
+
+      await seedAccount(upgradePool, "acct_upgrade");
+      await seedAgent(upgradePool, "acct_upgrade", "agent_upgrade");
+      await insertLease(upgradePool, "lease_upgrade", "acct_upgrade", "agent_upgrade", "ACTIVE");
+      await upgradePool.query(
+        `INSERT INTO policy_versions (id, account_id, version, canonical_policy, hash, created_by, created_at)
+         VALUES ('policy_upgrade', 'acct_upgrade', 1, '{}', 'policy', 'operator', $1)`,
+        [NOW],
+      );
+      for (const suffix of ["btc", "sol", "btc_duplicate"]) await seedCommand(upgradePool, suffix);
+      await insertObservedOrder(upgradePool, "btc", "BTCUSDT");
+      const original = await upgradePool.query("SELECT * FROM orders WHERE id = 'order_btc'");
+      await expect(insertObservedOrder(upgradePool, "sol", "SOLUSDT")).rejects.toMatchObject({ code: "23505" });
+
+      const upgraded = await migrate(upgradePool);
+      expect(upgraded.applied.map((file) => file.version)).toContain(2);
+      const preserved = await upgradePool.query("SELECT * FROM orders WHERE id = 'order_btc'");
+      expect(preserved.rows).toEqual(original.rows);
+      await insertObservedOrder(upgradePool, "sol", "SOLUSDT");
+      await expect(insertObservedOrder(upgradePool, "btc_duplicate", "BTCUSDT")).rejects.toMatchObject({
+        code: "23505",
+      });
+      expect((await migrate(upgradePool)).applied).toEqual([]);
+    } finally {
+      await upgradePool?.end();
+      await admin.query(`DROP DATABASE ${upgradeDbName} WITH (FORCE)`);
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("account environment is immutable", async () => {

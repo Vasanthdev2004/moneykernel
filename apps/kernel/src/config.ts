@@ -35,6 +35,11 @@ const EnvSchema = z.object({
   BINANCE_TESTNET_API_SECRET: z.string().default(""),
   ENABLE_PUBLIC_MUTATIONS: BoolString.default(false),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  /** REPLAY only: scenario id under fixtures/scenarios. */
+  REPLAY_FIXTURE: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{0,80}$/, "REPLAY_FIXTURE must be a scenario id")
+    .default("scenario-a-constrained-acquisition"),
 });
 
 export type ModelProvider = "disabled" | "anthropic" | "openai";
@@ -56,6 +61,7 @@ export type KernelConfig = {
   testnet: { apiKey: string; apiSecret: string } | null;
   enablePublicMutations: boolean;
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
+  replayFixture: string;
   /** Hash of the non-secret configuration; stored on the account row and shown in status. */
   configurationHash: string;
   warnings: string[];
@@ -131,6 +137,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
     has_testnet_credentials: hasTestnetKey && hasTestnetSecret,
     enable_public_mutations: e.ENABLE_PUBLIC_MUTATIONS,
     log_level: e.LOG_LEVEL,
+    replay_fixture: e.MONEYKERNEL_MODE === "REPLAY" ? e.REPLAY_FIXTURE : null,
   });
 
   return {
@@ -153,6 +160,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
         : null,
     enablePublicMutations: e.ENABLE_PUBLIC_MUTATIONS,
     logLevel: e.LOG_LEVEL,
+    replayFixture: e.REPLAY_FIXTURE,
     configurationHash,
     warnings,
   };
@@ -176,6 +184,7 @@ export function redactedConfig(config: KernelConfig): Record<string, unknown> {
     has_testnet_credentials: config.testnet !== null,
     enable_public_mutations: config.enablePublicMutations,
     log_level: config.logLevel,
+    replay_fixture: config.environment === "REPLAY" ? config.replayFixture : null,
     configuration_hash: config.configurationHash,
     warnings: config.warnings,
   };

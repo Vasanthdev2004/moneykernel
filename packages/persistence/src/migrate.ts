@@ -9,7 +9,7 @@ import { type Pool, withClient } from "./db.ts";
  * Sequential SQL migrations (prd.md 14.6): checked-in files, applied in
  * version order, recorded with a checksum. The application never migrates
  * itself; readiness fails when the schema is behind or a recorded migration's
- * file has changed (drift).
+ * file has changed or is missing from this checkout (drift).
  */
 export const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
@@ -87,6 +87,12 @@ function diff(
     else if (record.checksum !== file.checksum) {
       drift.push({ version: file.version, expected: record.checksum, actual: file.checksum });
     }
+    byVersion.delete(file.version);
+  }
+  // A newer database or an omitted migration is incompatible with this
+  // checkout until explicitly accounted for; it must not look up to date.
+  for (const record of byVersion.values()) {
+    drift.push({ version: record.version, expected: record.checksum, actual: "missing file" });
   }
   return { pending, drift };
 }

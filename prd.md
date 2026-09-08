@@ -1943,7 +1943,7 @@ The implementation must provide these commands or document exact equivalents:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm doctor
+pnpm run doctor
 docker compose up -d db
 pnpm db:migrate
 pnpm demo:seed

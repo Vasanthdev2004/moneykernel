@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
-import type { AccountEnvironment, AccountRow } from "../db.ts";
+import type { AccountEnvironment, AccountRow, AccountStatus } from "../db.ts";
 
 export type EnsureAccountInput = {
   environment: AccountEnvironment;
@@ -54,7 +54,42 @@ export async function ensureAccountPaused(
   return { account, created: false };
 }
 
+export async function findAccountByAlias(
+  client: PoolClient,
+  environment: AccountEnvironment,
+  alias: string,
+): Promise<AccountRow | null> {
+  const result = await client.query<AccountRow>("SELECT * FROM accounts WHERE environment = $1 AND alias = $2", [
+    environment,
+    alias,
+  ]);
+  return result.rows[0] ?? null;
+}
+
 export async function getAccountById(client: PoolClient, id: string): Promise<AccountRow | null> {
   const result = await client.query<AccountRow>("SELECT * FROM accounts WHERE id = $1", [id]);
   return result.rows[0] ?? null;
+}
+
+/**
+ * Status transitions (prd.md 11.1). The caller holds the account row lock.
+ * Stopping increments the epoch so that any approval bound to the old epoch
+ * is stale (prd.md 10.6); resuming does not.
+ */
+export async function setAccountStatus(
+  client: PoolClient,
+  id: string,
+  status: AccountStatus,
+  now: Date,
+  options: { bumpEpoch?: boolean } = {},
+): Promise<AccountRow> {
+  const result = await client.query<AccountRow>(
+    `UPDATE accounts
+        SET status = $2, state_version = state_version + 1, epoch = epoch + $3, updated_at = $4
+      WHERE id = $1 RETURNING *`,
+    [id, status, options.bumpEpoch ? 1 : 0, now],
+  );
+  const row = result.rows[0];
+  if (row === undefined) throw new Error(`account ${id} not found`);
+  return row;
 }

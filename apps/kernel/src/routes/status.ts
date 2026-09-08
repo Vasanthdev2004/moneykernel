@@ -6,7 +6,7 @@ import {
   type StatusResponse,
   StatusResponseSchema,
 } from "@moneykernel/contracts";
-import { countCommandsByState, getAccountById, withClient } from "@moneykernel/persistence";
+import { countOutstandingCommands, getAccountById, withClient } from "@moneykernel/persistence";
 import type { FastifyInstance } from "fastify";
 import type { KernelRuntime } from "../boot.ts";
 import { computeReadiness } from "../readiness.ts";
@@ -44,7 +44,7 @@ export async function statusRoutes(app: FastifyInstance, options: { runtime: Ker
     const accountId = runtime.account.id;
     const { account, counts } = await withClient(pool, async (client) => ({
       account: await getAccountById(client, accountId),
-      counts: await countCommandsByState(client, accountId),
+      counts: await countOutstandingCommands(client, accountId),
     }));
     if (account === null) {
       reply.code(503);
@@ -66,8 +66,8 @@ export async function statusRoutes(app: FastifyInstance, options: { runtime: Ker
         epoch: account.epoch,
         quote_asset: account.quote_asset,
       },
-      in_flight_commands: counts.ARMED,
-      unresolved_commands: counts.OUTCOME_UNKNOWN,
+      in_flight_commands: counts.total,
+      unresolved_commands: counts.unknown + counts.accepted_unreconciled,
       provenance: {
         execution_mode: env,
         market_source: marketSourceFor(runtime),

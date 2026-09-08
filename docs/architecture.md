@@ -28,8 +28,17 @@ Dependency direction: `contracts <- domain <- persistence <- kernel`; `integrati
 2. Reach the database and verify migrations are current; the app never migrates itself (`pnpm db:migrate`).
 3. Take the single-writer advisory session lock `moneykernel:writer:<mode>:<alias>` on a dedicated connection. A second process cannot take it; there is no automatic hot failover.
 4. Ensure the account row for `(mode, alias)` exists, set it `PAUSED`, and increment its control epoch. Append `ACCOUNT_CREATED` or `ACCOUNT_BOOTED` to the hash-chained audit log.
-5. Count armed and unknown commands; any of them blocks readiness until reconciled.
+5. Count armed, unknown, and accepted-but-unreconciled commands; any of them blocks readiness. Accepted commands need a terminal order, no outstanding holds, and `commands.reconciled_at` set by the reconciliation transaction. A terminal response alone does not prove settled accounting.
 6. Serve `/health/live`, `/health/ready`, `/v1/status`. The account stays `PAUSED` until an operator resumes it.
+
+## Intent admission (prd.md 28.2, Gate 2)
+
+1. `GET /v1/agent/context` authenticates the agent by token hash, reads fresh observations for the lease's symbols through the mode's market adapter, records each as an immutable snapshot row, and returns their ids.
+2. `POST /v1/agent/intents` (with `Idempotency-Key`) parses the intent against the strict contract (422 for bad money, 400 for unknown fields), then refreshes marks for every held asset and the symbol rules outside any transaction.
+3. Inside one transaction: lock the account row, then the agent and lease rows; re-check idempotency; assemble the evaluator input (policy version, lease, balances, attribution, outstanding reservations excluding nothing yet, pending BUY exposure, fresh marks); run the pure evaluator; insert the intent, receipt, proposal (`COLLECTING`), reservations (QUOTE + ATTEMPT for BUY, BASE + ATTEMPT for SELL), and audit events; commit.
+4. The response is the decision receipt view; the same key and payload replay it with 200, a different payload gets 409.
+
+The account row lock serializes every resource claim, which is what keeps two concurrent 80 USDT requests from both reserving a 100 USDT pool.
 
 ## Modes (prd.md 13.1)
 
@@ -47,7 +56,7 @@ There is no LIVE mode and no configuration option that creates one. Agent OS MCP
 pnpm install --frozen-lockfile
 docker compose up -d db        # host port from MK_DB_HOST_PORT in .env (default 5432)
 pnpm db:migrate
-pnpm doctor
+pnpm run doctor
 pnpm dev                       # kernel on http://127.0.0.1:8080
 pnpm dev:web                   # console on http://127.0.0.1:5173, proxied to the kernel
 ```

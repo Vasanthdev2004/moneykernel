@@ -34,6 +34,21 @@
       "base_precision": 8,
       "quote_precision": 8,
       "unsupported_filters": []
+    },
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "status": "TRADING",
+      "tick_size": "0.01",
+      "step_size": "0.00001",
+      "min_qty": "0.00001",
+      "max_qty": "9000",
+      "min_notional": "5",
+      "max_notional": null,
+      "base_precision": 8,
+      "quote_precision": 8,
+      "unsupported_filters": []
     }
   },
   "market_snapshots": [
@@ -42,19 +57,62 @@
       "symbol": "SOLUSDT",
       "source": "SYNTHETIC_FIXTURE",
       "source_timestamp": "2026-09-08T12:00:00Z",
-      "bids": [{ "price": "99.99", "quantity": "50" }],
-      "asks": [{ "price": "100", "quantity": "50" }],
+      "bids": [
+        {
+          "price": "99.99",
+          "quantity": "50"
+        }
+      ],
+      "asks": [
+        {
+          "price": "100",
+          "quantity": "50"
+        }
+      ],
       "last_price": "100"
+    },
+    {
+      "snapshot_id": "snapshot_fixture_btc_01",
+      "symbol": "BTCUSDT",
+      "source": "SYNTHETIC_FIXTURE",
+      "source_timestamp": "2026-09-08T12:00:00Z",
+      "bids": [
+        {
+          "price": "99999.99",
+          "quantity": "1"
+        }
+      ],
+      "asks": [
+        {
+          "price": "100000",
+          "quantity": "1"
+        }
+      ],
+      "last_price": "100000"
     }
   ],
-  "marks": { "SOLUSDT": "100", "BTCUSDT": "100000" },
+  "marks": {
+    "SOLUSDT": "100",
+    "BTCUSDT": "100000"
+  },
   "account": {
     "alias": "scenario-a",
     "quote_asset": "USDT",
-    "balances": { "USDT": "110", "SOL": "2.2275", "BTC": "0.0066725" },
-    "inventory_allocations": { "UNASSIGNED": { "SOL": "2.2275", "BTC": "0.0066725" } },
+    "balances": {
+      "USDT": "110",
+      "SOL": "2.2275",
+      "BTC": "0.0066725"
+    },
+    "inventory_allocations": {
+      "UNASSIGNED": {
+        "SOL": "2.2275",
+        "BTC": "0.0066725"
+      }
+    },
     "expected_marked_equity_quote": "1000",
-    "expected_existing_exposure": { "SOLUSDT": "222.75" }
+    "expected_existing_exposure": {
+      "SOLUSDT": "222.75"
+    }
   },
   "agents": [
     {
@@ -85,7 +143,11 @@
         "symbol": "SOLUSDT",
         "side": "BUY",
         "order_type": "LIMIT_IOC",
-        "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "80" },
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "80"
+        },
         "limit_price": "100",
         "observation_ids": ["snapshot_fixture_sol_01"],
         "rationale": "Example fixture proposal; the kernel must size it independently.",

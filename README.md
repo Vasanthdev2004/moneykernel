@@ -11,8 +11,9 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | Gate | State |
 |---|---|
 | G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; see below. |
-| G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. See `docs/test-evidence.md`. |
-| G2 deterministic vertical slice | Next: intent → policy → atomic reservation → receipt. |
+| G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. |
+| G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. See `docs/test-evidence.md`. |
+| G3 authority and coordination | Next: exact approval, command arming, opposing-intent conflicts, quarantine, stop. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
@@ -30,14 +31,30 @@ pnpm install --frozen-lockfile
 cp .env.example .env          # set OPERATOR_BOOTSTRAP_SECRET; change MK_DB_HOST_PORT if 5432 is taken
 docker compose up -d db
 pnpm db:migrate
-pnpm doctor
+pnpm run doctor
 pnpm dev                      # kernel on http://127.0.0.1:8080 (account starts PAUSED)
 pnpm dev:web                  # console on http://127.0.0.1:5173
 ```
 
 Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 
-Commands the PRD requires but a later gate implements (`demo:seed`, `demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
+### Try the vertical slice (REPLAY)
+
+With the kernel running (`pnpm dev`), seed Scenario A and submit the oversized request from prd.md section 27.1:
+
+```bash
+pnpm demo:seed
+```
+
+The seed prints agent tokens once. Then, as the Alpha agent:
+
+```bash
+curl -s http://127.0.0.1:8080/v1/agent/context -H "Authorization: Bearer <token>"
+```
+
+Reference a returned `snapshot_id` and the printed `lease_id` in a `POST /v1/agent/intents` with an `Idempotency-Key` header. An 80 USDT SOL BUY comes back `COUNTERPROPOSE` with the exact 0.270 SOL candidate, its fee reserve, the limiting rule, and a receipt id. Every kernel restart pauses the account again; run the seed afterwards to resume it.
+
+Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
 
 ## Gate 0 outcome (2026-09-08)
 

@@ -43,6 +43,16 @@ export function toDecimalString(value: Dec): DecimalString {
   return canonicalizeDecimal(value.toFixed());
 }
 
+/**
+ * Display form for derived ratios and valuations that may not terminate
+ * (a share of 242.75/999, for example): rounded DOWN to `scale` places, then
+ * canonicalized. Never use this for a quantity, price, fee, or balance that
+ * will be stored or executed; those go through `toDecimalString`.
+ */
+export function toDisplayString(value: Dec, scale: number = MAX_FRACTION_DIGITS): DecimalString {
+  return canonicalizeDecimal(value.toDecimalPlaces(scale, Decimal.ROUND_DOWN).toFixed());
+}
+
 export const ZERO: Dec = new DecimalCtor(0);
 export const ONE: Dec = new DecimalCtor(1);
 

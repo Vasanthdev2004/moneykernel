@@ -2,6 +2,7 @@ import { type ErrorCode, errorEnvelope, MAX_INTENT_BODY_BYTES } from "@moneykern
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import type { KernelRuntime } from "./boot.ts";
 import { newId } from "./ids.ts";
+import { agentRoutes } from "./routes/agent.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { statusRoutes } from "./routes/status.ts";
 
@@ -62,5 +63,6 @@ export function buildApp(runtime: KernelRuntime): FastifyInstance {
 
   app.register(healthRoutes, { runtime });
   app.register(statusRoutes, { runtime });
+  app.register(agentRoutes, { runtime });
   return app;
 }

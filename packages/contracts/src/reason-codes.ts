@@ -10,6 +10,7 @@ export const REASON_CODES = [
   "LEASE_REVOKED",
   "LEASE_NOT_STARTED",
   "LEASE_EXHAUSTED",
+  "LEASE_MISMATCH",
   "AGENT_QUARANTINED",
   "AGENT_DISABLED",
   "ACCOUNT_PAUSED",
@@ -29,6 +30,7 @@ export const REASON_CODES = [
   "FILTER_PRICE_RANGE",
   "FILTER_LOT_RANGE",
   "FILTER_UNSUPPORTED",
+  "SIZE_NORMALIZED",
   "OPPOSING_INTENT",
   "STALE_APPROVAL",
   "OUTCOME_UNKNOWN",
@@ -45,6 +47,8 @@ export const REASON_TEMPLATES: Readonly<Record<ReasonCode, string>> = {
   LEASE_REVOKED: "Lease {lease_id} was revoked (revision {lease_revision}); no new authority is granted.",
   LEASE_NOT_STARTED: "Lease {lease_id} starts at {starts_at}; it grants no authority yet.",
   LEASE_EXHAUSTED: "Lease {lease_id} has consumed its full acquisition budget of {limit} {unit}.",
+  LEASE_MISMATCH:
+    "Lease {lease_id} is not the caller's active lease; identity is derived from the token, never from the request.",
   AGENT_QUARANTINED: "Agent {agent_id} is quarantined; new authority is blocked until an operator reviews it.",
   AGENT_DISABLED: "Agent {agent_id} is disabled.",
   ACCOUNT_PAUSED: "Account {account_id} is paused (epoch {account_epoch}); no new command can be armed.",
@@ -68,6 +72,8 @@ export const REASON_TEMPLATES: Readonly<Record<ReasonCode, string>> = {
   FILTER_LOT_RANGE: "Quantity {observed} is outside the exchange lot size range for {symbol}.",
   FILTER_UNSUPPORTED:
     "Exchange filter {filter} is not implemented; execution for {symbol} is blocked rather than guessed.",
+  SIZE_NORMALIZED:
+    "Requested size {observed} {unit} was rounded down to the exchange step; the exact candidate is {limit} {unit}.",
   OPPOSING_INTENT: "Opposing pending intents on {symbol} require operator review before dispatch.",
   STALE_APPROVAL:
     "Approval no longer matches the current proposal, policy, lease, or account versions; a new approval is required.",
