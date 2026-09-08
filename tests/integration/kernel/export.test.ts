@@ -79,7 +79,8 @@ describe("sanitized run export (prd.md 15.2, 14.5, 23.4; T-54, T-55, T-58)", () 
     expect(bundle.environment).toBe("REPLAY");
     expect(bundle.receipts.length).toBe(1);
     expect(bundle.receipts[0]?.evaluation_input).not.toBeNull();
-    expect((bundle.receipts[0]?.evaluation_input as { intent: { symbol: string } }).intent.symbol).toBe("SOLUSDT");
+    const archived = (bundle.receipts[0]?.evaluation_input ?? null) as { intent: { symbol: string } } | null;
+    expect(archived?.intent.symbol).toBe("SOLUSDT");
     expect(bundle.commands.length).toBe(1);
     expect(bundle.fills.length).toBe(1);
     expect(bundle.ledger_entries.length).toBe(4);

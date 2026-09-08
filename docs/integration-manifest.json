@@ -116,5 +116,19 @@
     "docs/decisions/0001-gate0-custom-mcp-client-oauth.md",
     "spikes/gate0/mcp-spike.ts",
     "spikes/gate0/oauth.ts"
-  ]
+  ],
+  "market_data_fallback": {
+    "status": "AVAILABLE_READ_ONLY",
+    "adapter": "packages/integrations/src/binance/public-rest-market-adapter.ts",
+    "base_url": "https://data-api.binance.vision",
+    "endpoints": ["GET /api/v3/depth", "GET /api/v3/exchangeInfo", "GET /api/v3/ping"],
+    "provenance_label": "BINANCE_PUBLIC_REST",
+    "checked_at": "2026-09-08T08:10:10Z",
+    "evidence": "docs/test-evidence.md (Gate 4 SHADOW rows): live SOLUSDT depth and rules read; paper fill on the live book; no order write path exists",
+    "note": "prd.md 13.4 read-only fallback: the demo must say public REST market data, never that every field came through MCP"
+  },
+  "demo_claims": {
+    "allowed": ["public REST market data (SHADOW)", "synthetic fixture (REPLAY)", "paper execution"],
+    "not_allowed": ["live MCP data", "Agent OS session", "Testnet execution"]
+  }
 }

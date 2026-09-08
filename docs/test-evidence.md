@@ -7,6 +7,18 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Gate 7 release candidate
+
+| Command | Result | What it covers |
+|---|---|---|
+| `pnpm demo:rehearse` (Playwright, `playwright.rehearsal.config.ts`, repeat-each 3) | 12 passed: three consecutive runs of the four scenes, 57 s total (kernel process start, seed, console actions, crash and restart included); a first attempt failed scene D once in its third run when a stale kernel process was still answering the port, so every scene now verifies the live kernel's alias before acting | the four demo scenes through the real console on fresh REPLAY accounts, each with its own kernel process: A counterproposal 0.27 SOL → exact approval → `ACCEPTED` and `FILL_RECONCILED`; B opposing BTC intents `CONFLICT_HELD` → operator selects the BUY → winner `AWAITING_APPROVAL`, loser released, no command; C eleven-request burst → request 11 `AGENT_QUARANTINED`, agent quarantined, reserved 0, later request denied; D synthetic dropped response → `OUTCOME_UNKNOWN` banner → kernel process killed and restarted on the same alias → same command `ACCEPTED`, order `EXPIRED` 0.12 SOL, no banner, `PAUSED` → operator resume → `READY`. Screenshots of run 1 under `docs/evidence/demo/` |
+| fresh clone (T-59): `git clone` into `D:	mpmk-fresh`, `pnpm install --frozen-lockfile`, `pnpm exec tsc -p tsconfig.json --noEmit`, offline suites, console build | install ok; typecheck clean; 300 offline tests passed; console built | starts from a fresh clone without exchange or model keys (a first attempt under a very long temp path failed only on pnpm's task-state file path, not on the repository) |
+| `pnpm test:integration` | 135 passed, 3 skipped (online, opt-in) | plus `demo-faults.test.ts`: the REPLAY-only fault endpoint targets the proposal's deterministic client order id before approval and is refused (403) in SHADOW |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test:unit` / `pnpm test:property` / `pnpm test:contracts` | clean; 203 / 7 × 400 / 90 | |
+| `pnpm run doctor` | all required checks passed | |
+
+Recording and submission (prd.md 23.5) remain owner steps; `docs/demo-script.md` carries the script, captions, and the claims checklist.
+
 ## 2026-09-08 — Gate 6 adversarial hardening and replay evidence
 
 Environment: as Gate 5. Migration 0005 applied (`decision_receipts.evaluation_input`).

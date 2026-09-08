@@ -226,7 +226,8 @@ describe("crash point: unsupported fee asset on a settled fill (T-45)", () => {
     const incidents = await withClient(pool, (c) => listIncidents(c, h.accountId, "OPEN"));
     const feeIncident = incidents.find((i) => i.type === "UNSUPPORTED_FEE_ASSET");
     expect(feeIncident?.severity).toBe("CRITICAL");
-    expect((feeIncident?.evidence_refs as { commission_asset: string }).commission_asset).toBe("BNB");
+    const evidence = (feeIncident?.evidence_refs ?? {}) as { commission_asset?: string };
+    expect(evidence.commission_asset).toBe("BNB");
     expect(incidents.map((i) => i.type).sort()).toEqual(["FILL_DETAIL_INCOMPLETE", "UNSUPPORTED_FEE_ASSET"]);
     expect((await computeReadiness(h.runtime)).ready).toBe(false);
     const stopped = await opRequest(

@@ -84,6 +84,11 @@ The account row lock serializes every resource claim, which is what keeps two co
 
 There is no LIVE mode and no configuration option that creates one. Agent OS MCP observations cannot be obtained by the backend itself (Gate 0 finding); if relayed through a supported agent session they are labelled `BINANCE_MCP_VIA_SUPPORTED_AGENT` and treated as untrusted agent context.
 
+## Demo rehearsal (Gate 7, prd.md 23)
+
+- `POST /v1/demo/faults` (`apps/kernel/src/routes/demo.ts`) exists only in REPLAY: it arms a recorded fault (`DROP_RESPONSE_AFTER_ACCEPT`) for the deterministic client order id a proposal will receive when approved, so scene D can be shown in the console without racing the dispatcher. SHADOW and TESTNET refuse it; no fault ever reaches an exchange.
+- `pnpm demo:rehearse` (`tests/rehearsal/demo.spec.ts`, `playwright.rehearsal.config.ts`) runs the four demo scenes three times through the real console, starting a kernel process per scene on a fresh alias, seeding the fixture, submitting agent intents through the agent API, performing every operator action in the UI, crashing and restarting the kernel process for scene D, and saving screenshots under `docs/evidence/demo/`. `pnpm demo:scene` plays only the agent side for a manual recording (`docs/demo-script.md`).
+
 ## Local operation
 
 ```

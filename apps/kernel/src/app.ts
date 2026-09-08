@@ -4,6 +4,7 @@ import type { KernelRuntime } from "./boot.ts";
 import { newId } from "./ids.ts";
 import { agentRoutes } from "./routes/agent.ts";
 import { consoleRoutes } from "./routes/console.ts";
+import { demoRoutes } from "./routes/demo.ts";
 import { exportRoutes } from "./routes/export.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { operatorRoutes } from "./routes/operator.ts";
@@ -72,5 +73,6 @@ export function buildApp(runtime: KernelRuntime): FastifyInstance {
   app.register(operatorRoutes, { runtime });
   app.register(consoleRoutes, { runtime });
   app.register(exportRoutes, { runtime });
+  app.register(demoRoutes, { runtime });
   return app;
 }

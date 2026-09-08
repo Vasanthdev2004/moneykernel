@@ -7,7 +7,8 @@
     "scripts",
     "tests",
     "vitest.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.rehearsal.config.ts"
   ],
   "exclude": ["node_modules", "dist", "spikes", "apps/web"]
 }

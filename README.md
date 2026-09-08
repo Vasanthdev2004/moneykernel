@@ -17,7 +17,7 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
 | G5 operator experience | Implemented and independently reviewed: operations console, exact approvals, agent/lease controls, conflicts, receipts, incidents, commands, integration status, and SSE timeline. Session, cash-buffer, state-label, and responsive fixes have [G5 review evidence](docs/g5-fix-test-evidence.md), including 7 passing browser tests. |
 | G6 adversarial hardening | Done: fault layer (`pnpm test:fault`), sanitized run export, standalone `verify:receipt` (chain, fingerprints, evaluator replay, numerical agreement, secret scan), offline `demo:replay` for all four scenarios with isolated runs. See `docs/decisions/0008-g6-export-verify-replay.md`. |
-| G7 release candidate | Next: three clean demo rehearsals, sanitized export in the repository, recording, submission checklist. |
+| G7 release candidate | Done: scripted four-scene demo rehearsal through the real console (`pnpm demo:rehearse`, three consecutive runs with screenshots under `docs/evidence/demo/`), REPLAY-only synthetic fault endpoint for scene D, manual recording script (`docs/demo-script.md`, `pnpm demo:scene`), fresh-clone start check, evidence package index. Recording and submission are the owner's steps. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
@@ -89,6 +89,10 @@ pnpm agent:run -- --token <mka_...> --provider agent-session --proposal proposal
 ```
 
 A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
+
+### Demo rehearsal and recording (prd.md 23)
+
+`docs/demo-script.md` is the 90-second script: four scenes (constrained counterproposal, opposing intents, chaos burst quarantine, dropped response with crash and restart), each on its own fresh REPLAY account. `pnpm demo:rehearse` performs all four through the real console three times in a row, starting and crashing kernel processes itself, and writes screenshots to `docs/evidence/demo/<run>/`. For a manual recording, `pnpm demo:scene -- <a|b|c|d> --seed <seed-output.json>` plays the agent side while you operate the console. Scene D's dropped response is armed with `POST /v1/demo/faults`, which exists only in REPLAY.
 
 ### Replay and verification (prd.md 22.2)
 

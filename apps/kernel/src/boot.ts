@@ -54,6 +54,8 @@ export type KernelRuntime = {
   recovery: RecoveryReport | null;
   /** Last successful observation read and last failure, for truthful integration status (FR-11). */
   marketHealth: { last_successful_read_at: string | null; last_error: string | null };
+  /** Paper venue fault table (REPLAY demo scenarios and tests only); shared by reference with the executor. */
+  paperFaults: PaperFaults;
   startedAt: Date;
   clock: () => Date;
   shutdown: () => Promise<void>;
@@ -119,6 +121,7 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
   const reconciliation = new Map<string, { attempts: number; next_at: number }>();
   let recovery: RecoveryReport | null = null;
   const marketHealth = { last_successful_read_at: null as string | null, last_error: null as string | null };
+  const paperFaults: PaperFaults = options.paperFaults ?? { dropResponseFor: new Set<string>() };
 
   const shutdown = async (): Promise<void> => {
     if (writer !== null) {
@@ -148,6 +151,7 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
     reconciliation,
     recovery,
     marketHealth,
+    paperFaults,
     startedAt,
     clock,
     shutdown,
@@ -167,7 +171,7 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
         feeRate,
         feeAsset: config.quoteAsset,
         store: venueStore,
-        faults: options.paperFaults,
+        faults: paperFaults,
       });
       checks.push({ name: "market_adapter", ok: true, detail: `fixture ${scenario.scenario_id} (SYNTHETIC_FIXTURE)` });
     } catch (error) {
@@ -187,7 +191,7 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
         feeRate: "0.001",
         feeAsset: config.quoteAsset,
         store: venueStore,
-        faults: options.paperFaults,
+        faults: paperFaults,
       });
       checks.push({
         name: "market_adapter",

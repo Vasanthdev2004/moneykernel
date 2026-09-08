@@ -26,6 +26,7 @@ function unreadyRuntime(): KernelRuntime {
     reconciliation: new Map(),
     recovery: null,
     marketHealth: { last_successful_read_at: null, last_error: null },
+    paperFaults: {},
     startedAt: new Date("2026-09-08T12:00:00Z"),
     clock: () => new Date("2026-09-08T12:00:00Z"),
     shutdown: async () => undefined,
