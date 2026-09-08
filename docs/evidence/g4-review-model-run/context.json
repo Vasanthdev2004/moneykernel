@@ -1,0 +1,50 @@
+{
+  "context_hash": "ca9a40404c92d22a55f6e5c63bd31864df359200284f82a3777b74d9f838b906",
+  "context": {
+    "agent": {
+      "id": "agent_alpha_5a0c41d1",
+      "name": "Alpha"
+    },
+    "account": {
+      "environment": "SHADOW",
+      "quote_asset": "USDT"
+    },
+    "lease": {
+      "lease_id": "lease_alpha_d_5a0c41d1",
+      "acquisition_budget_quote": "40.000000000000000000",
+      "consumed_quote": "0.000000000000000000",
+      "max_submission_attempts": 2,
+      "attempts_consumed": 0,
+      "expires_at": "2026-09-08T08:56:56.502Z",
+      "allowed_symbols": [
+        "SOLUSDT"
+      ],
+      "allowed_sides": [
+        "BUY"
+      ],
+      "allowed_order_types": [
+        "LIMIT_IOC"
+      ]
+    },
+    "holdings": [],
+    "observations": [
+      {
+        "snapshot_id": "snap_6933513f7f43b00b",
+        "symbol": "SOLUSDT",
+        "source": "BINANCE_PUBLIC_REST",
+        "received_at": "2026-09-08T08:37:23.654Z",
+        "source_timestamp": null,
+        "last_price": null,
+        "best_bid": {
+          "price": "103.03",
+          "quantity": "104.207"
+        },
+        "best_ask": {
+          "price": "103.04",
+          "quantity": "409.327"
+        }
+      }
+    ],
+    "server_time": "2026-09-08T08:37:23.658Z"
+  }
+}

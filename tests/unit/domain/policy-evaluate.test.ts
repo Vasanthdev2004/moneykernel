@@ -181,6 +181,40 @@ describe("Scenario A — constrained acquisition (prd.md 27.1, T-02)", () => {
 });
 
 describe("BUY sizing rules (prd.md 9.10, FR-04)", () => {
+  it.each([
+    { min_price: "100.01", max_price: "0" },
+    { min_price: "0", max_price: "99.99" },
+    { min_price: "100.005", max_price: "0" },
+  ])("denies a normalized BUY outside PRICE_FILTER bounds %j", (bounds) => {
+    const result = evaluate(
+      scenarioA({
+        intent: buyIntent({ limit_price: "100.009" }),
+        symbol_rules: { ...SOL_RULES, ...bounds },
+      }),
+    );
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toContain("FILTER_PRICE_RANGE");
+    expect(result.candidate).toBeNull();
+  });
+
+  it.each([
+    { min_price: "100", max_price: "100" },
+    { min_price: "0", max_price: "0" },
+    { min_price: null, max_price: null },
+  ])("allows a BUY at inclusive or disabled PRICE_FILTER bounds %j", (bounds) => {
+    expect(evaluate(scenarioA({ symbol_rules: { ...SOL_RULES, ...bounds } })).candidate?.limit_price).toBe("100");
+  });
+
+  it("supports PRICE_FILTER with tickSize zero while still enforcing its bounds", () => {
+    const result = evaluate(
+      scenarioA({
+        intent: buyIntent({ limit_price: "100.009" }),
+        symbol_rules: { ...SOL_RULES, tick_size: "0", min_price: "100.005", max_price: "100.01" },
+      }),
+    );
+    expect(result.candidate?.limit_price).toBe("100.009");
+  });
+
   it("T-01: an in-budget request is allowed unchanged with its fee envelope", () => {
     const result = evaluate(
       scenarioA({ intent: buyIntent({ size: { kind: "QUOTE_NOTIONAL", quote_asset: "USDT", amount: "20" } }) }),
@@ -533,6 +567,26 @@ describe("SELL rules (INV-10, T-13)", () => {
       },
     };
   }
+
+  it.each([
+    { min_price: "100000.02", max_price: "0" },
+    { min_price: "0", max_price: "100000.005" },
+  ])("denies a normalized SELL outside PRICE_FILTER bounds %j", (bounds) => {
+    const input = scenarioB("0.0002", "100000.001");
+    if (input.symbol_rules === null) throw new Error("fixture rules missing");
+    input.symbol_rules = { ...input.symbol_rules, ...bounds };
+    const result = evaluate(input);
+    expect(result.outcome).toBe("DENY");
+    expect(result.reason_codes).toContain("FILTER_PRICE_RANGE");
+    expect(result.candidate).toBeNull();
+  });
+
+  it("allows a SELL at the inclusive price bounds with its tick disabled", () => {
+    const input = scenarioB("0.0002", "100000.001");
+    if (input.symbol_rules === null) throw new Error("fixture rules missing");
+    input.symbol_rules = { ...input.symbol_rules, tick_size: "0", min_price: "100000.001", max_price: "100000.001" };
+    expect(evaluate(input).candidate?.limit_price).toBe("100000.001");
+  });
 
   it("allows a SELL within attributed inventory and reserves exactly the base quantity", () => {
     const result = evaluate(scenarioB("0.0002"));

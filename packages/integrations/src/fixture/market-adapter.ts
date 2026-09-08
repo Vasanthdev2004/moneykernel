@@ -102,6 +102,12 @@ export class FixtureMarketAdapter implements MarketAdapter {
       quote_asset: fixture.quote_asset,
       status: fixture.status,
       tick_size: canonicalizeDecimal(fixture.tick_size),
+      ...(fixture.min_price === undefined
+        ? {}
+        : { min_price: fixture.min_price === null ? null : canonicalizeDecimal(fixture.min_price) }),
+      ...(fixture.max_price === undefined
+        ? {}
+        : { max_price: fixture.max_price === null ? null : canonicalizeDecimal(fixture.max_price) }),
       step_size: canonicalizeDecimal(fixture.step_size),
       min_qty: canonicalizeDecimal(fixture.min_qty),
       max_qty: canonicalizeDecimal(fixture.max_qty),

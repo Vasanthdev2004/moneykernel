@@ -41,6 +41,7 @@ import {
   isHardViolation,
   recordHardViolation,
 } from "./quarantine.ts";
+import { hasLiveWriterLease } from "./writer.ts";
 
 export class AdmissionError extends Error {
   readonly code: ErrorCode;
@@ -183,6 +184,11 @@ export async function submitIntent(
     const policy = PolicySchema.parse(policyRow.canonical_policy);
 
     const lease = await getLeaseById(tx, intent.lease_id, { lock: true });
+    // Historical retries above are read-only. New authority requires the live
+    // writer after every authority lock wait, before recording any agent fault.
+    if (!(await hasLiveWriterLease(runtime))) {
+      throw new AdmissionError("NOT_READY", 503, "writer ownership lost; admission blocked");
+    }
     // Admission time must follow all authority locks so waiting cannot extend
     // lease validity or use an earlier burst-counting window for this request.
     const now = runtime.clock();

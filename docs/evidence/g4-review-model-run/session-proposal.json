@@ -1,0 +1,6 @@
+{
+  "produced_by": "Codex review session (this conversation)",
+  "produced_at": "2026-09-08T08:37:37.534Z",
+  "context_hash": "ca9a40404c92d22a55f6e5c63bd31864df359200284f82a3777b74d9f838b906",
+  "raw_text": "{\"kind\":\"PROPOSAL\",\"rationale\":\"Verification-only SHADOW proposal: 15 USDT is within the 40 USDT lease; the observed SOL ask is 103.04 with 409.327 SOL available. Request LIMIT IOC at that ask and defer all current filter, budget, and approval checks to the kernel.\",\"intent\":{\"symbol\":\"SOLUSDT\",\"side\":\"BUY\",\"order_type\":\"LIMIT_IOC\",\"size\":{\"kind\":\"QUOTE_NOTIONAL\",\"quote_asset\":\"USDT\",\"amount\":\"15\"},\"limit_price\":\"103.04\",\"observation_ids\":[\"snap_6933513f7f43b00b\"]}}"
+}

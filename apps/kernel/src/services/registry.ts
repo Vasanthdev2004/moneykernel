@@ -241,6 +241,9 @@ export async function setVirtualBalances(
         const asset = AssetSchema.parse(rawAsset);
         if (!balances.has(asset)) throw new Error(`allocation asset ${asset} has no owned balance`);
         const amount = NonNegativeDecimalStringSchema.parse(quantity);
+        if (asset === account.quote_asset && owner !== UNASSIGNED_OWNER && dec(amount).gt(ZERO)) {
+          throw new Error("shared quote cash must remain UNASSIGNED; leases bound spending without assigning cash");
+        }
         normalized.set(asset, amount);
         assigned.set(asset, (assigned.get(asset) ?? ZERO).plus(dec(amount)));
       }

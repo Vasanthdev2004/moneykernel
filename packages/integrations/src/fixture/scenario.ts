@@ -15,6 +15,8 @@ export const FixtureSymbolRulesSchema = z.looseObject({
   quote_asset: z.string(),
   status: z.enum(["TRADING", "HALT", "BREAK", "UNKNOWN"]),
   tick_size: Decimal,
+  min_price: Decimal.nullable().optional(),
+  max_price: Decimal.nullable().optional(),
   step_size: Decimal,
   min_qty: Decimal,
   max_qty: Decimal,

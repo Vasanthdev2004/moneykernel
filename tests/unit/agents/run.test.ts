@@ -5,6 +5,7 @@ import { hashCanonical } from "@moneykernel/contracts";
 import { afterAll, describe, expect, it } from "vitest";
 import type { StrategyProvider } from "../../../apps/agents/src/provider.ts";
 import { AgentSessionProvider } from "../../../apps/agents/src/providers/agent-session.ts";
+import { AnthropicProvider } from "../../../apps/agents/src/providers/anthropic.ts";
 import { RECORDED_LABEL, RecordedProvider } from "../../../apps/agents/src/providers/recorded.ts";
 import { ScriptedProvider } from "../../../apps/agents/src/providers/scripted.ts";
 import { deriveRunId, idempotencyKeyFor, runOnce, tracePath } from "../../../apps/agents/src/run.ts";
@@ -12,6 +13,7 @@ import {
   AGENT_TOKEN,
   BUY_PROPOSAL,
   FakeKernelClient,
+  jsonResponse,
   kernelContextBody,
   LEASE_ID,
   NO_ACTION,
@@ -121,6 +123,40 @@ describe("runOnce: one bounded strategy cycle (prd.md 16)", () => {
     expect(trace.intent).toBeNull();
     expect(trace.usage).toEqual({ input_tokens: null, output_tokens: null });
   });
+
+  it.each(["invalid output", "failed repair request"])(
+    "preserves known model usage and repair metadata on %s",
+    async (failure) => {
+      let calls = 0;
+      const client = new FakeKernelClient();
+      const provider = new AnthropicProvider({
+        apiKey: "test-provider-key",
+        modelId: "test-model",
+        fetch: async () => {
+          calls += 1;
+          if (calls === 2 && failure === "failed repair request") throw new Error("connection dropped");
+          return jsonResponse({
+            content: [{ type: "text", text: "invalid output" }],
+            stop_reason: "end_turn",
+            usage: { input_tokens: 100, output_tokens: 20 },
+          });
+        },
+      });
+      const trace = await runOnce({ client, provider, role: "alpha", clock });
+      expect(calls).toBe(2);
+      expect(client.submissions).toHaveLength(0);
+      expect(trace.output_kind).toBe("NO_PROPOSAL");
+      expect(trace.validation).toBe("INVALID");
+      expect(trace.repair_attempts).toBe(1);
+      expect(trace.usage).toEqual(
+        failure === "invalid output"
+          ? { input_tokens: 200, output_tokens: 40 }
+          : { input_tokens: 100, output_tokens: 20 },
+      );
+      expect(trace.latency_ms).toBeGreaterThanOrEqual(0);
+      expect(JSON.stringify(trace)).not.toContain("test-provider-key");
+    },
+  );
 
   it("returns NO_ACTION without consulting the provider when there is no active lease", async () => {
     let calls = 0;

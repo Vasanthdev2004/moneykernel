@@ -207,6 +207,38 @@ export async function updateOrderObservation(
 
 // --- reservations ---------------------------------------------------------------
 
+/** Moves an applied fill's debit out of the live hold without releasing the unfilled remainder. */
+export async function consumeArmedReservationPart(
+  client: PoolClient,
+  reservation: ReservationRow,
+  consumedAmount: string,
+  consumedRowId: string,
+  now: Date,
+): Promise<void> {
+  const remaining = await client.query(
+    `UPDATE reservations SET amount = amount - $2
+      WHERE id = $1 AND state = 'ARMED' AND amount >= $2 RETURNING id`,
+    [reservation.id, consumedAmount],
+  );
+  if (remaining.rowCount !== 1) throw new Error(`reservation ${reservation.id} cannot cover its consumed part`);
+  await client.query(
+    `INSERT INTO reservations (id, account_id, proposal_id, agent_id, asset, amount, kind, state, created_at, armed_at, released_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'CONSUMED', $8, $9, $10)`,
+    [
+      consumedRowId,
+      reservation.account_id,
+      reservation.proposal_id,
+      reservation.agent_id,
+      reservation.asset,
+      consumedAmount,
+      reservation.kind,
+      reservation.created_at,
+      reservation.armed_at,
+      now,
+    ],
+  );
+}
+
 /**
  * Settles one ARMED hold after terminal reconciliation: the consumed part
  * stays on the original row as CONSUMED and the unfilled remainder becomes a

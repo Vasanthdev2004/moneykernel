@@ -313,7 +313,8 @@ function evaluateBuy(
     log.fail(RULE.PRICE_TICK, "FILTER_PRICE_RANGE", intent.limit_price, rules.tick_size, rules.quote_asset);
     return deny();
   }
-  const limit = roundPriceToTick(dec(intent.limit_price), tick, "BUY");
+  const limit = eq(tick, ZERO) ? dec(intent.limit_price) : roundPriceToTick(dec(intent.limit_price), tick, "BUY");
+  if (!checkPriceRange(limit, rules, log)) return deny();
   log.pass(RULE.PRICE_TICK, toDecimalString(limit), rules.tick_size, rules.quote_asset);
 
   // Valuation: every held non-quote asset needs a fresh mark (prd.md 9.9).
@@ -541,6 +542,28 @@ function evaluateBuy(
   return finish({ outcome: "COUNTERPROPOSE", limiting_rule: RULE.LOT_SIZE, candidate });
 }
 
+/** PRICE_FILTER bounds apply to the normalized limit; a zero bound disables that part. */
+function checkPriceRange(limit: Dec, rules: SymbolRulesView, log: CheckLog): boolean {
+  const minimum = dec(rules.min_price ?? "0");
+  const maximum = dec(rules.max_price ?? "0");
+  if (
+    lt(minimum, ZERO) ||
+    lt(maximum, ZERO) ||
+    (isPositive(minimum) && lt(limit, minimum)) ||
+    (isPositive(maximum) && gt(limit, maximum))
+  ) {
+    log.fail(
+      RULE.PRICE_TICK,
+      "FILTER_PRICE_RANGE",
+      toDecimalString(limit),
+      `${rules.min_price ?? "0"}..${rules.max_price ?? "0"}`,
+      rules.quote_asset,
+    );
+    return false;
+  }
+  return true;
+}
+
 function evaluateSell(
   input: EvaluationInput,
   rules: SymbolRulesView,
@@ -554,7 +577,8 @@ function evaluateSell(
 
   const tick = dec(rules.tick_size);
   const step = dec(rules.step_size);
-  const limit = roundPriceToTick(dec(intent.limit_price), tick, "SELL");
+  const limit = eq(tick, ZERO) ? dec(intent.limit_price) : roundPriceToTick(dec(intent.limit_price), tick, "SELL");
+  if (!checkPriceRange(limit, rules, log)) return deny();
   log.pass(RULE.PRICE_TICK, toDecimalString(limit), rules.tick_size, rules.quote_asset);
 
   const requested = dec(intent.size.amount);

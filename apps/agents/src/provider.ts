@@ -162,6 +162,26 @@ export type OutputValidation = "VALID" | "REPAIRED";
 export type TokenUsage = { input_tokens: number | null; output_tokens: number | null };
 export const NO_TOKEN_USAGE: TokenUsage = Object.freeze({ input_tokens: null, output_tokens: null });
 
+/** Known run metadata survives a provider failure; no raw response or credential is retained here. */
+export class ProviderFailure extends Error {
+  readonly latency_ms: number;
+  readonly repair_attempts: number;
+  readonly validation: "INVALID" | null;
+  readonly usage: TokenUsage;
+
+  constructor(
+    message: string,
+    metadata: { latency_ms: number; repair_attempts: number; validation: "INVALID" | null; usage: TokenUsage },
+  ) {
+    super(message);
+    this.name = "ProviderFailure";
+    this.latency_ms = metadata.latency_ms;
+    this.repair_attempts = metadata.repair_attempts;
+    this.validation = metadata.validation;
+    this.usage = metadata.usage;
+  }
+}
+
 export type ProviderResult = {
   output: ProposalOutput;
   raw_text: string;

@@ -38,7 +38,7 @@ import { newId } from "../ids.ts";
 import { type ApprovedCommandPayload, exactPayloadForProposal, proposalBindingHash } from "../services/approvals.ts";
 import { assembleEvaluationInput, markFromSnapshot, refreshInputsForSymbol } from "../services/evaluation.ts";
 import { endProposalInTx, sweepProposalsInTx } from "../services/proposals.ts";
-import { type ApplyResult, applyObservedOrderInTx } from "../services/reconciliation.ts";
+import { type ApplyResult, applyObservedOrderInTx, reconcileCommand } from "../services/reconciliation.ts";
 import { hasLiveWriterLease } from "../services/writer.ts";
 
 export type DispatchReport =
@@ -330,12 +330,35 @@ async function submitArmed(
     fills = page.fills.filter((f) => f.order.client_order_id === payload.client_order_id);
   }
   let reconciliation: ApplyResult | null = null;
+  let outcome = result.kind;
+  let recheckKnownAcceptance = false;
   await withTransaction(pool, async (tx) => {
     await lockAccountRow(tx, account.id);
+    const locked = await getCommandById(tx, command.id, { lock: true });
+    if (locked === null) throw new Error(`command ${command.id} vanished`);
+    if (result.kind !== "ACCEPTED" && locked.state === "ACCEPTED") {
+      // A concurrent query may already have observed acceptance while submitOnce
+      // was waiting. A late timeout or duplicate rejection cannot undo that
+      // evidence, release unsettled holds, or reopen a reconciled command.
+      outcome = "ACCEPTED";
+      recheckKnownAcceptance = locked.reconciled_at === null;
+      await appendAuditEvent(tx, {
+        id: newId("evt"),
+        accountId: account.id,
+        type: "COMMAND_OUTCOME",
+        payload: {
+          command_id: command.id,
+          outcome: "ACCEPTED",
+          received_outcome: result.kind,
+          detail: result.detail,
+          note: "late submission response; recorded acceptance retained",
+        },
+        occurredAt: now,
+      });
+      return;
+    }
     if (result.kind === "ACCEPTED") {
       // Persist the normalized response and reconcile observed fills in one transaction (prd.md 11.3 step 9).
-      const locked = await getCommandById(tx, command.id, { lock: true });
-      if (locked === null) throw new Error(`command ${command.id} vanished`);
       reconciliation = await applyObservedOrderInTx(tx, runtime, {
         command: locked,
         order: result.order,
@@ -343,6 +366,8 @@ async function submitArmed(
         now,
         source: "DISPATCH",
       });
+      const observed = await getCommandById(tx, command.id);
+      if (observed?.state === "OUTCOME_UNKNOWN") outcome = "OUTCOME_UNKNOWN";
     } else if (result.kind === "REJECTED_CONFIRMED") {
       await updateCommandState(tx, command.id, "REJECTED_CONFIRMED", now, {
         outcomeRef: `${result.code}: ${result.detail}`,
@@ -388,11 +413,18 @@ async function submitArmed(
       });
     }
   });
+  if (recheckKnownAcceptance) {
+    // Investigate contradictory responses by stable identity after committing
+    // the observation, without resubmitting or releasing unresolved resources.
+    const rechecked = await reconcileCommand(runtime, command.id, runtime.clock(), "DISPATCH");
+    reconciliation = rechecked.apply;
+    if (rechecked.after === "OUTCOME_UNKNOWN") outcome = "OUTCOME_UNKNOWN";
+  }
   return {
     kind: "ARMED",
     command_id: command.id,
     client_order_id: payload.client_order_id,
-    outcome: result.kind,
+    outcome,
     fills: fills.length,
     reconciliation,
   };

@@ -64,6 +64,8 @@ export function rulesFromSnapshot(row: SnapshotRow | undefined): SymbolRulesView
     quote_asset: str("quote_asset"),
     status: status === "TRADING" || status === "HALT" || status === "BREAK" ? status : "UNKNOWN",
     tick_size: str("tick_size"),
+    min_price: typeof p.min_price === "string" ? p.min_price : null,
+    max_price: typeof p.max_price === "string" ? p.max_price : null,
     step_size: str("step_size"),
     min_qty: str("min_qty"),
     max_qty: str("max_qty"),

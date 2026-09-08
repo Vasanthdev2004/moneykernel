@@ -217,7 +217,7 @@ describe("BinancePublicRestMarketAdapter.getSnapshot (prd.md 13.4, 13.8)", () =>
     expect(shapeless.lastSuccessfulReadAt).toBe("2026-09-08T10:00:00.000Z");
   });
 
-  it("serves a cache hit as a new observation of the same content (one request, new id, same hash)", async () => {
+  it("serves a cache hit with a new id but the original content and fetch timestamps", async () => {
     const { adapter, calls, advance } = harness(cannedHandler(), { cacheMs: 1500 });
     const first = await adapter.getSnapshot("BTCUSDT");
     advance(500);
@@ -229,13 +229,38 @@ describe("BinancePublicRestMarketAdapter.getSnapshot (prd.md 13.4, 13.8)", () =>
     expect(second.payload_hash).toBe(first.payload_hash);
     expect(second.bids).toEqual(first.bids);
     expect(second.asks).toEqual(first.asks);
-    expect(second.request_started_at).toBe("2026-09-08T10:00:00.500Z");
-    expect(second.received_at).toBe("2026-09-08T10:00:00.500Z");
+    expect(second.request_started_at).toBe(first.request_started_at);
+    expect(second.received_at).toBe(first.received_at);
 
     advance(1500);
     const third = await adapter.getSnapshot("BTCUSDT");
     expect(calls).toHaveLength(2);
     expect(third.snapshot_id).toBe("snap-3");
+  });
+
+  it("preserves observation age and request latency until the original cache expiry", async () => {
+    let advanceRequest = (_ms: number): void => {};
+    const { adapter, calls, advance } = harness(() => {
+      advanceRequest(100);
+      return json(DEPTH_BODY);
+    });
+    advanceRequest = advance;
+    const first = await adapter.getSnapshot("BTCUSDT");
+    advance(1000);
+    const cached = await adapter.getSnapshot("BTCUSDT");
+    expect(cached.request_started_at).toBe(first.request_started_at);
+    expect(cached.received_at).toBe(first.received_at);
+    expect(Date.parse(cached.received_at) - Date.parse(cached.request_started_at)).toBe(100);
+    // A 500 ms freshness policy must see this book's actual 1000 ms age.
+    expect(T0 + 1100 - Date.parse(cached.received_at)).toBe(1000);
+    advance(499);
+    await adapter.getSnapshot("BTCUSDT");
+    expect(calls).toHaveLength(1);
+    advance(1);
+    const refreshed = await adapter.getSnapshot("BTCUSDT");
+    expect(calls).toHaveLength(2);
+    expect(refreshed.request_started_at).toBe("2026-09-08T10:00:01.600Z");
+    expect(refreshed.received_at).toBe("2026-09-08T10:00:01.700Z");
   });
 
   it("caches per symbol and not at all when cacheMs is 0", async () => {
@@ -264,7 +289,7 @@ describe("BinancePublicRestMarketAdapter.getSnapshot (prd.md 13.4, 13.8)", () =>
 });
 
 describe("BinancePublicRestMarketAdapter.getSymbolRules (prd.md 9.10, 13.5)", () => {
-  it("maps the real Testnet filter set with nothing unsupported", async () => {
+  it("maps price bounds and identifies the real Testnet set's unqualified percent-price filter", async () => {
     const { adapter, calls } = harness();
     const rules = await adapter.getSymbolRules("BTCUSDT");
 
@@ -274,6 +299,8 @@ describe("BinancePublicRestMarketAdapter.getSymbolRules (prd.md 9.10, 13.5)", ()
     expect(rules.quote_asset).toBe("USDT");
     expect(rules.status).toBe("TRADING");
     expect(rules.tick_size).toBe("0.01");
+    expect(rules.min_price).toBe("0.01");
+    expect(rules.max_price).toBe("1000000");
     expect(rules.step_size).toBe("0.00001");
     expect(rules.min_qty).toBe("0.00001");
     expect(rules.max_qty).toBe("9000");
@@ -281,7 +308,7 @@ describe("BinancePublicRestMarketAdapter.getSymbolRules (prd.md 9.10, 13.5)", ()
     expect(rules.max_notional).toBe("9000000");
     expect(rules.base_precision).toBe(8);
     expect(rules.quote_precision).toBe(8);
-    expect(rules.unsupported_filters).toEqual([]);
+    expect(rules.unsupported_filters).toEqual(["PERCENT_PRICE_BY_SIDE"]);
     expect(rules.source).toBe("BINANCE_PUBLIC_REST");
     expect(rules.received_at).toBe("2026-09-08T10:00:00.000Z");
     expect(rules.payload_hash).toMatch(HEX64_RE);
@@ -292,7 +319,7 @@ describe("BinancePublicRestMarketAdapter.getSymbolRules (prd.md 9.10, 13.5)", ()
     const filters = [...BTCUSDT_FILTERS, { filterType: "FOO_FILTER", fooLimit: 3 }];
     const { adapter } = harness(cannedHandler({ exchangeInfo: exchangeInfoBody({}, filters) }));
     const rules = await adapter.getSymbolRules("BTCUSDT");
-    expect(rules.unsupported_filters).toEqual(["FOO_FILTER"]);
+    expect(rules.unsupported_filters).toEqual(["PERCENT_PRICE_BY_SIDE", "FOO_FILTER"]);
   });
 
   it("falls back to MIN_NOTIONAL when NOTIONAL is absent, with a null maximum", async () => {
@@ -302,7 +329,33 @@ describe("BinancePublicRestMarketAdapter.getSymbolRules (prd.md 9.10, 13.5)", ()
     const rules = await adapter.getSymbolRules("BTCUSDT");
     expect(rules.min_notional).toBe("10");
     expect(rules.max_notional).toBeNull();
-    expect(rules.unsupported_filters).toEqual([]);
+    expect(rules.unsupported_filters).toEqual(["PERCENT_PRICE_BY_SIDE"]);
+  });
+
+  it.each(["PERCENT_PRICE", "PERCENT_PRICE_BY_SIDE", "MAX_POSITION"])(
+    "reports applicable %s instead of treating book drift or small size as qualification",
+    async (filterType) => {
+      const filters = BTCUSDT_FILTERS.filter((f) => f.filterType !== "PERCENT_PRICE_BY_SIDE");
+      filters.push({ filterType, maxPosition: "0.01", multiplierUp: "1.001", avgPriceMins: 5 });
+      const { adapter } = harness(cannedHandler({ exchangeInfo: exchangeInfoBody({}, filters) }));
+      expect((await adapter.getSymbolRules("BTCUSDT")).unsupported_filters).toEqual([filterType]);
+    },
+  );
+
+  it("keeps symbols whose applicable filters are qualified usable", async () => {
+    const filters = BTCUSDT_FILTERS.filter((f) => f.filterType !== "PERCENT_PRICE_BY_SIDE");
+    const { adapter } = harness(cannedHandler({ exchangeInfo: exchangeInfoBody({}, filters) }));
+    expect((await adapter.getSymbolRules("BTCUSDT")).unsupported_filters).toEqual([]);
+  });
+
+  it.each(["minPrice", "maxPrice"])("refuses PRICE_FILTER with a missing %s", async (missing) => {
+    const filters = BTCUSDT_FILTERS.map((filter) => {
+      const copy = { ...filter };
+      if (copy.filterType === "PRICE_FILTER") delete copy[missing];
+      return copy;
+    });
+    const { adapter } = harness(cannedHandler({ exchangeInfo: exchangeInfoBody({}, filters) }));
+    await expect(adapter.getSymbolRules("BTCUSDT")).rejects.toThrow(missing);
   });
 
   it("treats a NOTIONAL filter without maxNotional as unbounded above", async () => {
