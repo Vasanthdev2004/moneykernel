@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "schema",
+      "ok": true,
+      "detail": "RunExportSchema 1; engine 0.1.2; REPLAY account acct_ded44a658fd217a7 epoch 1"
+    },
+    {
+      "name": "event_chain",
+      "ok": true,
+      "detail": "33 events chain from genesis per the bundle checkpoint; count and declared head match; unanchored internal consistency only; no independently retained final hash supplied",
+      "count": 33
+    },
+    {
+      "name": "receipt_fingerprints",
+      "ok": true,
+      "count": 12,
+      "detail": "12 receipts recompute from engine_version, normalized_request, input_refs, outcome, reason_codes, checks, evaluated_at"
+    },
+    {
+      "name": "decision_replay",
+      "ok": true,
+      "count": 12,
+      "detail": "12 replayed through the pure evaluator with identical fingerprint, time, references, and candidate; 0 fingerprint-only: context unavailable; replay completeness is not verified"
+    },
+    {
+      "name": "receipt_linkage",
+      "ok": true,
+      "count": 20,
+      "detail": "20 references between receipts, intents, proposals, approvals, commands, orders, fills, ledger, and reservations resolve"
+    },
+    {
+      "name": "numerical_agreement",
+      "ok": true,
+      "count": 0,
+      "detail": "0 reconciled commands, 0 command without completed settlements, and 0 fills: approval/payload, resources, known fills, and ledger agree; only reconciled commands have complete settlement proof"
+    },
+    {
+      "name": "ledger_conservation",
+      "ok": true,
+      "count": 1,
+      "detail": "1 asset: ledger entries explain balances; allocations match baseline, assignments, net fills, and account totals"
+    },
+    {
+      "name": "secret_scan",
+      "ok": true,
+      "detail": "shared export safety scan: no secret-like values or credential fields found"
+    },
+    {
+      "name": "sanitization",
+      "ok": true,
+      "count": 12,
+      "detail": "execution_mode, environment, and account.environment all REPLAY; no archived context carries token, secret, or api_key keys"
+    }
+  ],
+  "summary": {
+    "events": 33,
+    "receipts": 12,
+    "replayed": 12,
+    "fingerprint_only": 0,
+    "commands": 0,
+    "fills": 0
+  }
+}

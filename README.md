@@ -4,7 +4,7 @@
 
 MoneyKernel is a deterministic capital-control gateway for AI trading agents. Agents propose trades; the kernel checks lease authority, reserves resources atomically, holds opposing pending intents for human review, requires exact single-use human approval, dispatches once, reconciles what actually happened, and records a verifiable decision receipt.
 
-Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
+Built for the Binance Agent OS Mini Hackathon (Track A) as a partial v0.1 prototype. The synthetic paper lifecycle is implemented; complete P0 status is not claimed while real Agent OS observation evidence and the documented integration gaps remain unresolved. Recording and submission are still pending.
 
 ## Status
 
@@ -17,7 +17,7 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
 | G5 operator experience | Implemented and independently reviewed: operations console, exact approvals, agent/lease controls, conflicts, receipts, incidents, commands, integration status, and SSE timeline. Session, cash-buffer, state-label, and responsive fixes have [G5 review evidence](docs/g5-fix-test-evidence.md), including 7 passing browser tests. |
 | G6 adversarial hardening | Implemented and independently reviewed: fault layer, consistent complete run exports with credential screening, standalone verification of audit linkage, evaluator replay and financial authority, and offline replays for all four scenarios. See [G6 review evidence](docs/g6-fix-test-evidence.md) for validation and verification limits. |
-| G7 release candidate | Done: scripted four-scene demo rehearsal through the real console (`pnpm demo:rehearse`, three consecutive runs with screenshots under `docs/evidence/demo/`), REPLAY-only synthetic fault endpoint for scene D, manual recording script (`docs/demo-script.md`, `pnpm demo:scene`), fresh-clone start check, evidence package index. Recording and submission are the owner's steps. |
+| G7 release candidate | Rehearsal and recording tooling implemented: four console scenes, screenshots with matching sanitized exports and verifier reports, and a REPLAY-only synthetic fault endpoint. Current rehearsal and fresh-clone results are in [test evidence](docs/test-evidence.md). The [recording script](docs/demo-script.md) and MIT license are included; recording, upload and submission remain owner steps. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
@@ -92,7 +92,9 @@ A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider tim
 
 ### Demo rehearsal and recording (prd.md 23)
 
-`docs/demo-script.md` is the 90-second script: four scenes (constrained counterproposal, opposing intents, chaos burst quarantine, dropped response with crash and restart), each on its own fresh REPLAY account. `pnpm demo:rehearse` performs all four through the real console three times in a row, starting and crashing kernel processes itself, and writes screenshots to `docs/evidence/demo/<run>/`. For a manual recording, `pnpm demo:scene -- <a|b|c|d> --seed <seed-output.json>` plays the agent side while you operate the console. Scene D's dropped response is armed with `POST /v1/demo/faults`, which exists only in REPLAY.
+The [demo script](docs/demo-script.md) covers four scenes in about 90 seconds: constrained counterproposal, opposing intents, chaos burst quarantine, and dropped response with crash and restart. `pnpm demo:rehearse` runs the real console three times with fresh accounts, saving each scene's screenshots, sanitized export and verification result under `docs/evidence/demo/<run>/`. Scene D deliberately simulates a lost submit response and unavailable order queries until restart, then checks the original command/client order ID and one venue submission. This optional REPLAY-only query outage makes the unknown state visible for recording; normal reconciliation can recover without a restart.
+
+For manual recording, follow the script's PowerShell setup so the kernel and seed process share the same fresh alias and matching `REPLAY_FIXTURE`. Seed output contains agent credentials and is redirected to the private, gitignored `.moneykernel/` directory. `pnpm demo:scene -- <a|b|c|d> --seed <seed-output.json>` drives the agent side while you operate the console. Scene D's dropped response uses `POST /v1/demo/faults`, which exists only in REPLAY.
 
 ### Replay and verification (prd.md 22.2)
 
@@ -127,9 +129,9 @@ For verification against an independently retained final event hash, add `--head
 Implemented P0 behaviour is what the tests above exercise. The following is not claimed:
 
 - **Agent OS MCP.** The backend owns no Agent OS session (Gate 0: Binance's authorization server admits only allowlisted agents). Market context comes from Binance's public Spot REST endpoints and is labelled `BINANCE_PUBLIC_REST`; a relay through a supported agent session is designed (`BINANCE_MCP_VIA_SUPPORTED_AGENT`) but not exercised in this repository.
-- **Model route.** No provider key was available, so the Anthropic provider is tested only against a fake endpoint. The one real proposal in `docs/evidence/model-runs/` came through the supported-agent-session route. Receipts label seeded agents `SCRIPTED`; live-model labels are bound to run evidence only in the runner traces (decisions 0003, 0006).
+- **Model route.** No provider key was available, so the Anthropic provider is tested only against a fake endpoint. The [independent supported-session run](docs/evidence/g4-review-model-run/README.md) preserves a real model proposal and its exact context; the kernel denied it for stale data and unsupported filters. The older `model-runs/` artifacts do not prove generation from their claimed fresh context. Receipt-to-run model provenance remains incomplete; the runner trace documents what the supported session actually did.
 - **Testnet.** P1. The Spot Testnet read adapter exists; execution is unqualified and refuses to start. Nothing here proves any exchange's behaviour; the paper venue is a demonstration model, not a market-impact or profitability backtest.
-- **Fees and filters.** Quote-asset and base-asset commissions are modelled; any other fee asset opens a CRITICAL incident and keeps the hold. `PRICE_FILTER`, `LOT_SIZE`, and `NOTIONAL` are enforced; `PERCENT_PRICE(_BY_SIDE)` is bounded only by the drift policy; unknown filter types deny with `FILTER_UNSUPPORTED`.
+- **Fees and filters.** Admission uses the qualified quote-fee envelope. Reconciliation accounts for observed quote/base commissions and reports fee-model mismatches; another fee asset opens a CRITICAL incident and keeps the hold. `PRICE_FILTER`, `LOT_SIZE`, and `NOTIONAL` are enforced. `PERCENT_PRICE`, `PERCENT_PRICE_BY_SIDE`, and `MAX_POSITION` remain unqualified and block proposals with `FILTER_UNSUPPORTED`; a drift check does not replace those filters.
 - **Freshness.** Referenced observations must be under 5 s old at admission (policy default), so a slow model path earns `STALE_MARKET_DATA` rather than an exemption.
 - **Operations.** One kernel instance, no hot failover; operator sessions live in memory (a restart logs everyone out and pauses the account); the event stream polls committed events every 500 ms; the integration, fault, and browser suites share one database and must run one at a time.
 - **Evidence.** A successful `verify:receipt` report establishes the checks described above, with complete settlement proof only for reconciled commands. Legacy receipts without context cannot be replayed. A complete history rewrite cannot be detected without an independently retained checkpoint; automated external anchoring remains P2. Credential screening detects known formats and configured values at export time, but cannot recognize every arbitrary secret in prose. No check proves that Binance or a model was honest.
@@ -137,4 +139,4 @@ Implemented P0 behaviour is what the tests above exercise. The following is not 
 
 ## License
 
-Not yet selected by the product owner. There is no LICENSE file in this repository yet.
+[MIT](LICENSE), copyright 2026 Vasanth.

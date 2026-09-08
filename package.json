@@ -2,6 +2,7 @@
   "name": "moneykernel",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Deterministic capital-control gateway for AI trading agents",
   "type": "module",
   "packageManager": "pnpm@12.3.4",

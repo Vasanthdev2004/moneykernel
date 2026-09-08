@@ -9,6 +9,7 @@ import { clientOrderIdFor } from "../services/approvals.ts";
 const DemoFaultSchema = z.strictObject({
   kind: z.literal("DROP_RESPONSE_AFTER_ACCEPT"),
   proposal_id: IdSchema,
+  hold_queries_until_restart: z.boolean().default(false),
 });
 
 /**
@@ -33,7 +34,12 @@ export async function demoRoutes(app: FastifyInstance, options: { runtime: Kerne
     const parsed = DemoFaultSchema.safeParse(request.body);
     if (!parsed.success) {
       reply.code(400);
-      return errorEnvelope("INVALID_SHAPE", "expected { kind, proposal_id }", request.id, parsed.error.issues);
+      return errorEnvelope(
+        "INVALID_SHAPE",
+        "expected { kind, proposal_id, hold_queries_until_restart? }",
+        request.id,
+        parsed.error.issues,
+      );
     }
     const accountId = runtime.account.id;
     const proposal = await withClient(runtime.pool, (client) => getProposalById(client, parsed.data.proposal_id));
@@ -44,12 +50,20 @@ export async function demoRoutes(app: FastifyInstance, options: { runtime: Kerne
     const clientOrderId = clientOrderIdFor(runtime.config.environment, accountId, proposal.id);
     runtime.paperFaults.dropResponseFor ??= new Set<string>();
     runtime.paperFaults.dropResponseFor.add(clientOrderId);
+    if (parsed.data.hold_queries_until_restart) {
+      runtime.paperFaults.queryUnavailableFor ??= new Set<string>();
+      runtime.paperFaults.queryUnavailableFor.add(clientOrderId);
+    }
+    const heldQueries = runtime.paperFaults.queryUnavailableFor?.has(clientOrderId) ?? false;
     reply.code(201);
     return {
       kind: parsed.data.kind,
       proposal_id: proposal.id,
       client_order_id: clientOrderId,
-      note: "SYNTHETIC FAULT SCENARIO: the paper venue will accept and record this order, then drop the response.",
+      hold_queries_until_restart: heldQueries,
+      note: heldQueries
+        ? "SYNTHETIC FAULT SCENARIO: the paper venue will accept and record this order, then drop the response; order queries remain unavailable until this kernel process restarts."
+        : "SYNTHETIC FAULT SCENARIO: the paper venue will accept and record this order, then drop the response.",
     };
   });
 }

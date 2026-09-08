@@ -1,0 +1,1869 @@
+{
+  "schema_version": "1",
+  "exported_at": "2026-09-08T10:29:19.205Z",
+  "engine_version": "0.1.2",
+  "environment": "REPLAY",
+  "account": {
+    "id": "acct_28e636bf1cdfffcc",
+    "alias": "demo-b-g7-verified-20260908t102850z-2",
+    "environment": "REPLAY",
+    "status": "READY",
+    "epoch": 1,
+    "quote_asset": "USDT",
+    "configuration_hash": "c5ef12aaab38379c6f8bd047b1ddc3087b37f2cefabfd0245e7ccf0bfcd0600f"
+  },
+  "provenance": {
+    "execution_mode": "REPLAY",
+    "market_source": "SYNTHETIC_FIXTURE",
+    "model_source": "SCRIPTED",
+    "execution_source": "PAPER"
+  },
+  "integration_manifest": "docs/integration-manifest.json (checked_at 2026-09-08T05:58:00Z, status unknown)",
+  "policy_versions": [
+    {
+      "id": "policy_81d85179c324c063",
+      "version": 1,
+      "policy": {
+        "fee_rate": "0.001",
+        "fee_asset": "USDT",
+        "quote_asset": "USDT",
+        "schema_version": "1",
+        "max_symbol_share": "0.25",
+        "max_price_drift_bps": "50",
+        "max_proposal_age_ms": 120000,
+        "min_quote_cash_buffer": "10",
+        "proposal_hold_sweep_ms": 250,
+        "valuation_buffer_quote": "1",
+        "external_in_flight_limit": 1,
+        "max_order_notional_quote": "50",
+        "max_unique_intents_per_60s": 10,
+        "max_hard_violations_per_60s": 3,
+        "conflict_collection_window_ms": 750,
+        "max_market_observation_age_ms": 5000,
+        "max_account_observation_age_ms": 5000
+      },
+      "hash": "fdf49399f5c7c1703d145ee240585dfedb21865b843d92d31753a28364cc4ecc",
+      "created_by": "seed-script",
+      "created_at": "2026-09-08T10:29:18.078Z"
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_alpha_16889a05",
+      "name": "Alpha",
+      "strategy_kind": "SCRIPTED",
+      "status": "ACTIVE",
+      "revision": 1,
+      "created_at": "2026-09-08T10:29:18.078Z",
+      "updated_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "agent_inventory_guard_16889a05",
+      "name": "InventoryGuard",
+      "strategy_kind": "SCRIPTED",
+      "status": "ACTIVE",
+      "revision": 1,
+      "created_at": "2026-09-08T10:29:18.078Z",
+      "updated_at": "2026-09-08T10:29:18.078Z"
+    }
+  ],
+  "leases": [
+    {
+      "id": "lease_alpha_b_16889a05",
+      "agent_id": "agent_alpha_16889a05",
+      "revision": 1,
+      "budget_quote": "60.000000000000000000",
+      "consumed_quote": "0.000000000000000000",
+      "attempt_limit": 2,
+      "attempts_consumed": 0,
+      "starts_at": "2026-09-08T10:29:18.078Z",
+      "expires_at": "2026-09-08T10:49:18.078Z",
+      "status": "ACTIVE",
+      "capability_json": {
+        "allowed_sides": [
+          "BUY"
+        ],
+        "allowed_symbols": [
+          "BTCUSDT"
+        ],
+        "allowed_order_types": [
+          "LIMIT_IOC"
+        ]
+      },
+      "created_at": "2026-09-08T10:29:18.078Z",
+      "updated_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "lease_guard_b_16889a05",
+      "agent_id": "agent_inventory_guard_16889a05",
+      "revision": 1,
+      "budget_quote": "0.000000000000000000",
+      "consumed_quote": "0.000000000000000000",
+      "attempt_limit": 2,
+      "attempts_consumed": 0,
+      "starts_at": "2026-09-08T10:29:18.078Z",
+      "expires_at": "2026-09-08T10:49:18.078Z",
+      "status": "ACTIVE",
+      "capability_json": {
+        "allowed_sides": [
+          "SELL"
+        ],
+        "allowed_symbols": [
+          "BTCUSDT"
+        ],
+        "allowed_order_types": [
+          "LIMIT_IOC"
+        ]
+      },
+      "created_at": "2026-09-08T10:29:18.078Z",
+      "updated_at": "2026-09-08T10:29:18.078Z"
+    }
+  ],
+  "intents": [
+    {
+      "id": "intent_9c9f88b51227d02f",
+      "agent_id": "agent_alpha_16889a05",
+      "lease_id": "lease_alpha_b_16889a05",
+      "idempotency_key": "demo-b-buy-2",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "50",
+          "quote_asset": "USDT"
+        },
+        "symbol": "BTCUSDT",
+        "lease_id": "lease_alpha_b_16889a05",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100000",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_fd99f3d25937996d"
+        ]
+      },
+      "payload_hash": "5370a3a2f52c0f6c47a1aaa3f9b33f8a01028c9a9999da44775a719cb7501e54",
+      "account_seq": 1,
+      "created_at": "2026-09-08T10:29:18.462Z"
+    },
+    {
+      "id": "intent_d8ea98a7d79cf106",
+      "agent_id": "agent_inventory_guard_16889a05",
+      "lease_id": "lease_guard_b_16889a05",
+      "idempotency_key": "demo-b-sell-2",
+      "canonical_payload": {
+        "side": "SELL",
+        "size": {
+          "kind": "BASE_QUANTITY",
+          "amount": "0.0002",
+          "base_asset": "BTC"
+        },
+        "symbol": "BTCUSDT",
+        "lease_id": "lease_guard_b_16889a05",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100000",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_cf866a760d15cd5e"
+        ]
+      },
+      "payload_hash": "4991d75833c09be5d4b9149201a0bcd3c8971ddc385b06bec8ff64f027a33231",
+      "account_seq": 2,
+      "created_at": "2026-09-08T10:29:18.532Z"
+    }
+  ],
+  "receipts": [
+    {
+      "decision_id": "receipt_94b5df10aced0489",
+      "intent_id": "intent_9c9f88b51227d02f",
+      "proposal_id": "proposal_52d7e0fd3f46b19f",
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_28e636bf1cdfffcc",
+        "agent_id": "agent_alpha_16889a05",
+        "lease_id": "lease_alpha_b_16889a05",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "50"
+        },
+        "limit_price": "100000",
+        "observation_ids": [
+          "snap_fd99f3d25937996d"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 2,
+        "snapshot_ids": [
+          "rules_1ff9eaf904256008",
+          "snap_837816c93a074ce7",
+          "snap_fd99f3d25937996d"
+        ],
+        "snapshot_hashes": [
+          "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+        ]
+      },
+      "outcome": "ALLOW_PROPOSAL",
+      "reason_codes": [],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_alpha_b_16889a05",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:18.462Z",
+          "limit": "2026-09-08T10:49:18.078Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "BTCUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "17",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        },
+        {
+          "rule": "PRICE_TICK",
+          "result": "PASS",
+          "observed": "100000",
+          "limit": "0.01",
+          "unit": "USDT"
+        },
+        {
+          "rule": "VALUATION",
+          "result": "PASS",
+          "observed": "1000",
+          "limit": null,
+          "unit": "USDT"
+        },
+        {
+          "rule": "LEASE_BUDGET",
+          "result": "PASS",
+          "observed": "50.05",
+          "limit": "60",
+          "unit": "USDT"
+        },
+        {
+          "rule": "ORDER_NOTIONAL_CAP",
+          "result": "PASS",
+          "observed": "50",
+          "limit": "50",
+          "unit": "USDT"
+        },
+        {
+          "rule": "QUOTE_AVAILABILITY",
+          "result": "PASS",
+          "observed": "50.05",
+          "limit": "890",
+          "unit": "USDT"
+        },
+        {
+          "rule": "SYMBOL_EXPOSURE_LIMIT",
+          "result": "PASS",
+          "observed": "0.150157665548826267",
+          "limit": "0.25",
+          "unit": "RATIO"
+        },
+        {
+          "rule": "LOT_SIZE",
+          "result": "PASS",
+          "observed": "0.0005",
+          "limit": "0.00001..9000",
+          "unit": "BTC"
+        },
+        {
+          "rule": "MIN_NOTIONAL",
+          "result": "PASS",
+          "observed": "50",
+          "limit": "5",
+          "unit": "USDT"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:18.462Z",
+      "decision_fingerprint": "5b59c39b151bcd320ba5061edff4edc122a21220b6074c3cf782f8a97ddc0f2f",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:18.462Z",
+        "agent": {
+          "id": "agent_alpha_16889a05",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_alpha_b_16889a05",
+          "status": "ACTIVE",
+          "agent_id": "agent_alpha_16889a05",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:18.078Z",
+          "expires_at": "2026-09-08T10:49:18.078Z",
+          "budget_quote": "60.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "BTCUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100000",
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.445Z",
+            "snapshot_id": "snap_837816c93a074ce7",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "50",
+            "quote_asset": "USDT"
+          },
+          "symbol": "BTCUSDT",
+          "lease_id": "lease_alpha_b_16889a05",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100000",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_fd99f3d25937996d"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_28e636bf1cdfffcc",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [
+            {
+              "asset": "BTC",
+              "quantity": "0.001000000000000000"
+            }
+          ],
+          "quote_owned": "900.000000000000000000",
+          "ledger_version": 2,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "0",
+          "pending_fee_reserves_quote": "0",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "0"
+        },
+        "observations": [
+          {
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.425Z",
+            "snapshot_id": "snap_fd99f3d25937996d",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "BTCUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.00001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.00001",
+          "tick_size": "0.01",
+          "base_asset": "BTC",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_1ff9eaf904256008",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_eaba40caf3c345b2",
+      "intent_id": "intent_d8ea98a7d79cf106",
+      "proposal_id": "proposal_28096a6d4568fa26",
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_28e636bf1cdfffcc",
+        "agent_id": "agent_inventory_guard_16889a05",
+        "lease_id": "lease_guard_b_16889a05",
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "BASE_QUANTITY",
+          "base_asset": "BTC",
+          "amount": "0.0002"
+        },
+        "limit_price": "100000",
+        "observation_ids": [
+          "snap_cf866a760d15cd5e"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 2,
+        "snapshot_ids": [
+          "rules_221e244318d162c1",
+          "snap_c94ea78239e63122",
+          "snap_cf866a760d15cd5e"
+        ],
+        "snapshot_hashes": [
+          "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+        ]
+      },
+      "outcome": "ALLOW_PROPOSAL",
+      "reason_codes": [],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_guard_b_16889a05",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:18.532Z",
+          "limit": "2026-09-08T10:49:18.078Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "BTCUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "SELL",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "9",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        },
+        {
+          "rule": "PRICE_TICK",
+          "result": "PASS",
+          "observed": "100000",
+          "limit": "0.01",
+          "unit": "USDT"
+        },
+        {
+          "rule": "BASE_INVENTORY",
+          "result": "PASS",
+          "observed": "0.0002",
+          "limit": "0.001",
+          "unit": "BTC"
+        },
+        {
+          "rule": "LOT_SIZE",
+          "result": "PASS",
+          "observed": "0.0002",
+          "limit": "0.00001..9000",
+          "unit": "BTC"
+        },
+        {
+          "rule": "ORDER_NOTIONAL_CAP",
+          "result": "PASS",
+          "observed": "20",
+          "limit": "50",
+          "unit": "USDT"
+        },
+        {
+          "rule": "MIN_NOTIONAL",
+          "result": "PASS",
+          "observed": "20",
+          "limit": "5",
+          "unit": "USDT"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:18.532Z",
+      "decision_fingerprint": "0c6500f08cdf20546e42bf9430cc73c8e92175e1c00563af543b00388d0a2f4f",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:18.532Z",
+        "agent": {
+          "id": "agent_inventory_guard_16889a05",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_guard_b_16889a05",
+          "status": "ACTIVE",
+          "agent_id": "agent_inventory_guard_16889a05",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:18.078Z",
+          "expires_at": "2026-09-08T10:49:18.078Z",
+          "budget_quote": "0.000000000000000000",
+          "allowed_sides": [
+            "SELL"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "BTCUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100000",
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.523Z",
+            "snapshot_id": "snap_c94ea78239e63122",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+          }
+        ],
+        "intent": {
+          "side": "SELL",
+          "size": {
+            "kind": "BASE_QUANTITY",
+            "amount": "0.0002",
+            "base_asset": "BTC"
+          },
+          "symbol": "BTCUSDT",
+          "lease_id": "lease_guard_b_16889a05",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100000",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_cf866a760d15cd5e"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_28e636bf1cdfffcc",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [
+            {
+              "asset": "BTC",
+              "quantity": "0.001000000000000000"
+            }
+          ],
+          "quote_owned": "900.000000000000000000",
+          "ledger_version": 2,
+          "agent_base_owned": "0.001000000000000000",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "50",
+          "pending_fee_reserves_quote": "0.05",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "50.050000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.515Z",
+            "snapshot_id": "snap_cf866a760d15cd5e",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "BTCUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.00001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.00001",
+          "tick_size": "0.01",
+          "base_asset": "BTC",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_221e244318d162c1",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_fef31993e78cbadb",
+      "intent_id": "intent_9c9f88b51227d02f",
+      "proposal_id": "proposal_7151b0211768888a",
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_28e636bf1cdfffcc",
+        "agent_id": "agent_alpha_16889a05",
+        "lease_id": "lease_alpha_b_16889a05",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "50"
+        },
+        "limit_price": "100000",
+        "observation_ids": [
+          "snap_fd99f3d25937996d"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 2,
+        "snapshot_ids": [
+          "rules_965d0483c42853e5",
+          "snap_8324fb46a02be4ab",
+          "snap_fd99f3d25937996d"
+        ],
+        "snapshot_hashes": [
+          "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+          "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+        ]
+      },
+      "outcome": "ALLOW_PROPOSAL",
+      "reason_codes": [],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_alpha_b_16889a05",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:18.877Z",
+          "limit": "2026-09-08T10:49:18.078Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "BTCUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "30",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        },
+        {
+          "rule": "PRICE_TICK",
+          "result": "PASS",
+          "observed": "100000",
+          "limit": "0.01",
+          "unit": "USDT"
+        },
+        {
+          "rule": "VALUATION",
+          "result": "PASS",
+          "observed": "1000",
+          "limit": null,
+          "unit": "USDT"
+        },
+        {
+          "rule": "LEASE_BUDGET",
+          "result": "PASS",
+          "observed": "50.05",
+          "limit": "60",
+          "unit": "USDT"
+        },
+        {
+          "rule": "ORDER_NOTIONAL_CAP",
+          "result": "PASS",
+          "observed": "50",
+          "limit": "50",
+          "unit": "USDT"
+        },
+        {
+          "rule": "QUOTE_AVAILABILITY",
+          "result": "PASS",
+          "observed": "50.05",
+          "limit": "890",
+          "unit": "USDT"
+        },
+        {
+          "rule": "SYMBOL_EXPOSURE_LIMIT",
+          "result": "PASS",
+          "observed": "0.150157665548826267",
+          "limit": "0.25",
+          "unit": "RATIO"
+        },
+        {
+          "rule": "LOT_SIZE",
+          "result": "PASS",
+          "observed": "0.0005",
+          "limit": "0.00001..9000",
+          "unit": "BTC"
+        },
+        {
+          "rule": "MIN_NOTIONAL",
+          "result": "PASS",
+          "observed": "50",
+          "limit": "5",
+          "unit": "USDT"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:18.877Z",
+      "decision_fingerprint": "ff5aef8dd89548759125b358aef51c95c3bba575d7d24b48daf7fa329a2de801",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:18.877Z",
+        "agent": {
+          "id": "agent_alpha_16889a05",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_alpha_b_16889a05",
+          "status": "ACTIVE",
+          "agent_id": "agent_alpha_16889a05",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:18.078Z",
+          "expires_at": "2026-09-08T10:49:18.078Z",
+          "budget_quote": "60.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "BTCUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100000",
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.847Z",
+            "snapshot_id": "snap_8324fb46a02be4ab",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "50",
+            "quote_asset": "USDT"
+          },
+          "symbol": "BTCUSDT",
+          "lease_id": "lease_alpha_b_16889a05",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100000",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_fd99f3d25937996d"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_28e636bf1cdfffcc",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [
+            {
+              "asset": "BTC",
+              "quantity": "0.001000000000000000"
+            }
+          ],
+          "quote_owned": "900.000000000000000000",
+          "ledger_version": 2,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "0",
+          "pending_fee_reserves_quote": "0",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "0"
+        },
+        "observations": [
+          {
+            "symbol": "BTCUSDT",
+            "received_at": "2026-09-08T10:29:18.425Z",
+            "snapshot_id": "snap_fd99f3d25937996d",
+            "payload_hash": "2bb61e440d64e26eb158301fffbf54c1cf758f07ce41ffb1468383290d8edb4f",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "BTCUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.00001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.00001",
+          "tick_size": "0.01",
+          "base_asset": "BTC",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_965d0483c42853e5",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "6637b59dce9892e19cd6d4538430d2d5ec5496abfcd6cc2cae0fae56b4345b30",
+          "unsupported_filters": []
+        }
+      }
+    }
+  ],
+  "proposals": [
+    {
+      "id": "proposal_52d7e0fd3f46b19f",
+      "intent_id": "intent_9c9f88b51227d02f",
+      "revision": 1,
+      "normalized_order": {
+        "side": "BUY",
+        "symbol": "BTCUSDT",
+        "quantity": "0.0005",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100000",
+        "base_reserved": "0",
+        "notional_quote": "50",
+        "reference_mark": "100000",
+        "fee_reserve_quote": "0.05",
+        "total_quote_reserved": "50.05"
+      },
+      "proposal_hash": "5c6ff07e20cf07867b0843921c333cab8044b62abf1b34336eb3439a8e77edaf",
+      "state": "INVALIDATED",
+      "expires_at": "2026-09-08T10:31:18.462Z",
+      "policy_id": "policy_81d85179c324c063",
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "created_at": "2026-09-08T10:29:18.462Z",
+      "updated_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "proposal_28096a6d4568fa26",
+      "intent_id": "intent_d8ea98a7d79cf106",
+      "revision": 1,
+      "normalized_order": {
+        "side": "SELL",
+        "symbol": "BTCUSDT",
+        "quantity": "0.0002",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100000",
+        "base_reserved": "0.0002",
+        "notional_quote": "20",
+        "reference_mark": "100000",
+        "fee_reserve_quote": "0",
+        "total_quote_reserved": "0"
+      },
+      "proposal_hash": "62a8e1faecb4665e4ab5158cf8fa212b41e7638eaae50c5b461582e58421eb35",
+      "state": "REJECTED",
+      "expires_at": "2026-09-08T10:31:18.532Z",
+      "policy_id": "policy_81d85179c324c063",
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "created_at": "2026-09-08T10:29:18.532Z",
+      "updated_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "proposal_7151b0211768888a",
+      "intent_id": "intent_9c9f88b51227d02f",
+      "revision": 2,
+      "normalized_order": {
+        "side": "BUY",
+        "symbol": "BTCUSDT",
+        "quantity": "0.0005",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100000",
+        "base_reserved": "0",
+        "notional_quote": "50",
+        "reference_mark": "100000",
+        "fee_reserve_quote": "0.05",
+        "total_quote_reserved": "50.05"
+      },
+      "proposal_hash": "79109046dc057c51eab77b2bce4217d5f1d6c6607b56ee985652fc4f2b981dca",
+      "state": "AWAITING_APPROVAL",
+      "expires_at": "2026-09-08T10:31:18.877Z",
+      "policy_id": "policy_81d85179c324c063",
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "created_at": "2026-09-08T10:29:18.877Z",
+      "updated_at": "2026-09-08T10:29:18.877Z"
+    }
+  ],
+  "reservations": [
+    {
+      "id": "rsv_3c90cd234915211c",
+      "proposal_id": "proposal_52d7e0fd3f46b19f",
+      "agent_id": "agent_alpha_16889a05",
+      "asset": "ATTEMPT",
+      "amount": "1.000000000000000000",
+      "kind": "ATTEMPT",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:18.462Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "rsv_6e513051b63f0714",
+      "proposal_id": "proposal_52d7e0fd3f46b19f",
+      "agent_id": "agent_alpha_16889a05",
+      "asset": "USDT",
+      "amount": "50.050000000000000000",
+      "kind": "QUOTE",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:18.462Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "rsv_5b6aae6cddd068f0",
+      "proposal_id": "proposal_28096a6d4568fa26",
+      "agent_id": "agent_inventory_guard_16889a05",
+      "asset": "BTC",
+      "amount": "0.000200000000000000",
+      "kind": "BASE",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:18.532Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "rsv_ae07f549a9590827",
+      "proposal_id": "proposal_28096a6d4568fa26",
+      "agent_id": "agent_inventory_guard_16889a05",
+      "asset": "ATTEMPT",
+      "amount": "1.000000000000000000",
+      "kind": "ATTEMPT",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:18.532Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "rsv_08a463b2198e65cc",
+      "proposal_id": "proposal_7151b0211768888a",
+      "agent_id": "agent_alpha_16889a05",
+      "asset": "ATTEMPT",
+      "amount": "1.000000000000000000",
+      "kind": "ATTEMPT",
+      "state": "HELD",
+      "created_at": "2026-09-08T10:29:18.877Z",
+      "armed_at": null,
+      "released_at": null
+    },
+    {
+      "id": "rsv_65a8848ffa33079a",
+      "proposal_id": "proposal_7151b0211768888a",
+      "agent_id": "agent_alpha_16889a05",
+      "asset": "USDT",
+      "amount": "50.050000000000000000",
+      "kind": "QUOTE",
+      "state": "HELD",
+      "created_at": "2026-09-08T10:29:18.877Z",
+      "armed_at": null,
+      "released_at": null
+    }
+  ],
+  "approvals": [],
+  "commands": [],
+  "orders": [],
+  "fills": [],
+  "ledger_entries": [
+    {
+      "id": "ledger_415eff5b060f8c8b",
+      "agent_id": null,
+      "asset": "BTC",
+      "signed_delta": "0.001000000000000000",
+      "category": "BASELINE",
+      "source_fill_id": null,
+      "source_ref": "baseline_6926ce1df674e610",
+      "sequence": 1,
+      "created_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "ledger_5124df6df9854159",
+      "agent_id": null,
+      "asset": "USDT",
+      "signed_delta": "900.000000000000000000",
+      "category": "BASELINE",
+      "source_fill_id": null,
+      "source_ref": "baseline_6926ce1df674e610",
+      "sequence": 2,
+      "created_at": "2026-09-08T10:29:18.078Z"
+    }
+  ],
+  "balances": [
+    {
+      "asset": "BTC",
+      "owned_quantity": "0.001000000000000000",
+      "version": 1
+    },
+    {
+      "asset": "USDT",
+      "owned_quantity": "900.000000000000000000",
+      "version": 1
+    }
+  ],
+  "allocations": [
+    {
+      "agent_or_unassigned_id": "agent_inventory_guard_16889a05",
+      "asset": "BTC",
+      "owned_quantity": "0.001000000000000000",
+      "version": 1
+    },
+    {
+      "agent_or_unassigned_id": "UNASSIGNED",
+      "asset": "BTC",
+      "owned_quantity": "0.000000000000000000",
+      "version": 1
+    },
+    {
+      "agent_or_unassigned_id": "UNASSIGNED",
+      "asset": "USDT",
+      "owned_quantity": "900.000000000000000000",
+      "version": 1
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "conflict_645e36875100ef26",
+      "symbol": "BTCUSDT",
+      "status": "RESOLVED_SELECTED",
+      "resolution": {
+        "action": "SELECT",
+        "rejected": [
+          "proposal_28096a6d4568fa26"
+        ],
+        "revalidation": {
+          "state": "AWAITING_APPROVAL",
+          "outcome": "ALLOW_PROPOSAL",
+          "reason_codes": [],
+          "new_proposal_id": "proposal_7151b0211768888a",
+          "previous_proposal_id": "proposal_52d7e0fd3f46b19f"
+        },
+        "selected_proposal_id": "proposal_52d7e0fd3f46b19f"
+      },
+      "operator_id": "operator",
+      "created_at": "2026-09-08T10:29:18.532Z",
+      "resolved_at": "2026-09-08T10:29:18.877Z",
+      "proposal_ids": [
+        "proposal_28096a6d4568fa26",
+        "proposal_52d7e0fd3f46b19f"
+      ]
+    }
+  ],
+  "incidents": [],
+  "audit_events": [
+    {
+      "id": "evt_9caa175c9b4360b1",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 1,
+      "type": "ACCOUNT_CREATED",
+      "payload": {
+        "alias": "demo-b-g7-verified-20260908t102850z-2",
+        "epoch": 1,
+        "status": "PAUSED",
+        "environment": "REPLAY",
+        "engine_version": "0.1.2",
+        "configuration_hash": "c5ef12aaab38379c6f8bd047b1ddc3087b37f2cefabfd0245e7ccf0bfcd0600f"
+      },
+      "payload_hash": "1ec74800fab7799c0424107bc59c4a871ae0bbef4faa7ab632e86ca4e4ceb2eb",
+      "previous_hash": null,
+      "event_hash": "428bc9635c9806d6a5f71252a94f5fb24e3eee2f9cb890b2f36f534402bac69a",
+      "occurred_at": "2026-09-08T10:29:17.253Z"
+    },
+    {
+      "id": "evt_7b4700132d77cff8",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 2,
+      "type": "POLICY_UPDATED",
+      "payload": {
+        "hash": "fdf49399f5c7c1703d145ee240585dfedb21865b843d92d31753a28364cc4ecc",
+        "version": 1,
+        "policy_id": "policy_81d85179c324c063",
+        "created_by": "seed-script"
+      },
+      "payload_hash": "8cc535068d8b04a347a5ae079be597b93a8fa41cf73e6571d07b33309f5212f4",
+      "previous_hash": "428bc9635c9806d6a5f71252a94f5fb24e3eee2f9cb890b2f36f534402bac69a",
+      "event_hash": "61a3281fb98f00896615cc8e970d228bbeaeff158932fe9db0ef106694e3b547",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_0fc39d0af31533c7",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 3,
+      "type": "AGENT_REGISTERED",
+      "payload": {
+        "name": "Alpha",
+        "agent_id": "agent_alpha_16889a05",
+        "strategy_kind": "SCRIPTED"
+      },
+      "payload_hash": "8734453b2bab1b6226ed03121393b6affa52412f7eaa9484f414cb4c36f66fbe",
+      "previous_hash": "61a3281fb98f00896615cc8e970d228bbeaeff158932fe9db0ef106694e3b547",
+      "event_hash": "05640ca3f1c7d86f4ea6c70f1a62c271fd3631c06e8fbefbebc82f0cb2823e58",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_654e0207f4676097",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 4,
+      "type": "LEASE_ISSUED",
+      "payload": {
+        "agent_id": "agent_alpha_16889a05",
+        "lease_id": "lease_alpha_b_16889a05",
+        "starts_at": "2026-09-08T10:29:18.078Z",
+        "expires_at": "2026-09-08T10:49:18.078Z",
+        "budget_quote": "60.000000000000000000",
+        "capabilities": {
+          "allowed_sides": [
+            "BUY"
+          ],
+          "allowed_symbols": [
+            "BTCUSDT"
+          ],
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "attempt_limit": 2
+      },
+      "payload_hash": "cc4b86b8b991f2ab0f400cf97b001176b5a9472b074bb327a9c417f2893b4c5f",
+      "previous_hash": "05640ca3f1c7d86f4ea6c70f1a62c271fd3631c06e8fbefbebc82f0cb2823e58",
+      "event_hash": "1d00b22a7992bd40ab90e90c4bef53944382f9779cb0652bfa856e4b01d79f84",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_76398581de6ad82d",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 5,
+      "type": "AGENT_REGISTERED",
+      "payload": {
+        "name": "InventoryGuard",
+        "agent_id": "agent_inventory_guard_16889a05",
+        "strategy_kind": "SCRIPTED"
+      },
+      "payload_hash": "b4f5f9bc7c436f7048ab23da38c24039ff975b2f5369451b5a43637895d3811e",
+      "previous_hash": "1d00b22a7992bd40ab90e90c4bef53944382f9779cb0652bfa856e4b01d79f84",
+      "event_hash": "5b520d8f3b6fe80d6319db484c86ef2b69d970e9b433eb43a3d293ecea94a36b",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_87022c76d1b82c71",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 6,
+      "type": "LEASE_ISSUED",
+      "payload": {
+        "agent_id": "agent_inventory_guard_16889a05",
+        "lease_id": "lease_guard_b_16889a05",
+        "starts_at": "2026-09-08T10:29:18.078Z",
+        "expires_at": "2026-09-08T10:49:18.078Z",
+        "budget_quote": "0.000000000000000000",
+        "capabilities": {
+          "allowed_sides": [
+            "SELL"
+          ],
+          "allowed_symbols": [
+            "BTCUSDT"
+          ],
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "attempt_limit": 2
+      },
+      "payload_hash": "e3c940485d0bdc88b3f83eb7ea8c8f213d5009bd09811e414ac0938f38aee288",
+      "previous_hash": "5b520d8f3b6fe80d6319db484c86ef2b69d970e9b433eb43a3d293ecea94a36b",
+      "event_hash": "706ce765de4ab4f7a63ccf40bf08a7abea3170bfd8cf402ecf44722e28207088",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_94ccea3f4b44ff24",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 7,
+      "type": "INVENTORY_ASSIGNED",
+      "payload": {
+        "note": "virtual baseline; internal attribution, not a transfer",
+        "balances": {
+          "BTC": "0.001",
+          "USDT": "900"
+        },
+        "allocations": {
+          "UNASSIGNED": {
+            "BTC": "0",
+            "USDT": "900"
+          },
+          "agent_inventory_guard_16889a05": {
+            "BTC": "0.001"
+          }
+        },
+        "operator_id": "seed-script",
+        "baseline_ref": "baseline_6926ce1df674e610",
+        "ledger_version": 2
+      },
+      "payload_hash": "477b4923a91eded52ad939e2e45a9f10c5445229282d1c313964800c88bb5b83",
+      "previous_hash": "706ce765de4ab4f7a63ccf40bf08a7abea3170bfd8cf402ecf44722e28207088",
+      "event_hash": "cbb5bb17e74abdfa0ed3628d22d7c36038c57c42d7a3fe9aab873b638720872a",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_ce80bddd8de127a0",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 8,
+      "type": "ACCOUNT_RESUMED",
+      "payload": {
+        "epoch": 1,
+        "status": "READY",
+        "operator_id": "seed-script"
+      },
+      "payload_hash": "68ce2f09de61b81f20174199b4461cd5c07cab0c01db845d1f8a8c92882603dc",
+      "previous_hash": "cbb5bb17e74abdfa0ed3628d22d7c36038c57c42d7a3fe9aab873b638720872a",
+      "event_hash": "8353a64ee16509affafd72582d9cf2860ff81cf5c915bacbe15543ea535785e4",
+      "occurred_at": "2026-09-08T10:29:18.078Z"
+    },
+    {
+      "id": "evt_4ee331ce538ebf52",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 9,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_alpha_16889a05",
+        "lease_id": "lease_alpha_b_16889a05",
+        "intent_id": "intent_9c9f88b51227d02f",
+        "account_seq": 1,
+        "payload_hash": "5370a3a2f52c0f6c47a1aaa3f9b33f8a01028c9a9999da44775a719cb7501e54"
+      },
+      "payload_hash": "b9b84ee46fcb92f4291857415c2393f9a82fc34019b4817893f29be125f413f5",
+      "previous_hash": "8353a64ee16509affafd72582d9cf2860ff81cf5c915bacbe15543ea535785e4",
+      "event_hash": "c43a8e8ccd87c37740d2250ca2d758e7e69d7f235049b8446534dfbfcb01eb6c",
+      "occurred_at": "2026-09-08T10:29:18.462Z"
+    },
+    {
+      "id": "evt_4112382120ae45d7",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 10,
+      "type": "RESERVATION_CREATED",
+      "payload": {
+        "state": "COLLECTING",
+        "revision": 1,
+        "proposal_id": "proposal_52d7e0fd3f46b19f",
+        "reservations": [
+          {
+            "kind": "QUOTE",
+            "asset": "USDT",
+            "amount": "50.05"
+          },
+          {
+            "kind": "ATTEMPT",
+            "asset": "ATTEMPT",
+            "amount": "1"
+          }
+        ]
+      },
+      "payload_hash": "529277fdf5da270aa8b6f3b72aac9973376fe30c6090226e97deaf727df18a19",
+      "previous_hash": "c43a8e8ccd87c37740d2250ca2d758e7e69d7f235049b8446534dfbfcb01eb6c",
+      "event_hash": "c8069202f23e331cf302267637a341eb7c32b2cb9d81063297b1e6eaa31ab3a0",
+      "occurred_at": "2026-09-08T10:29:18.462Z"
+    },
+    {
+      "id": "evt_0c182c061050bc7e",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 11,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "ALLOW_PROPOSAL",
+        "intent_id": "intent_9c9f88b51227d02f",
+        "receipt_id": "receipt_94b5df10aced0489",
+        "proposal_id": "proposal_52d7e0fd3f46b19f",
+        "reason_codes": [],
+        "decision_fingerprint": "5b59c39b151bcd320ba5061edff4edc122a21220b6074c3cf782f8a97ddc0f2f"
+      },
+      "payload_hash": "2c6bd661839d0132618b1f901488266d98beceb97c4b1891af15ed3f65105e5e",
+      "previous_hash": "c8069202f23e331cf302267637a341eb7c32b2cb9d81063297b1e6eaa31ab3a0",
+      "event_hash": "46ab1aac13c8c3c2e18e6ea086b30fe52599c30a7aab48d01157a3cbc5c3de33",
+      "occurred_at": "2026-09-08T10:29:18.462Z"
+    },
+    {
+      "id": "evt_47b0d1a01c51ac8e",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 12,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_inventory_guard_16889a05",
+        "lease_id": "lease_guard_b_16889a05",
+        "intent_id": "intent_d8ea98a7d79cf106",
+        "account_seq": 2,
+        "payload_hash": "4991d75833c09be5d4b9149201a0bcd3c8971ddc385b06bec8ff64f027a33231"
+      },
+      "payload_hash": "0caa8877fb21561195dd7a95f239fabd15e78ddeec068b19f559908b67110c1c",
+      "previous_hash": "46ab1aac13c8c3c2e18e6ea086b30fe52599c30a7aab48d01157a3cbc5c3de33",
+      "event_hash": "a18de99ab89d99c1e35419f7233353c457ed170a627f1bcff071f4de5e3b066e",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_c45310065f1ed3c2",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 13,
+      "type": "RESERVATION_CREATED",
+      "payload": {
+        "state": "COLLECTING",
+        "revision": 1,
+        "proposal_id": "proposal_28096a6d4568fa26",
+        "reservations": [
+          {
+            "kind": "BASE",
+            "asset": "BTC",
+            "amount": "0.0002"
+          },
+          {
+            "kind": "ATTEMPT",
+            "asset": "ATTEMPT",
+            "amount": "1"
+          }
+        ]
+      },
+      "payload_hash": "e962196aa7a286e583e4ff6deaad145758dfd6e906c1fcd57f0e50973525ed83",
+      "previous_hash": "a18de99ab89d99c1e35419f7233353c457ed170a627f1bcff071f4de5e3b066e",
+      "event_hash": "71ec7be687d254e73625835ff4242501710da0ddc70b3fd9d52bf1c03e5c1e0f",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_7d2dcdac027920d7",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 14,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "ALLOW_PROPOSAL",
+        "intent_id": "intent_d8ea98a7d79cf106",
+        "receipt_id": "receipt_eaba40caf3c345b2",
+        "proposal_id": "proposal_28096a6d4568fa26",
+        "reason_codes": [],
+        "decision_fingerprint": "0c6500f08cdf20546e42bf9430cc73c8e92175e1c00563af543b00388d0a2f4f"
+      },
+      "payload_hash": "8dd50c3823d5a2f0eebde2d28eb599409b2e32841a58bc8d282fdd760ee50aa0",
+      "previous_hash": "71ec7be687d254e73625835ff4242501710da0ddc70b3fd9d52bf1c03e5c1e0f",
+      "event_hash": "dfe74f3f86621039155cb8233906a7663c282b1da5c3c699f9ae7add5b20c9b9",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_913cb082f07914dc",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 15,
+      "type": "PROPOSAL_STATE_CHANGED",
+      "payload": {
+        "to": "CONFLICT_HELD",
+        "from": "COLLECTING",
+        "reason": "opposing pending intents require review",
+        "conflict_id": "conflict_645e36875100ef26",
+        "proposal_id": "proposal_52d7e0fd3f46b19f",
+        "aborted_commands": 0,
+        "invalidated_approvals": 0
+      },
+      "payload_hash": "7702460efce6b3ae4c7e19410e40ea9b1102966c0fb5e7adb646001d87938c41",
+      "previous_hash": "dfe74f3f86621039155cb8233906a7663c282b1da5c3c699f9ae7add5b20c9b9",
+      "event_hash": "32b8687e5772d96615c076525354604bf617e1e16df1c28ccb72e38da133adc5",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_2644ed1683b8858d",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 16,
+      "type": "PROPOSAL_STATE_CHANGED",
+      "payload": {
+        "to": "CONFLICT_HELD",
+        "from": "COLLECTING",
+        "reason": "opposing pending intents require review",
+        "conflict_id": "conflict_645e36875100ef26",
+        "proposal_id": "proposal_28096a6d4568fa26",
+        "aborted_commands": 0,
+        "invalidated_approvals": 0
+      },
+      "payload_hash": "708c1ad4d3853a1a6f7062fe23fde17868af75a3e3ba2f8ac08cef38df282172",
+      "previous_hash": "32b8687e5772d96615c076525354604bf617e1e16df1c28ccb72e38da133adc5",
+      "event_hash": "971caca500a4343894529aa98f91a67387618a25be32981ead5d1b2d8cf4e3ca",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_729ce71f42b25554",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 17,
+      "type": "CONFLICT_CREATED",
+      "payload": {
+        "symbol": "BTCUSDT",
+        "conflict_id": "conflict_645e36875100ef26",
+        "proposal_ids": [
+          "proposal_52d7e0fd3f46b19f",
+          "proposal_28096a6d4568fa26"
+        ]
+      },
+      "payload_hash": "840e418ba49d5df7acfbefa06f14f0178fb7451b9d6d4e5ca84c7c4a7bf885a0",
+      "previous_hash": "971caca500a4343894529aa98f91a67387618a25be32981ead5d1b2d8cf4e3ca",
+      "event_hash": "1e5ce266baccb57cdc84ba5b21dd5de6466dd239a28710e49e34d0a7f53c9c3c",
+      "occurred_at": "2026-09-08T10:29:18.532Z"
+    },
+    {
+      "id": "evt_0309f0cb90508cf2",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 18,
+      "type": "PROPOSAL_STATE_CHANGED",
+      "payload": {
+        "to": "REJECTED",
+        "from": "CONFLICT_HELD",
+        "reason": "operator selected the opposing candidate",
+        "conflict_id": "conflict_645e36875100ef26",
+        "operator_id": "operator",
+        "proposal_id": "proposal_28096a6d4568fa26",
+        "aborted_commands": 0,
+        "invalidated_approvals": 0,
+        "released_reservations": 2
+      },
+      "payload_hash": "aa19f654ab2fae7d070d39bb13d7aab51253e7db45b95f24fc70a6edcce1423f",
+      "previous_hash": "1e5ce266baccb57cdc84ba5b21dd5de6466dd239a28710e49e34d0a7f53c9c3c",
+      "event_hash": "69eec0349be325ddcd8e6eff2a0068e91a4226d39b59b598cb960b7769d7796c",
+      "occurred_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "evt_d2b0931ef21009df",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 19,
+      "type": "RESERVATION_RELEASED",
+      "payload": {
+        "count": 2,
+        "reason": "operator selected the opposing candidate",
+        "proposal_id": "proposal_28096a6d4568fa26"
+      },
+      "payload_hash": "9ebd3131d12d98ae1803ade41df307ea906bf58943db71f1f914ad7b44fc1543",
+      "previous_hash": "69eec0349be325ddcd8e6eff2a0068e91a4226d39b59b598cb960b7769d7796c",
+      "event_hash": "20652b40f01e51d3ad09dc44cf282d664f2a9b9d2f889b0e841c6062833b8bcc",
+      "occurred_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "evt_96fc89139be04538",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 20,
+      "type": "PROPOSAL_STATE_CHANGED",
+      "payload": {
+        "to": "INVALIDATED",
+        "from": "CONFLICT_HELD",
+        "reason": "superseded by revalidation after conflict resolution",
+        "conflict_id": "conflict_645e36875100ef26",
+        "proposal_id": "proposal_52d7e0fd3f46b19f",
+        "aborted_commands": 0,
+        "invalidated_approvals": 0,
+        "released_reservations": 2
+      },
+      "payload_hash": "8465ae858a8deccdb58d27c7d0131a419174b7036573ab29ff0bc5631ca66fa0",
+      "previous_hash": "20652b40f01e51d3ad09dc44cf282d664f2a9b9d2f889b0e841c6062833b8bcc",
+      "event_hash": "2a9102552584d1136c799abaaf4ea8c035cba622c4b1d1c200663ef0059ca50d",
+      "occurred_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "evt_22c3504544a1bb08",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 21,
+      "type": "RESERVATION_RELEASED",
+      "payload": {
+        "count": 2,
+        "reason": "superseded by revalidation after conflict resolution",
+        "proposal_id": "proposal_52d7e0fd3f46b19f"
+      },
+      "payload_hash": "f18ee98d0b02385fc8c86502ff914dac034b84d6d1fd36010a1b03d89019d595",
+      "previous_hash": "2a9102552584d1136c799abaaf4ea8c035cba622c4b1d1c200663ef0059ca50d",
+      "event_hash": "03c193377cdf940b12ff248f7dc5a7cf8abe145c59f1081d52bc6e53dfa24098",
+      "occurred_at": "2026-09-08T10:29:18.857Z"
+    },
+    {
+      "id": "evt_b34a2349e441f4ba",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 22,
+      "type": "RESERVATION_CREATED",
+      "payload": {
+        "state": "AWAITING_APPROVAL",
+        "revision": 2,
+        "proposal_id": "proposal_7151b0211768888a",
+        "reservations": [
+          {
+            "kind": "QUOTE",
+            "asset": "USDT",
+            "amount": "50.05"
+          },
+          {
+            "kind": "ATTEMPT",
+            "asset": "ATTEMPT",
+            "amount": "1"
+          }
+        ]
+      },
+      "payload_hash": "307fdbc61939ce964b45d552454d7ec51f388fbfc2b2d5474dd39304155e12f1",
+      "previous_hash": "03c193377cdf940b12ff248f7dc5a7cf8abe145c59f1081d52bc6e53dfa24098",
+      "event_hash": "a65ffd79477dfd3c3c998735445ec7a029e0ad9362e6e6882050a4e57cf9fd01",
+      "occurred_at": "2026-09-08T10:29:18.877Z"
+    },
+    {
+      "id": "evt_b4f609d17baf343f",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 23,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "ALLOW_PROPOSAL",
+        "intent_id": "intent_9c9f88b51227d02f",
+        "receipt_id": "receipt_fef31993e78cbadb",
+        "proposal_id": "proposal_7151b0211768888a",
+        "reason_codes": [],
+        "decision_fingerprint": "ff5aef8dd89548759125b358aef51c95c3bba575d7d24b48daf7fa329a2de801"
+      },
+      "payload_hash": "8f64f11f20fd8091e6065316efa9bd313921239de00a693fda7142c1e316ccf8",
+      "previous_hash": "a65ffd79477dfd3c3c998735445ec7a029e0ad9362e6e6882050a4e57cf9fd01",
+      "event_hash": "dc38e43eb6491966ea3a30dc4053eed66c8e85ea2d769b8f57d6ac4db40324fd",
+      "occurred_at": "2026-09-08T10:29:18.877Z"
+    },
+    {
+      "id": "evt_65ac44bd332fa951",
+      "account_id": "acct_28e636bf1cdfffcc",
+      "account_seq": 24,
+      "type": "CONFLICT_RESOLVED",
+      "payload": {
+        "action": "SELECT",
+        "rejected": [
+          "proposal_28096a6d4568fa26"
+        ],
+        "conflict_id": "conflict_645e36875100ef26",
+        "operator_id": "operator",
+        "revalidation": {
+          "state": "AWAITING_APPROVAL",
+          "outcome": "ALLOW_PROPOSAL",
+          "reason_codes": [],
+          "new_proposal_id": "proposal_7151b0211768888a",
+          "previous_proposal_id": "proposal_52d7e0fd3f46b19f"
+        },
+        "selected_proposal_id": "proposal_52d7e0fd3f46b19f"
+      },
+      "payload_hash": "7dc4c6d8a9d7537396ad86cd4cf1c70413524b62c66828e96dee0aaec86c3f39",
+      "previous_hash": "dc38e43eb6491966ea3a30dc4053eed66c8e85ea2d769b8f57d6ac4db40324fd",
+      "event_hash": "8de7e515f1c139d8659670ec9968cccf4c69a254601832a866f91bdc8d4c2983",
+      "occurred_at": "2026-09-08T10:29:18.877Z"
+    }
+  ],
+  "checkpoint": {
+    "previous_hash": null,
+    "event_count": 24,
+    "final_hash": "8de7e515f1c139d8659670ec9968cccf4c69a254601832a866f91bdc8d4c2983",
+    "final_seq": 24
+  }
+}

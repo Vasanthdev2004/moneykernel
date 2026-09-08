@@ -38,6 +38,8 @@ import { emptyPaperVenueState, type PaperVenueState, type PaperVenueStore } from
 export type PaperFaults = {
   /** Client order ids whose accepted response is dropped after the venue recorded the order (prd.md 27.4). */
   dropResponseFor?: Set<string>;
+  /** REPLAY synthetic query outage. Runtime-only; never journaled, so a fresh process can recover the accepted order. */
+  queryUnavailableFor?: Set<string>;
   /**
    * Client order ids whose order summary reports one more base step (0.001) executed than the fills it lists:
    * fill detail lagging the order state, which must keep a conservative buffer (prd.md 11.6, 28.3).
@@ -274,6 +276,12 @@ export class PaperExecutionAdapter implements ExecutionAdapter {
   }
 
   async queryOrder(identity: OrderIdentity): Promise<OrderQueryResult> {
+    if (this.environment === "REPLAY" && this.faults.queryUnavailableFor?.has(identity.client_order_id)) {
+      return {
+        kind: "QUERY_FAILED",
+        detail: "SYNTHETIC FAULT SCENARIO: order queries unavailable until kernel restart",
+      };
+    }
     const entry = this.state.orders[identity.client_order_id];
     if (entry === undefined) return { kind: "NOT_FOUND", detail: "no paper order with that client order id" };
     if (identity.symbol !== entry.order.symbol) {

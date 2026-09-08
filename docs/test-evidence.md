@@ -7,6 +7,19 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Final independent G7 release review
+
+Tested code: **`56a44fb5b07b9d9ef5dd1c41122753bc061cd0d8`**, parent `f1b0062`. The [G7 review](g7-fix-test-evidence.md) describes the corrected rehearsal assertions, manual recording failures, synthetic query-outage control and evidence limitations. Historical runs below remain intact.
+
+| Command / workflow | Result | Evidence |
+|---|---|---|
+| `pnpm test` | **534 passed, 3 opt-in online checks skipped**; 51 test files passed, one skipped | Includes the new rehearsal process-cleanup, manual-scene and REPLAY fault regressions |
+| `pnpm lint` / `pnpm build` | **196 files clean; build passed**, including kernel and web typechecks | Final reviewed code |
+| `pnpm demo:rehearse` | **12/12 passed, 55.8 s**: A/B/C/D in three consecutive rounds; all twelve same-account exports verified | Stamp `g7-verified-20260908T102850Z`, rounds 1–3; [package](evidence/demo/g7-review.md) and [manifest](evidence/demo/g7-review-manifest.json). Round 1 retains screenshots and JSON; rounds 2–3 retain JSON. D preserves the original command/client order ID and one venue submission through restart |
+| Fresh-clone T-59: frozen install, migration, build, doctor, kernel/Vite startup, seed, exact approval and settlement | **Passed**: five migrations on a new `moneykernel_fresh` database; doctor inspected 271 tracked files; Scenario A counterproposed **0.27 SOL**, settled one paper fill and fully verified its export (**17 events, one receipt, one command, one fill**) | [Startup result](evidence/demo/g7-fresh-start.json). GitHub main was cloned into a separate directory; tested revision `56a44fb` was then fetched from the local review checkout and checked out |
+
+Scene D deliberately simulates a lost submit response **and** an optional REPLAY-only order-query outage until restart. Normal reconciliation does not require a restart. The fresh-clone workflow above adds real REPLAY startup/execution proof to the original installation/build-only row below. MIT selection is complete; recording, upload, entry submission and confirmation remain owner steps, alongside the documented integration qualification gaps.
+
 ## 2026-09-08 — Independent G6 review, rebased onto G7
 
 The [G6 review evidence](g6-fix-test-evidence.md) records the original false passes, export failures and their regressions. On base `afe3847`, `pnpm test` passed 515 tests with three online checks skipped, `pnpm test:e2e` passed seven browser tests using isolated ports, and lint/build/doctor passed. All four replay scenarios passed after the rebase; twelve repeated runs had passed before it. The six historical replay exports remain unchanged and verifiable. The separate G7 recording rehearsal was not rerun by this review.
