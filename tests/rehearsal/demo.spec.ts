@@ -158,12 +158,22 @@ async function login(page: Page): Promise<void> {
   await expect(page.getByTestId("account-status")).toBeVisible();
 }
 
+async function navigate(
+  page: Page,
+  section: "overview" | "approvals" | "agents" | "activity" | "system",
+): Promise<void> {
+  const tab = page.getByTestId(`nav-${section}`);
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-current", "page");
+}
+
 async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(shotDir(), `${name}.png`), fullPage: true });
 }
 
 async function exportScene(page: Page, scene: string, alias: string): Promise<RunExport> {
   const pending = page.waitForEvent("download");
+  await page.getByTestId("workspace-menu").click();
   await page.getByTestId("export-run").click();
   const download = await pending;
   const path = await download.path();
@@ -219,6 +229,7 @@ test("scene A: constrained acquisition is counterproposed, exactly approved, set
     expect(decision.outcome).toBe("COUNTERPROPOSE");
     expect(decision.candidate?.quantity).toBe("0.27");
     expect(decision.reason_codes).toContain("SYMBOL_EXPOSURE_LIMIT");
+    await navigate(page, "approvals");
     const row = page.getByTestId("proposal-row").first();
     await expect(row).toHaveAttribute("data-state", "AWAITING_APPROVAL");
     await row.click();
@@ -226,10 +237,18 @@ test("scene A: constrained acquisition is counterproposed, exactly approved, set
     await shot(page, "a2-counterproposal-drawer");
     await page.getByTestId("approve-confirm").check();
     await page.getByTestId("approve-button").click();
+    await navigate(page, "activity");
     const command = page.getByTestId("command-row").first();
     await expect(command).toHaveAttribute("data-state", "ACCEPTED");
     await expect(page.locator('[data-testid="timeline-event"][data-event-type="FILL_RECONCILED"]')).toHaveCount(1);
+    await navigate(page, "overview");
     await expect(page.getByTestId("unresolved")).toHaveText("0");
+    await navigate(page, "activity");
+    await page
+      .locator('[data-testid="timeline-event"][data-event-type="DECISION_RECORDED"]')
+      .first()
+      .getByRole("button", { name: "open receipt", exact: true })
+      .click();
     await shot(page, "a3-settled-fill-and-receipt");
     const bundle = await exportScene(page, "a", alias);
     expect(bundle.commands).toHaveLength(1);
@@ -247,6 +266,7 @@ test("scene B: opposing owned-inventory intents are held and resolved by the ope
     const alpha = agentOf(seeded, "agent_alpha");
     const guard = agentOf(seeded, "agent_inventory_guard");
     await login(page);
+    await navigate(page, "approvals");
     const buy = await submit(request, alpha, `demo-b-buy-${repeat}`, {
       symbol: "BTCUSDT",
       side: "BUY",
@@ -274,7 +294,9 @@ test("scene B: opposing owned-inventory intents are held and resolved by the ope
     await winner.click();
     await expect(page.locator('[data-testid="proposal-row"][data-state="AWAITING_APPROVAL"]')).toHaveCount(1);
     await expect(page.locator('[data-testid="proposal-row"][data-state="CONFLICT_HELD"]')).toHaveCount(0);
+    await navigate(page, "activity");
     await expect(page.getByTestId("command-row")).toHaveCount(0);
+    await navigate(page, "approvals");
     await shot(page, "b2-winner-revalidated-loser-released");
     const bundle = await exportScene(page, "b", alias);
     expect(bundle.commands).toHaveLength(0);
@@ -317,10 +339,14 @@ test("scene C: a scripted burst is quarantined durably on the eleventh request",
     expect(decisions.slice(0, 10).every((d) => !d.reason_codes.includes("AGENT_QUARANTINED"))).toBe(true);
     expect(decisions[10]?.outcome).toBe("DENY");
     expect(decisions[10]?.reason_codes).toContain("AGENT_QUARANTINED");
+    await navigate(page, "agents");
     const agentRow = page.getByTestId("agent-row").first();
     await expect(agentRow).toContainText("QUARANTINED");
+    await navigate(page, "overview");
     await expect(page.getByTestId("reserved-quote")).toHaveText("0 USDT");
+    await navigate(page, "activity");
     await expect(page.locator('[data-testid="timeline-event"][data-event-type="AGENT_QUARANTINED"]')).toHaveCount(1);
+    await navigate(page, "agents");
     await shot(page, "c1-burst-quarantined");
     const later = await submit(request, chaos, `demo-c-${repeat}-later`, {
       symbol: "SOLUSDT",
@@ -370,14 +396,22 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
     });
     expect(fault.status()).toBe(201);
     expect((await fault.json()).hold_queries_until_restart).toBe(true);
+    await navigate(page, "approvals");
     const row = page.getByTestId("proposal-row").first();
     await expect(row).toHaveAttribute("data-state", "AWAITING_APPROVAL");
     await row.click();
     await page.getByTestId("approve-confirm").check();
     await page.getByTestId("approve-button").click();
+    await navigate(page, "activity");
     const command = page.getByTestId("command-row").first();
     await expect(command).toHaveAttribute("data-state", "OUTCOME_UNKNOWN");
     await expect(page.getByTestId("unknown-banner")).toBeVisible();
+    for (const section of ["overview", "system"] as const) {
+      await navigate(page, section);
+      await expect(page.getByTestId("unknown-banner")).toBeVisible();
+      await expect(page.getByTestId("stop-button")).toBeInViewport();
+    }
+    await navigate(page, "activity");
     await shot(page, "d1-outcome-unknown-banner");
     const beforeResponse = await request.get(`${KERNEL}/v1/commands`, {
       headers: { authorization: `Bearer ${operatorToken}` },
@@ -401,10 +435,13 @@ test("scene D: a dropped response survives a crash and reconciles from the venue
     await stopKernel(kernel);
     kernel = await startKernel(alias, "scenario-d-lost-response");
     await login(page);
+    await navigate(page, "activity");
     await expect(command).toHaveAttribute("data-state", "ACCEPTED");
     await expect(page.getByTestId("unknown-banner")).toHaveCount(0);
     await expect(page.getByTestId("account-status")).toContainText("PAUSED");
+    await navigate(page, "overview");
     await expect(page.getByTestId("unresolved")).toHaveText("0");
+    await navigate(page, "activity");
     await shot(page, "d2-recovered-after-restart");
     const operatorToken2 = await operatorSession(request);
     const detail = await request.get(`${KERNEL}/v1/commands`, {

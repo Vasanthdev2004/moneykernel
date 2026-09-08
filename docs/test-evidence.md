@@ -7,6 +7,15 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Dashboard navigation and light/dark themes
+
+The operator dashboard was rebuilt around Overview, Approvals, Agents, Activity and System using Radix UI navigation and menus, Lucide icons, and a locally hosted font. Light is the default; a chosen theme survives reload. Stop, mode, account status and unresolved-order warnings remain outside the individual pages. Financial authority and backend handlers are unchanged.
+
+- `pnpm test:unit`: **279 passed** across 21 files (14.74 s).
+- `pnpm test:e2e`: **7 passed** (20.8 s), including theme persistence, navigation and Stop at tablet/phone widths, exact approval/settlement/export, stop/resume, logout/revocation, opposing-intent review and quarantine. Absence assertions navigate to the relevant page before checking, so unmounted panels cannot create false passes.
+- `pnpm exec playwright test -c playwright.rehearsal.config.ts`: **4 passed** (22.0 s), one round of A/B/C/D with same-account exports verified and scene D's stable order identity/one submission across restart. This UI review did not rerun the three-round release qualification below.
+- `pnpm lint` and `pnpm build`: passed. Desktop/phone layouts were visually inspected in both themes; the phone header was tightened in the final confirmation pass. Historical evidence files are unchanged; new run artifacts remain in local review storage.
+
 ## 2026-09-08 — Final independent G7 release review
 
 Tested code: **`56a44fb5b07b9d9ef5dd1c41122753bc061cd0d8`**, parent `f1b0062`. The [G7 review](g7-fix-test-evidence.md) describes the corrected rehearsal assertions, manual recording failures, synthetic query-outage control and evidence limitations. Historical runs below remain intact.

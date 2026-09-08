@@ -77,14 +77,22 @@ For scene D's restart, press Ctrl+C in the kernel terminal and run **only `pnpm 
 alias, fixture and state directory; do not rerun setup or seed. The restarted account stays paused until you log
 in and explicitly Resume after reconciliation.
 
+Use the five console tabs during recording: **Overview** for funds and pending work, **Approvals** for the queue,
+conflicts and exact approval drawer, **Agents** for agent and lease controls, **Activity** for commands, incidents,
+the full timeline and receipts, and **System** for integration truth, readiness and policy. Advanced controls under
+**Manage agent**, **Register agent** and **Issue lease** start closed; expand them only when needed. The header keeps
+the mode, account state, **Stop new orders** and **Resume** visible. Open **Workspace menu** for **Export run**,
+**Refresh** or **Log out**. The console defaults to light mode; the theme toggle on login and in the header saves
+your light/dark preference in this browser. Tabs and the menu use Radix UI, with Lucide icons and self-hosted DM Sans.
+
 | Time | Scene | Do | Evidence on screen |
 |---|---|---|---|
-| 0–10 s | Mode and connection | Show the top bar | `REPLAY · SYNTHETIC FIXTURE`, `MCP · BLOCKED` (honest Gate 0 outcome), `EXEC · CONNECTED` (paper), status strip `READY`, epoch |
-| 10–30 s | Constrained acquisition (scenario A) | Prepare `a` with the commands above; open the proposal, tick the confirmation, approve | Request 80 USDT vs exact candidate `0.27 SOL @ 100`, limiting rule `SYMBOL_EXPOSURE_LIMIT`, fee reserve 0.027, receipt checks; command `ACCEPTED`, order `FILLED`, one `FILL_RECONCILED` event; quote balance falls by exactly 27.027 |
-| 30–45 s | Opposing pending agents (scenario B) | Prepare `b`; open Conflict review, select Alpha's BUY | Both proposals `CONFLICT_HELD`; after SELECT the winner is a new revision `AWAITING_APPROVAL`, the loser's holds are released, nothing armed |
-| 45–60 s | Scripted chaos burst (scenario C) | Prepare `c`; follow the script's prompt to submit the later request | Eleven distinct requests; the 11th is denied `AGENT_QUARANTINED`; agent shows `QUARANTINED`; a CRITICAL incident; reserved quote back to 0; a later request stays denied |
-| 60–78 s | Response loss and restart (scenario D) | Prepare `d` (the script arms the synthetic fault), approve in the console, then restart the kernel as described above, log in, resume | Command `OUTCOME UNKNOWN` with the amber banner and a CRITICAL incident; after restart the same command/client order ID is `ACCEPTED`, order `EXPIRED` with 0.12 SOL filled, hold split 12.012 consumed / 8.008 released, incident resolved, account `PAUSED` until Resume; the venue journal shows one submission |
-| 78–90 s | Evidence and close | Export run, run `pnpm verify:receipt -- <file>` in the terminal | `verify:receipt: passed` with the nine checks; test summary; repository; "Give AI agents capital, not blind trust" |
+| 0–10 s | Mode and connection | Show the header, then open System | Header `REPLAY · SYNTHETIC FIXTURE` and account `READY`; System shows Agent OS MCP `BLOCKED` (honest Gate 0 outcome), Execution `CONNECTED` (paper), and epoch |
+| 10–30 s | Constrained acquisition (scenario A) | Prepare `a` with the commands above; in Approvals, open the proposal, tick the confirmation and approve; inspect settlement in Activity | Request 80 USDT vs exact candidate `0.27 SOL @ 100`, limiting rule `SYMBOL_EXPOSURE_LIMIT`, fee reserve 0.027, receipt checks; command `ACCEPTED`, order `FILLED`, one `FILL_RECONCILED` event; quote balance falls by exactly 27.027 |
+| 30–45 s | Opposing pending agents (scenario B) | Prepare `b`; in Approvals, open Conflict review and select Alpha's BUY | Both proposals `CONFLICT_HELD`; after SELECT the winner is a new revision `AWAITING_APPROVAL`, the loser's holds are released, nothing armed |
+| 45–60 s | Scripted chaos burst (scenario C) | Prepare `c`; follow the script's prompt to submit the later request; show Agents, then the incident in Activity and funds in Overview | Eleven distinct requests; the 11th is denied `AGENT_QUARANTINED`; agent shows `QUARANTINED`; a CRITICAL incident; reserved quote back to 0; a later request stays denied |
+| 60–78 s | Response loss and restart (scenario D) | Prepare `d` (the script arms the synthetic fault), approve in Approvals and inspect Activity; restart the kernel as described above, log in, resume | Command `OUTCOME UNKNOWN` with the amber banner and a CRITICAL incident; after restart the same command/client order ID is `ACCEPTED`, order `EXPIRED` with 0.12 SOL filled, hold split 12.012 consumed / 8.008 released, incident resolved, account `PAUSED` until Resume; the venue journal shows one submission |
+| 78–90 s | Evidence and close | Open Workspace menu → Export run; run `pnpm verify:receipt -- <file>` in the terminal | `verify:receipt: passed` with the nine checks; test summary; repository; "Give AI agents capital, not blind trust" |
 
 ## Claims to make and not make (prd.md 23.3)
 

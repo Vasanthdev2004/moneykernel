@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { amount, shortId, trimDecimal } from "../format.ts";
 import { ACTION } from "../hooks.ts";
 import { agentStatus } from "../states.ts";
@@ -32,32 +32,17 @@ function toLocalInputValue(ms: number): string {
 
 function LeaseSummary({
   lease,
-  quoteAsset,
   serverNow,
   revokeInFlight,
   onRevoke,
 }: {
   lease: ActiveLease;
-  quoteAsset: string | undefined;
   serverNow: number;
   revokeInFlight: boolean;
   onRevoke: () => void;
 }) {
   const items: Array<[string, ReactNode]> = [
     ["Lease", <Mono title={lease.lease_id}>{shortId(lease.lease_id)}</Mono>],
-    [
-      "Budget",
-      <>
-        <Mono className="data">{amount(lease.consumed_quote, quoteAsset)}</Mono> consumed of{" "}
-        <Mono className="data">{amount(lease.acquisition_budget_quote, quoteAsset)}</Mono>
-      </>,
-    ],
-    [
-      "Attempts",
-      <Mono className="data">
-        {lease.attempts_consumed} / {lease.max_submission_attempts}
-      </Mono>,
-    ],
     [
       "Expires",
       <>
@@ -108,7 +93,6 @@ function RegisterAgentForm({
 
   return (
     <form className="form" onSubmit={(event) => void submit(event)}>
-      <h3>Register agent</h3>
       <div className="form-row">
         <label htmlFor="agent-name">Name</label>
         <input id="agent-name" value={name} maxLength={64} onChange={(event) => setName(event.target.value)} required />
@@ -265,7 +249,6 @@ function LeaseForm({
 
   return (
     <form className="form" onSubmit={review}>
-      <h3>Issue lease</h3>
       <div className="form-row">
         <label htmlFor="lease-agent">Agent</label>
         <select id="lease-agent" value={agentId} onChange={(event) => setAgentId(event.target.value)} required>
@@ -373,6 +356,10 @@ export function AgentsPanel({
   error?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const tokenSection = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (tokenReveal !== null) tokenSection.current?.scrollIntoView({ block: "nearest" });
+  }, [tokenReveal]);
   const copyToken = async (token: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(token);
@@ -386,7 +373,7 @@ export function AgentsPanel({
     <Panel id="agents" title="Agents" subtitle={`${agents.length} registered`}>
       <ErrorNote message={error} prefix="agents" />
       {tokenReveal !== null && (
-        <section className="token-reveal" aria-label="New agent token">
+        <section className="token-reveal" aria-label="New agent token" ref={tokenSection}>
           <p>
             <strong>Token for {tokenReveal.agent.name}</strong> — shown once. The kernel stores only a hash; copy it
             now.
@@ -421,8 +408,56 @@ export function AgentsPanel({
               <li className="agent" data-testid="agent-row" key={agent.id}>
                 <div className="agent-head">
                   <strong className="agent-name">{agent.name}</strong>
-                  <Badge tone="muted">{agent.strategy_kind}</Badge>
                   <StateBadge presentation={presentation} />
+                </div>
+                {lease !== null ? (
+                  <div className="agent-summary">
+                    <div>
+                      <span className="muted small">Budget used</span>
+                      <p className="data">
+                        {trimDecimal(lease.consumed_quote)} / {amount(lease.acquisition_budget_quote, quoteAsset)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="muted small">Attempts used</span>
+                      <p className="data">
+                        {lease.attempts_consumed} / {lease.max_submission_attempts}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="muted small">No active lease.</p>
+                )}
+                <details className="agent-details">
+                  <summary>Manage agent</summary>
+                  <DefList
+                    items={[
+                      ["Agent ID", <Mono title={agent.id}>{agent.id}</Mono>],
+                      ["Strategy", agent.strategy_kind],
+                      ["Revision", <Mono>{agent.revision}</Mono>],
+                    ]}
+                  />
+                  {presentation.note !== undefined && <p className="muted small">{presentation.note}</p>}
+                  <div className="holdings">
+                    <span className="label">Attributed holdings</span>{" "}
+                    {agent.holdings.length === 0 ? (
+                      <span className="muted small">none</span>
+                    ) : (
+                      agent.holdings.map((holding) => (
+                        <Mono key={holding.asset} className="data holding">
+                          {trimDecimal(holding.quantity)} {holding.asset}
+                        </Mono>
+                      ))
+                    )}
+                  </div>
+                  {lease !== null && (
+                    <LeaseSummary
+                      lease={lease}
+                      serverNow={serverNow}
+                      revokeInFlight={isInFlight(ACTION.revokeLease(lease.lease_id))}
+                      onRevoke={() => onRevokeLease({ lease_id: lease.lease_id, agent_id: agent.id })}
+                    />
+                  )}
                   {agent.status === "ACTIVE" && (
                     <button
                       type="button"
@@ -433,34 +468,7 @@ export function AgentsPanel({
                       Quarantine
                     </button>
                   )}
-                </div>
-                <div className="muted small">
-                  <Mono title={agent.id}>{shortId(agent.id)}</Mono> · revision <Mono>{agent.revision}</Mono>
-                  {presentation.note !== undefined && <> · {presentation.note}</>}
-                </div>
-                {lease !== null ? (
-                  <LeaseSummary
-                    lease={lease}
-                    quoteAsset={quoteAsset}
-                    serverNow={serverNow}
-                    revokeInFlight={isInFlight(ACTION.revokeLease(lease.lease_id))}
-                    onRevoke={() => onRevokeLease({ lease_id: lease.lease_id, agent_id: agent.id })}
-                  />
-                ) : (
-                  <p className="muted small">No active lease: this agent holds no authority to commit funds.</p>
-                )}
-                <div className="holdings">
-                  <span className="label">Attributed holdings</span>{" "}
-                  {agent.holdings.length === 0 ? (
-                    <span className="muted small">none</span>
-                  ) : (
-                    agent.holdings.map((holding) => (
-                      <Mono key={holding.asset} className="data holding">
-                        {trimDecimal(holding.quantity)} {holding.asset}
-                      </Mono>
-                    ))
-                  )}
-                </div>
+                </details>
               </li>
             );
           })}
@@ -509,14 +517,20 @@ export function AgentsPanel({
           </table>
         </details>
       )}
-      <RegisterAgentForm onRegister={onRegister} isInFlight={isInFlight} />
-      <LeaseForm
-        agents={agents}
-        quoteAsset={quoteAsset}
-        serverNow={serverNow}
-        onIssue={onIssueLease}
-        isInFlight={isInFlight}
-      />
+      <details className="form-disclosure">
+        <summary>Register agent</summary>
+        <RegisterAgentForm onRegister={onRegister} isInFlight={isInFlight} />
+      </details>
+      <details className="form-disclosure">
+        <summary>Issue lease</summary>
+        <LeaseForm
+          agents={agents}
+          quoteAsset={quoteAsset}
+          serverNow={serverNow}
+          onIssue={onIssueLease}
+          isInFlight={isInFlight}
+        />
+      </details>
     </Panel>
   );
 }
