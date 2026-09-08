@@ -35,3 +35,21 @@ implement or validate the future fill-accounting reconciler.
 Use `pnpm run doctor`: the shorter `pnpm doctor` runs pnpm 12's own diagnostic.
 Apply the new migrations with `pnpm db:migrate` before starting the updated
 kernel. See [the contract and upgrade decision](decisions/0002-g1-verification-fixes.md).
+
+## Combined commit verification
+
+Claude's G2 commit `bf91268` included and pushed the shared G1 corrections while
+the isolated verification was finishing. The fixes were checked against that
+commit; its additional boot and documentation changes were preserved.
+
+- `pnpm exec vitest run --project unit --project property --project contracts`:
+  160 tests passed in 10 files.
+- `pnpm test:integration`: 34 tests passed in 4 files on the disposable database,
+  including both admission and G1 readiness regressions.
+- `pnpm build`: passed, including both TypeScript checks.
+- `pnpm lint`: passed with one unused-import warning in the new policy evaluator;
+  the unused import was removed and the lint check rerun cleanly.
+
+Total on the combined code: 194 tests passed. This confirms compatibility of
+the G1 corrections with the available G2 tests; it is not a full independent
+review of G2 against every PRD acceptance condition.
