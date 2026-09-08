@@ -15,7 +15,8 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. |
 | G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
 | G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
-| G5 operator experience | Next: dashboard, approval drawer, conflict panel, incidents, timeline. |
+| G5 operator experience | Done: operations console (mode and provenance badges, always-visible stop, readiness-gated resume, agents and structured lease form, approval drawer with exact candidate versus request, conflict panel, receipt view with export, incidents, commands, integration panel, live event timeline over SSE), console read endpoints, Playwright browser tests. |
+| G6 adversarial hardening | Next: fault tests, replay verification (`demo:replay`, `verify:receipt`), secret checks, three clean demo runs. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
@@ -38,7 +39,7 @@ pnpm dev                      # kernel on http://127.0.0.1:8080 (account starts 
 pnpm dev:web                  # console on http://127.0.0.1:5173
 ```
 
-Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`); `pnpm test:e2e` (Playwright, real kernel and console). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 
 ### Try the vertical slice (REPLAY)
 
@@ -71,6 +72,10 @@ MONEYKERNEL_MODE=SHADOW MONEYKERNEL_ACCOUNT_ALIAS=shadow-run-001 pnpm dev
 pnpm demo:seed scenario-d-lost-response
 ```
 
+### Operator console (prd.md section 17)
+
+`pnpm dev:web` serves the console on http://127.0.0.1:5173 and proxies the API to the kernel. Log in with `OPERATOR_BOOTSTRAP_SECRET`; the browser session is an HttpOnly cookie plus a CSRF token held in memory, and every mutation carries an idempotency key. The console shows the mode badge and integration truth at all times, keeps `STOP NEW ORDERS` visible, gates resume on readiness and acknowledged incidents, lists agents with exact lease semantics, offers a structured lease form, opens an approval drawer that puts the agent's original request beside the exact candidate with its limiting rule and observation age, resolves conflicts, shows the receipt (ordered rule checks, input versions, command → order → fill → ledger linkage, JSON export), incidents with recovery prerequisites, commands with a reconcile action, and a live event timeline fed by `GET /v1/events/stream` with cursor catch-up. An `OUTCOME_UNKNOWN` banner stays until the command is reconciled. Browser tests: `pnpm test:e2e` (starts a kernel on a fresh REPLAY alias and the Vite server; needs the database and `.env`).
+
 ### Strategy runner (prd.md section 16)
 
 The runner in `apps/agents` reads an agent's bounded context, asks a provider for at most one proposal, validates it strictly (one repair attempt), submits it through the agent API, and writes a trace to `.moneykernel/model-runs`. It holds no operator session and no exchange access.
@@ -84,7 +89,7 @@ pnpm agent:run -- --token <mka_...> --provider agent-session --proposal proposal
 
 A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
 
-Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`, `test:e2e`) exit with code 2 and say so.
+Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`) exit with code 2 and say so.
 
 ## Gate 0 outcome (2026-09-08)
 

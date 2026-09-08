@@ -37,6 +37,21 @@ export async function operatorAuthRoutes(app: FastifyInstance, options: { runtim
     };
   });
 
+  /** Re-issues the CSRF token for a live cookie session so a browser reload does not need the secret again. */
+  app.get("/v1/auth/session", { preHandler: requireOperator(runtime) }, async (request, reply) => {
+    const token = request.operator?.token;
+    const session = token === undefined ? null : runtime.sessions.get(token, runtime.clock());
+    if (session === null) {
+      reply.code(401);
+      return errorEnvelope("UNAUTHENTICATED", "operator session required", request.id);
+    }
+    return {
+      csrf_token: session.csrf,
+      operator_id: session.operator_id,
+      expires_at: session.expires_at.toISOString(),
+    };
+  });
+
   app.delete("/v1/auth/session", { preHandler: requireOperator(runtime) }, async (request, reply) => {
     if (request.operator !== undefined) runtime.sessions.delete(request.operator.token);
     reply.header("Set-Cookie", clearSessionCookie());

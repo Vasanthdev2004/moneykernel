@@ -7,6 +7,22 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Gate 5 operator experience
+
+Environment: as Gate 4, plus Playwright 1.63.0 with the locally installed Chromium.
+
+| Command | Result | What it covers |
+|---|---|---|
+| `pnpm lint` / `pnpm typecheck` (kernel, agents, tests, console) | clean | |
+| `pnpm test:unit` / `pnpm test:property` / `pnpm test:contracts` | 181 / 7 × 400 / 90 passed | unchanged; unit count includes the G4 review session's new suites |
+| `pnpm test:integration` | 128 passed, 3 skipped (online, opt-in); run the integration and browser suites sequentially, they share the database | earlier suites (including the G4 review session's reconciliation-safety, recovery-safety, and quote-attribution suites) plus `console.test.ts`: overview sums (available versus reserved quote before, during, and after a settled fill), the decision document behind a proposal and its intent (receipt checks, fingerprint, reservations, approvals, command → order → fills → ledger), 404 for unknown ids, event pages from a durable cursor with no gap or duplicate and a verified hash chain, SSE catch-up from genesis and from the last seen sequence with no repeats (T-53) |
+| `pnpm test:e2e` | 2 passed (Chromium, about 9 s after the kernel and Vite start) | real kernel (fresh REPLAY alias) and Vite console: login, Scenario A counterproposal (0.27 SOL) appears as `AWAITING_APPROVAL`, approve button disabled until the explicit confirmation, exact approval, command shown `ACCEPTED` with reconciled fill events on the timeline, receipt export download, reload without duplicated events; stop shows `PAUSED`, readiness-gated resume returns `READY` |
+| `pnpm build` | clean; console bundle 281 kB JS (83 kB gzip), 12.8 kB CSS | typecheck plus the production console bundle |
+| `pnpm run doctor` | all required checks passed | |
+| found by the browser tests | two console-only bugs: Vite's string proxy shorthand rewrites the Host header (`changeOrigin`), so every browser mutation failed the kernel's same-origin CSRF check until the proxy kept the original Host; under React StrictMode the modal's queued `close` event fired after the effect re-opened the dialog and closed the stop dialog immediately (fixed by ignoring `close` while the dialog is open). A cookie session now survives a reload via `GET /v1/auth/session`, which re-issues the CSRF token. | |
+
+The screenshot `docs/evidence/console-after-settlement.png` is taken by the browser test after the fill settles.
+
 ## 2026-09-08 — Gate 4 execution, reconciliation, recovery, observations
 
 Environment: as Gate 3. Live network reads in this section went to `https://data-api.binance.vision` (public Spot REST, GET only, no credentials).

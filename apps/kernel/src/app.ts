@@ -3,6 +3,7 @@ import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import type { KernelRuntime } from "./boot.ts";
 import { newId } from "./ids.ts";
 import { agentRoutes } from "./routes/agent.ts";
+import { consoleRoutes } from "./routes/console.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { operatorRoutes } from "./routes/operator.ts";
 import { operatorAuthRoutes } from "./routes/operator-auth.ts";
@@ -68,5 +69,6 @@ export function buildApp(runtime: KernelRuntime): FastifyInstance {
   app.register(agentRoutes, { runtime });
   app.register(operatorAuthRoutes, { runtime });
   app.register(operatorRoutes, { runtime });
+  app.register(consoleRoutes, { runtime });
   return app;
 }

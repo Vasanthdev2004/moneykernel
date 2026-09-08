@@ -636,3 +636,11 @@ export async function consumeLeaseAttempt(client: PoolClient, leaseId: string, n
   if (row === undefined) throw new Error(`lease ${leaseId} not found`);
   return row;
 }
+
+export async function listApprovalsForProposal(client: PoolClient, proposalId: string): Promise<ApprovalRow[]> {
+  const result = await client.query<ApprovalRow>(
+    "SELECT * FROM approvals WHERE proposal_id = $1 ORDER BY created_at, id",
+    [proposalId],
+  );
+  return result.rows;
+}

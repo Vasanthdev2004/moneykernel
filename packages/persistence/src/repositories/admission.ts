@@ -372,3 +372,20 @@ export async function listPendingBuyProposals(
   );
   return result.rows;
 }
+
+// --- console reads (prd.md 17.3 receipt view) -----------------------------------
+
+export async function listReceiptsForIntent(client: PoolClient, intentId: string): Promise<ReceiptRow[]> {
+  const result = await client.query<ReceiptRow>(
+    "SELECT * FROM decision_receipts WHERE intent_id = $1 ORDER BY evaluated_at, id",
+    [intentId],
+  );
+  return result.rows;
+}
+
+export async function listProposalsForIntent(client: PoolClient, intentId: string): Promise<ProposalRow[]> {
+  const result = await client.query<ProposalRow>("SELECT * FROM proposals WHERE intent_id = $1 ORDER BY revision", [
+    intentId,
+  ]);
+  return result.rows;
+}

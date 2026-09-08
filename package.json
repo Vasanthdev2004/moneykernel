@@ -23,7 +23,7 @@
     "test:contracts": "vitest run --project contracts",
     "test:integration": "vitest run --project integration",
     "test:fault": "vitest run --project fault",
-    "test:e2e": "node scripts/not-implemented.ts test:e2e G5",
+    "test:e2e": "playwright test",
     "build": "pnpm typecheck && pnpm --filter @moneykernel/web build",
     "demo:seed": "node --env-file-if-exists=.env scripts/seed-demo.ts",
     "agent:run": "node --env-file-if-exists=.env apps/agents/src/runner.ts",
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@playwright/test": "1.63.0",
     "@types/node": "26.4.1",
     "fast-check": "4.9.0",
     "typescript": "7.0.2",

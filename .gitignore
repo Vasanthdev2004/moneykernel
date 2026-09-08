@@ -31,3 +31,7 @@ Thumbs.db
 
 # operational state outside the database (paper venue journals, model run traces)
 .moneykernel/
+
+# browser test artifacts
+test-results/
+playwright-report/

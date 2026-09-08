@@ -6,11 +6,14 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    // Object form keeps the browser Host header (the string shorthand implies changeOrigin), so the kernel sees
+    // Origin and Host agree and browser mutations pass its same-origin CSRF check (apps/kernel/src/auth/operator.ts).
     proxy: {
-      "/v1": "http://127.0.0.1:8080",
-      "/health": "http://127.0.0.1:8080",
+      "/v1": { target: "http://127.0.0.1:8080", changeOrigin: false },
+      "/health": { target: "http://127.0.0.1:8080", changeOrigin: false },
     },
   },
   build: {

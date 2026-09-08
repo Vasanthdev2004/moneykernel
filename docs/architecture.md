@@ -59,6 +59,14 @@ The account row lock serializes every resource claim, which is what keeps two co
 - SHADOW reads the live book through a read-only Binance public REST adapter (`BINANCE_PUBLIC_REST`, GET only, allowlisted hosts, no credentials); the paper venue then walks that live book. TESTNET uses the same adapter against Spot Testnet for reads only.
 - The strategy runner (`apps/agents`, prd.md 16) turns an agent's bounded context into at most one intent per run through a provider (scripted, recorded, Anthropic Messages API, or a supported agent session bound to the context hash), validates strictly with one repair attempt, records a trace, and submits through the agent API only.
 
+## Operator console (Gate 5, prd.md 17)
+
+- `apps/web` is a React console served by Vite in development (proxying `/v1` and `/health` to the kernel) and from the kernel's origin in deployment. It renders state and provenance and holds no financial authority: every decision is an operator API call with the session cookie, `X-CSRF-Token`, and an `Idempotency-Key` per click.
+- Console reads live in `apps/kernel/src/routes/console.ts`: `GET /v1/overview` (status strip: balances, summed outstanding holds, available versus reserved quote, pending approvals, open conflicts and incidents, command counts, readiness), `GET /v1/events?after=<seq>` (a page of the hash-chained log from a durable cursor, or `?tail=1` for a first paint), `GET /v1/events/stream` (SSE: `id` is the account sequence, `event` the audit type, catch-up from `after` or `Last-Event-ID`, 500 ms polling of committed events, heartbeats), and `GET /v1/intents/:id` / `GET /v1/proposals/:id` (the decision document: intent, every receipt with ordered rule checks and input versions, proposals with reservations and approvals, command, order, fills, ledger entries).
+- The stream explains state; it is never a command channel. Deliveries may repeat, so the browser deduplicates by event id and resumes from the last sequence after a disconnect (T-53).
+- Mandatory state distinctions (prd.md 17.4) are carried by the data, not the UI: `COUNTERPROPOSE` is an outcome, `AWAITING_APPROVAL` a proposal state, `APPROVED`/`COMMAND_CREATED` precede arming, `ACCEPTED` is a command state distinct from the order's `FILLED`/`EXPIRED`, and an `OUTCOME_UNKNOWN` banner stays until the command reconciles.
+- Browser tests (`pnpm test:e2e`, Playwright) start a kernel on a fresh REPLAY alias and the Vite server, seed Scenario A, and drive login, exact approval, settlement, receipt export, stop, readiness-gated resume, and reload catch-up.
+
 ## Modes (prd.md 13.1)
 
 | Mode | Market context | Funds and orders | Adapter selected at construction time |
