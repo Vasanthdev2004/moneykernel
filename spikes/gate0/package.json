@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Gate 0 integration spike (prd.md section 2.4). Throwaway read-only MCP probe; not product runtime code.",
   "scripts": {
-    "list": "tsx mcp-spike.ts list",
-    "call": "tsx mcp-spike.ts call",
+    "spike:login": "node mcp-spike.ts login",
+    "spike:list": "node mcp-spike.ts list",
+    "spike:call": "node mcp-spike.ts call",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -15,7 +16,6 @@
   },
   "devDependencies": {
     "@types/node": "26.4.1",
-    "tsx": "4.23.13",
     "typescript": "7.0.2"
   }
 }

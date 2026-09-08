@@ -7,8 +7,14 @@
  * write. No upstream tool name is guessed: a call must name a tool that the
  * server itself listed.
  *
+ * The endpoint requires OAuth even for the initialize handshake (observed
+ * HTTP 401 with a resource_metadata challenge). `login` runs the
+ * authorization-code + PKCE flow from ./oauth.ts; the human does the consent.
+ *
  * Raw responses go to ./raw (gitignored). Sanitized summaries go to ./out.
  * This is throwaway evidence tooling, not product runtime code.
+ *
+ * Run with Node 24 directly (type stripping): node mcp-spike.ts <command>
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -16,11 +22,12 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLIENT_ID, describe, getAccessToken, login, RESOURCE } from "./oauth.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = join(HERE, "raw");
 const OUT_DIR = join(HERE, "out");
-const ENDPOINT = process.env.MCP_ENDPOINT ?? "https://agent.binance.com/mcp/agentic";
+const ENDPOINT = RESOURCE;
 const CLIENT_INFO = { name: "moneykernel-gate0-spike", version: "0.0.1" };
 
 const DECIMAL_STRING_RE = /^-?(0|[1-9]\d*)(\.\d+)?$/;
@@ -80,7 +87,11 @@ function classify(tool: ToolLike): "READ" | "WRITE" | "UNKNOWN" {
 }
 
 async function connect() {
-  const transport = new StreamableHTTPClientTransport(new URL(ENDPOINT));
+  const token = await getAccessToken();
+  const transport = new StreamableHTTPClientTransport(
+    new URL(ENDPOINT),
+    token ? { requestInit: { headers: { Authorization: `${token.token_type || "Bearer"} ${token.access_token}` } } } : undefined,
+  );
   const client = new Client(CLIENT_INFO);
   const requestStartedAt = nowIso();
   const t = performance.now();
@@ -90,6 +101,9 @@ async function connect() {
   const handshake = {
     endpoint: ENDPOINT,
     transport: "streamable-http",
+    authentication: token ? "oauth2 bearer (authorization_code + PKCE, client_id = hosted metadata document URL)" : "none",
+    oauth_client_id: token ? CLIENT_ID : null,
+    token_scope: token?.scope ?? null,
     client_info: CLIENT_INFO,
     sdk_version: sdkVersion(),
     request_started_at: requestStartedAt,
@@ -178,6 +192,12 @@ function parseResult(result: { content?: unknown; structuredContent?: unknown })
   }
 }
 
+async function cmdLogin(): Promise<void> {
+  const tokens = await login();
+  console.log("\nlogin complete; token stored in ./raw (gitignored). Summary without secrets:");
+  console.log(JSON.stringify(describe(tokens), null, 2));
+}
+
 async function cmdList(): Promise<void> {
   const { client, handshake } = await connect();
   const t0 = nowIso();
@@ -208,6 +228,7 @@ async function cmdList(): Promise<void> {
   writeJson(join(OUT_DIR, "tools-discovered.json"), { handshake, listing, tools: discovered });
 
   console.log(`\nendpoint   ${ENDPOINT}`);
+  console.log(`auth       ${handshake.authentication}`);
   console.log(`protocol   ${handshake.negotiated_protocol_version}`);
   console.log(`server     ${JSON.stringify(handshake.server_info)}`);
   console.log(`caps       ${JSON.stringify(handshake.server_capabilities)}`);
@@ -268,16 +289,20 @@ async function cmdCall(name: string, argsJson: string | undefined): Promise<void
 
 const [cmd, a, b] = process.argv.slice(2);
 try {
-  if (cmd === "list") await cmdList();
+  if (cmd === "login") await cmdLogin();
+  else if (cmd === "list") await cmdList();
   else if (cmd === "call" && a) await cmdCall(a, b);
   else {
-    console.error("usage: tsx mcp-spike.ts list | call <tool-name> <json-args>");
-    process.exit(2);
+    console.error("usage: node mcp-spike.ts login | list | call <tool-name> <json-args>");
+    process.exitCode = 2;
   }
 } catch (err) {
   const e = err as Error & { cause?: unknown; code?: unknown };
   console.error(`SPIKE FAILED: ${e.name}: ${e.message}`);
   if (e.code !== undefined) console.error(`code: ${String(e.code)}`);
   if (e.cause !== undefined) console.error(`cause: ${String(e.cause)}`);
-  process.exit(1);
+  if (String(e.code) === "401" || /401/.test(e.message)) {
+    console.error("hint: endpoint requires OAuth; run `node mcp-spike.ts login` first (token may also be expired)");
+  }
+  process.exitCode = 1;
 }
