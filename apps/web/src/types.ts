@@ -115,6 +115,7 @@ export interface OverviewResponse {
   balances: Balance[];
   reservations: ReservationSummary[];
   available_quote: string;
+  cash_buffer_quote: string;
   reserved_quote: string;
   pending_approvals: number;
   open_conflicts: number;

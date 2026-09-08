@@ -129,12 +129,13 @@ export function createClient(handlers: ClientHandlers): KernelClient {
   const request = async <T>(method: Method, path: string, options: RequestOptions = {}): Promise<T> => {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (method !== "GET") {
-      headers["Content-Type"] = "application/json";
+      if (options.body !== undefined) headers["Content-Type"] = "application/json";
       const csrf = handlers.getCsrf();
       if (csrf !== null) headers["X-CSRF-Token"] = csrf;
       if (options.idempotencyKey !== undefined) headers["Idempotency-Key"] = options.idempotencyKey;
     }
     let response: Response;
+    let text: string;
     try {
       response = await fetch(path, {
         method,
@@ -143,6 +144,9 @@ export function createClient(handlers: ClientHandlers): KernelClient {
         credentials: "same-origin",
         cache: "no-store",
       });
+      // Losing the body after receiving headers still leaves a mutation's
+      // result unknown. Preserve its idempotency key through the same network error.
+      text = await response.text();
     } catch (error) {
       throw new KernelError(
         0,
@@ -151,7 +155,6 @@ export function createClient(handlers: ClientHandlers): KernelClient {
         null,
       );
     }
-    const text = await response.text();
     let json: unknown = null;
     if (text.length > 0) {
       try {

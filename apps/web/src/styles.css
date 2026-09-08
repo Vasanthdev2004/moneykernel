@@ -237,7 +237,8 @@ a {
   min-width: 0;
 }
 
-@media (max-width: 1000px) {
+/* Three columns need 1080px plus their gaps and page padding. */
+@media (max-width: 1140px) {
   .columns {
     grid-template-columns: 1fr;
   }
@@ -608,6 +609,11 @@ input[type="checkbox"] {
   letter-spacing: 0.06em;
   color: var(--fg-muted);
   font-weight: 600;
+}
+
+/* Keep exact rule names and amounts intact; the panel provides horizontal scrolling. */
+.checks .mono {
+  white-space: nowrap;
 }
 
 .table.compare th[scope="row"] {

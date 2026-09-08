@@ -18,13 +18,15 @@ export function UnknownBanner({
         ?
       </span>
       <div>
-        <strong>OUTCOME UNKNOWN</strong>{" "}
+        <strong>{unknownCount > 0 ? "OUTCOME UNKNOWN" : "ACCOUNT RECONCILING"}</strong>{" "}
         {unknownCount > 0
           ? `${unknownCount} command${unknownCount === 1 ? " has" : "s have"} an unknown execution outcome.`
-          : "The account is reconciling an outstanding command."}{" "}
-        Reservations stay held until the venue answer is reconciled; nothing here assumes success or failure. Recovery:
-        reconcile the command in the <a href="#commands">Commands panel</a>, review the{" "}
-        <a href="#incidents">Incidents panel</a>, then resume.
+          : "The account requires reconciliation or investigation; new orders remain blocked."}{" "}
+        {unknownCount > 0 &&
+          "Reservations stay held until the unknown execution is reconciled; nothing here assumes success or failure. "}
+        Recovery: {unknownCount > 0 ? "reconcile the command" : "review the command evidence"} in the{" "}
+        <a href="#commands">Commands panel</a>, review the <a href="#incidents">Incidents panel</a>, then resume when
+        kernel readiness permits.
       </div>
     </section>
   );

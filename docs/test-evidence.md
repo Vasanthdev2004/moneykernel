@@ -9,6 +9,10 @@ exchange filters that the review now rejects as unsupported.
 
 ## 2026-09-08 — Gate 5 operator experience
 
+Subsequent independent corrections and the combined 415-test / 7-browser-test
+run are recorded in [G5 review evidence](g5-fix-test-evidence.md). The following
+table and screenshot describe the original G5 baseline.
+
 Environment: as Gate 4, plus Playwright 1.63.0 with the locally installed Chromium.
 
 | Command | Result | What it covers |

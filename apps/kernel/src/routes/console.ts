@@ -1,11 +1,11 @@
-import type { ServerResponse } from "node:http";
-import { type AuditEvent, errorEnvelope } from "@moneykernel/contracts";
+import { type AuditEvent, errorEnvelope, PolicySchema } from "@moneykernel/contracts";
 import { add, dec, sub, toDecimalString, ZERO } from "@moneykernel/domain";
 import {
   countCommandsByState,
   countOutstandingCommands,
   getAccountById,
   getCommandForProposal,
+  getCurrentPolicy,
   getIntentById,
   getOrderForCommand,
   getProposalById,
@@ -148,9 +148,10 @@ export async function consoleRoutes(app: FastifyInstance, options: { runtime: Ke
   const { runtime } = options;
   app.addHook("preHandler", requireOperator(runtime));
 
-  const streams = new Set<ServerResponse>();
-  app.addHook("onClose", async () => {
-    for (const res of streams) res.end();
+  const streams = new Set<() => void>();
+  // Hijacked SSE responses must end before server.close waits for active connections.
+  app.addHook("preClose", async () => {
+    for (const close of streams) close();
     streams.clear();
   });
 
@@ -186,6 +187,9 @@ export async function consoleRoutes(app: FastifyInstance, options: { runtime: Ke
       for (const s of sums.values())
         if (s.asset === quoteAsset && s.kind === "QUOTE") reservedQuote = add(reservedQuote, s.amount);
       const ownedQuote = dec(balances.find((b) => b.asset === quoteAsset)?.owned_quantity ?? "0");
+      const policyRow = await getCurrentPolicy(client, accountId);
+      const policy = policyRow === null ? null : PolicySchema.parse(policyRow.canonical_policy);
+      const cashBuffer = policy === null ? ZERO : dec(policy.min_quote_cash_buffer);
       const pending = await listPreArmProposals(client, accountId);
       const incidents = await listIncidents(client, accountId, "OPEN");
       const outstanding = await countOutstandingCommands(client, accountId);
@@ -206,8 +210,9 @@ export async function consoleRoutes(app: FastifyInstance, options: { runtime: Ke
           state: s.state,
           amount: toDecimalString(s.amount),
         })),
-        available_quote: toDecimalString(sub(ownedQuote, reservedQuote)),
+        available_quote: toDecimalString(sub(sub(ownedQuote, reservedQuote), cashBuffer)),
         reserved_quote: toDecimalString(reservedQuote),
+        cash_buffer_quote: toDecimalString(cashBuffer),
         pending_approvals: pending.filter((p) => p.state === "AWAITING_APPROVAL").length,
         open_conflicts: (await listConflicts(client, accountId, "OPEN")).length,
         open_incidents: {
@@ -264,6 +269,9 @@ export async function consoleRoutes(app: FastifyInstance, options: { runtime: Ke
     const query = request.query as { after?: string };
     const lastEventId = request.headers["last-event-id"];
     let cursor = lastEventId !== undefined ? parseAfter(lastEventId) : parseAfter(query.after);
+    const sessionToken = request.operator?.token;
+    const authorized = (): boolean =>
+      sessionToken !== undefined && runtime.sessions.get(sessionToken, runtime.clock()) !== null;
 
     const res = reply.raw;
     res.writeHead(200, {
@@ -274,43 +282,58 @@ export async function consoleRoutes(app: FastifyInstance, options: { runtime: Ke
       "x-content-type-options": "nosniff",
     });
     reply.hijack();
-    streams.add(res);
     res.write(`retry: 1000\n: connected after=${cursor}\n\n`);
 
     let closed = false;
     let busy = false;
     const pump = async (): Promise<void> => {
       if (closed || busy) return;
+      if (!authorized()) {
+        close();
+        return;
+      }
       busy = true;
       try {
         const events = await withClient(pool, (client) =>
           listAuditEvents(client, accountId, { afterSeq: cursor, limit: MAX_EVENT_PAGE }),
         );
+        if (!authorized()) {
+          close();
+          return;
+        }
         for (const event of events) {
-          if (closed) break;
+          // The query may have waited while a logout or session expiry invalidated its authorization.
+          if (closed || !authorized()) {
+            close();
+            break;
+          }
           res.write(eventFrame(event));
           cursor = event.account_seq;
         }
       } catch (error) {
-        if (!closed) res.write(`: read failed ${error instanceof Error ? error.message : String(error)}\n\n`);
+        if (!authorized()) close();
+        else if (!closed) res.write(`: read failed ${error instanceof Error ? error.message : String(error)}\n\n`);
       } finally {
         busy = false;
       }
     };
     const poll = setInterval(() => void pump(), STREAM_POLL_MS);
     const heartbeat = setInterval(() => {
-      if (!closed) res.write(": ping\n\n");
+      if (closed) return;
+      if (!authorized()) close();
+      else res.write(": ping\n\n");
     }, STREAM_HEARTBEAT_MS);
     const close = (): void => {
       if (closed) return;
       closed = true;
       clearInterval(poll);
       clearInterval(heartbeat);
-      streams.delete(res);
+      streams.delete(close);
       res.end();
     };
     request.raw.on("close", close);
     res.on("close", close);
+    streams.add(close);
     await pump();
   });
 
