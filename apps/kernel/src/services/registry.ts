@@ -18,6 +18,7 @@ import {
   findActiveLeaseForAgent,
   type LeaseRow,
   lockAccountRow,
+  lockAgentRow,
   type PolicyVersionRow,
   type Pool,
   type PoolClient,
@@ -102,6 +103,16 @@ export async function issueLease(
 ): Promise<LeaseRow> {
   return registryTransaction(pool, transaction, async (tx) => {
     await lockAccountRow(tx, accountId);
+    const agent = await lockAgentRow(tx, input.agentId);
+    if (agent === null || agent.account_id !== accountId) {
+      throw Object.assign(new Error("agent not found for this account"), { code: "NOT_FOUND", status: 404 });
+    }
+    if (agent.status !== "ACTIVE") {
+      throw Object.assign(new Error("agent must be active before a lease can be issued"), {
+        code: "STATE_CONFLICT",
+        status: 409,
+      });
+    }
     const active = await findActiveLeaseForAgent(tx, accountId, input.agentId, { lock: true });
     if (active !== null) throw new LeaseConflictError(input.agentId);
     const lease = await createLease(tx, {

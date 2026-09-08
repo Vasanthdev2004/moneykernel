@@ -33,6 +33,7 @@ import {
 import type { KernelRuntime } from "../boot.ts";
 import { newId } from "../ids.ts";
 import { assembleEvaluationInput, refreshInputsForSymbol } from "./evaluation.ts";
+import { sweepProposalsInTx } from "./proposals.ts";
 import { provenanceFor } from "./provenance.ts";
 import {
   enforceBurstThreshold,
@@ -55,6 +56,33 @@ export class AdmissionError extends Error {
 }
 
 export type AdmissionOutcome = { status: 200 | 201; response: DecisionResponse };
+
+type StoredAdmissionError = { code: ErrorCode; status: number; message: string };
+
+/** Missing leases cannot be referenced by an intent FK, so the resolved incident holds the denied request. */
+async function recordedAdmissionError(
+  tx: PoolClient,
+  accountId: string,
+  agentId: string,
+  idempotencyKey: string,
+  payloadHash: string,
+): Promise<AdmissionError | null> {
+  const result = await tx.query<{ payload_hash: string; response: StoredAdmissionError }>(
+    `SELECT evidence_refs->>'payload_hash' AS payload_hash, evidence_refs->'response' AS response
+       FROM incidents
+      WHERE account_id = $1 AND agent_id = $2 AND type = 'HARD_AUTHORITY_VIOLATION'
+        AND evidence_refs->>'record_kind' = 'DENIED_INTENT'
+        AND evidence_refs->>'idempotency_key' = $3
+      ORDER BY created_at, id LIMIT 1`,
+    [accountId, agentId, idempotencyKey],
+  );
+  const recorded = result.rows[0];
+  if (recorded === undefined) return null;
+  if (recorded.payload_hash !== payloadHash) {
+    throw new AdmissionError("IDEMPOTENCY_KEY_REUSED", 409, "idempotency key was used with a different payload");
+  }
+  return new AdmissionError(recorded.response.code, recorded.response.status, recorded.response.message);
+}
 
 function parseIntent(body: unknown): TradeIntent {
   const parsed = TradeIntentSchema.safeParse(body);
@@ -127,10 +155,14 @@ export async function submitIntent(
     }
     return withClient(pool, (client) => loadOutcome(runtime, client, existing.id, 200));
   }
+  const previouslyDenied = await withClient(pool, (client) =>
+    recordedAdmissionError(client, account.id, input.agent.id, input.idempotencyKey, payloadHash),
+  );
+  if (previouslyDenied !== null) throw previouslyDenied;
 
   const refreshedRulesId = await refreshInputsForSymbol(runtime, account.id, account.quote_asset, intent.symbol);
 
-  return withTransaction(pool, async (tx) => {
+  const committed = await withTransaction<AdmissionOutcome | AdmissionError>(pool, async (tx) => {
     const accountRow = await lockAccountRow(tx, account.id);
     let agent = await lockAgentRow(tx, input.agent.id);
     if (agent === null || agent.account_id !== account.id)
@@ -143,6 +175,8 @@ export async function submitIntent(
       }
       return loadOutcome(runtime, tx, raced.id, 200);
     }
+    const denied = await recordedAdmissionError(tx, account.id, agent.id, input.idempotencyKey, payloadHash);
+    if (denied !== null) return denied;
 
     const policyRow = await getCurrentPolicy(tx, account.id);
     if (policyRow === null) throw new AdmissionError("NOT_READY", 503, "no policy version exists for this account");
@@ -158,15 +192,40 @@ export async function submitIntent(
     if (burst !== null) agent = burst.agent;
 
     if (lease === null || lease.account_id !== account.id) {
+      const response: StoredAdmissionError = {
+        code: "NOT_FOUND",
+        status: 404,
+        message: "lease not found for this identity",
+      };
       await recordHardViolation(tx, {
         accountId: account.id,
         agentId: agent.id,
         reason: "LEASE_NOT_FOUND",
-        evidence: { lease_id: intent.lease_id, idempotency_key: input.idempotencyKey },
+        evidence: {
+          record_kind: "DENIED_INTENT",
+          lease_id: intent.lease_id,
+          idempotency_key: input.idempotencyKey,
+          payload_hash: payloadHash,
+          canonical_payload: intent,
+          response,
+        },
         now,
       });
+      await appendAuditEvent(tx, {
+        id: newId("evt"),
+        accountId: account.id,
+        type: "INCIDENT_RAISED",
+        payload: {
+          type: "HARD_AUTHORITY_VIOLATION",
+          agent_id: agent.id,
+          reason: "LEASE_NOT_FOUND",
+          idempotency_key: input.idempotencyKey,
+          payload_hash: payloadHash,
+        },
+        occurredAt: now,
+      });
       await enforceHardViolationThreshold(tx, { accountId: account.id, agent, policy, now });
-      throw new AdmissionError("NOT_FOUND", 404, "lease not found for this identity");
+      return new AdmissionError(response.code, response.status, response.message);
     }
 
     const { input: evaluation, baseAsset } = await assembleEvaluationInput({
@@ -198,8 +257,12 @@ export async function submitIntent(
     if (isHardViolation(result.reason_codes)) {
       await enforceHardViolationThreshold(tx, { accountId: account.id, agent, policy, now });
     }
-    return { status: 201, response };
+    await sweepProposalsInTx(tx, runtime, now);
+    return loadOutcome(runtime, tx, response.intent_id, 201);
   });
+  // Preserve denial evidence and any quarantine before surfacing the HTTP error.
+  if (committed instanceof AdmissionError) throw committed;
+  return committed;
 }
 
 export async function persistDecision(

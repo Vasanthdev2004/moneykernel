@@ -3,6 +3,7 @@ import {
   ConflictResolutionRequestSchema,
   type ErrorCode,
   errorEnvelope,
+  hashCanonical,
   IdempotencyKeySchema,
   InventoryAssignmentRequestSchema,
   IssueLeaseRequestSchema,
@@ -16,6 +17,9 @@ import {
 import { dec, eq, toDecimalString, ZERO } from "@moneykernel/domain";
 import {
   appendAuditEvent,
+  claimOperatorRequest,
+  completeOperatorRequest,
+  countOutstandingCommands,
   findActiveLeaseForAgent,
   getCurrentPolicy,
   getIntentById,
@@ -33,6 +37,8 @@ import {
   lockAccountRow,
   lockAgentRow,
   setLeaseStatus,
+  sumReservedBase,
+  UNASSIGNED_OWNER,
   upsertInventoryAllocation,
   withClient,
   withTransaction,
@@ -75,8 +81,8 @@ function idempotencyKeyOf(request: FastifyRequest): string | null {
 /**
  * Operator API (prd.md 15.2, 18.1). Every handler runs behind operator
  * session auth. Mutations that the PRD lists as idempotent require an
- * Idempotency-Key; repeats within the process lifetime replay the stored
- * result, and the durable state machines make repeats safe regardless.
+ * Idempotency-Key. Durable claims bind each key to its request, and completed
+ * results replay across restarts. Unresolved claims never rerun automatically.
  */
 export async function operatorRoutes(app: FastifyInstance, options: { runtime: KernelRuntime }): Promise<void> {
   const { runtime } = options;
@@ -105,22 +111,49 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
         request.id,
       );
     }
-    const cacheKey = `${request.operator?.id ?? "operator"}:${scope}:${key}`;
-    const cached = runtime.operatorIdempotency.get(cacheKey);
-    if (cached !== undefined) {
-      reply.code(cached.status);
+    const pool = runtime.pool;
+    const account = runtime.account;
+    if (pool === null || account === null) {
+      reply.code(503);
+      return errorEnvelope("NOT_READY", "kernel has no loaded account", request.id);
+    }
+    const identity = { accountId: account.id, operatorId: request.operator?.id ?? "operator", scope, key };
+    const payloadHash = hashCanonical({
+      method: request.method,
+      scope,
+      params: { ...(request.params as Record<string, unknown>) },
+      body: request.body ?? {},
+    });
+    const claim = await claimOperatorRequest(pool, { ...identity, payloadHash, now: runtime.clock() });
+    if (claim.request.payload_hash !== payloadHash) {
+      reply.code(409);
+      return errorEnvelope("IDEMPOTENCY_KEY_REUSED", "idempotency key was used with a different request", request.id);
+    }
+    if (!claim.claimed) {
+      if (claim.request.state === "PENDING") {
+        reply.code(409);
+        return errorEnvelope(
+          "STATE_CONFLICT",
+          "operator request is pending or its outcome is unresolved; inspect the account before taking further action",
+          request.id,
+          { request_state: "PENDING" },
+        );
+      }
+      if (claim.request.response_status === null) throw new Error("completed operator request has no response");
+      reply.code(claim.request.response_status);
       reply.header("Idempotent-Replayed", "true");
-      return cached.body;
+      return claim.request.response_body;
     }
+    let result: { status: number; body: unknown };
     try {
-      const result = await run();
-      runtime.operatorIdempotency.set(cacheKey, { status: result.status, body: result.body });
-      reply.code(result.status);
-      return result.body;
+      result = await run();
     } catch (error) {
-      if (isServiceError(error)) return sendServiceError(request, reply, error);
-      throw error;
+      if (!isServiceError(error)) throw error; // Keep the durable claim PENDING when completion is uncertain.
+      result = { status: error.status, body: sendServiceError(request, reply, error) };
     }
+    await completeOperatorRequest(pool, { ...identity, payloadHash, ...result, now: runtime.clock() });
+    reply.code(result.status);
+    return result.body;
   }
 
   // --- agents ---------------------------------------------------------------
@@ -304,6 +337,7 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
         reply.code(409);
         return errorEnvelope("STATE_CONFLICT", error.message, request.id);
       }
+      if (isServiceError(error)) return sendServiceError(request, reply, error);
       if (error instanceof Error && /foreign key/i.test(error.message)) {
         reply.code(404);
         return errorEnvelope("NOT_FOUND", "agent not found", request.id);
@@ -395,32 +429,38 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
       return errorEnvelope("INVALID_SHAPE", "invalid policy", request.id, parsed.error.issues);
     }
     const ifMatch = request.headers["if-match"];
-    const current = await withClient(runtime.pool, (client) => getCurrentPolicy(client, accountId));
-    const expected = current === null ? "0" : String(current.version);
-    const given = typeof ifMatch === "string" ? ifMatch.replace(/"/g, "") : null;
-    if (given !== expected) {
-      reply.code(409);
-      return errorEnvelope("STALE_VERSION", `If-Match must equal the current policy version ${expected}`, request.id);
-    }
-    const now = runtime.clock();
     const operatorId = request.operator?.id ?? "operator";
-    const row = await setPolicy(runtime.pool, accountId, parsed.data, operatorId, now);
-    // Pending authority referenced the old version; end it so nothing is approved under a stale policy (prd.md 14.4).
-    const ended = await withTransaction(runtime.pool, async (tx) => {
-      await lockAccountRow(tx, accountId);
-      const ids: string[] = [];
-      for (const proposal of await listPreArmProposals(tx, accountId)) {
-        await endProposalInTx(tx, runtime, proposal, "INVALIDATED", "policy version changed", now, {
-          policy_version: row.version,
-          operator_id: operatorId,
-        });
-        ids.push(proposal.id);
-      }
-      return ids;
-    });
-    reply.code(201);
-    reply.header("ETag", `"${row.version}"`);
-    return { version: row.version, hash: row.hash, invalidated_proposals: ended };
+    const pool = runtime.pool;
+    try {
+      const { row, ended } = await withTransaction(pool, async (tx) => {
+        await lockAccountRow(tx, accountId);
+        const current = await getCurrentPolicy(tx, accountId);
+        const expected = current === null ? "0" : String(current.version);
+        if (ifMatch !== expected && ifMatch !== `"${expected}"`) {
+          throw Object.assign(new Error(`If-Match must equal the current policy version ${expected}`), {
+            code: "STALE_VERSION",
+            status: 409,
+          });
+        }
+        const now = runtime.clock();
+        const row = await setPolicy(pool, accountId, parsed.data, operatorId, now, tx);
+        const ended: string[] = [];
+        for (const proposal of await listPreArmProposals(tx, accountId)) {
+          await endProposalInTx(tx, runtime, proposal, "INVALIDATED", "policy version changed", now, {
+            policy_version: row.version,
+            operator_id: operatorId,
+          });
+          ended.push(proposal.id);
+        }
+        return { row, ended };
+      });
+      reply.code(201);
+      reply.header("ETag", `"${row.version}"`);
+      return { version: row.version, hash: row.hash, invalidated_proposals: ended };
+    } catch (error) {
+      if (isServiceError(error)) return sendServiceError(request, reply, error);
+      throw error;
+    }
   });
 
   // --- inventory attribution (prd.md 9.4) ---------------------------------------------
@@ -443,8 +483,34 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
             code: "STATE_CONFLICT",
             status: 409,
           });
-        for (const a of parsed.data.assignments)
+        if ((await countOutstandingCommands(tx, accountId)).total !== 0) {
+          throw Object.assign(new Error("inventory cannot be reassigned while commands are outstanding"), {
+            code: "STATE_CONFLICT",
+            status: 409,
+          });
+        }
+        const owners = [...new Set(parsed.data.assignments.map((a) => a.owner))]
+          .filter((owner) => owner !== UNASSIGNED_OWNER)
+          .sort();
+        for (const owner of owners) {
+          const agent = await lockAgentRow(tx, owner);
+          if (agent === null || agent.account_id !== accountId) {
+            throw Object.assign(new Error("inventory owner is not bound to this account"), {
+              code: "NOT_FOUND",
+              status: 404,
+            });
+          }
+        }
+        for (const a of parsed.data.assignments) {
+          const reserved = await sumReservedBase(tx, accountId, a.owner, a.asset);
+          if (dec(a.quantity).lt(dec(reserved))) {
+            throw Object.assign(new Error("inventory assignment cannot remove reserved base quantity"), {
+              code: "STATE_CONFLICT",
+              status: 409,
+            });
+          }
           await upsertInventoryAllocation(tx, accountId, a.owner, a.asset, a.quantity);
+        }
         const balances = await listAssetBalances(tx, accountId);
         const allocations = await listInventoryAllocations(tx, accountId);
         const touched = new Set(parsed.data.assignments.map((a) => a.asset));

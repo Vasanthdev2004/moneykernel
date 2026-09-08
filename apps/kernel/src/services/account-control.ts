@@ -3,9 +3,9 @@ import {
   appendAuditEvent,
   type CommandRow,
   invalidateAllActiveApprovals,
-  listCommands,
   listConflicts,
   listIncidents,
+  listOutstandingCommands,
   listPreArmProposals,
   lockAccountRow,
   migrationStatus,
@@ -16,6 +16,7 @@ import {
 import type { KernelRuntime } from "../boot.ts";
 import { newId } from "../ids.ts";
 import { endProposalInTx } from "./proposals.ts";
+import { hasLiveWriterLease } from "./writer.ts";
 
 export class AccountControlError extends Error {
   readonly code: ErrorCode;
@@ -49,7 +50,7 @@ export async function stopAccount(
   runtime: KernelRuntime,
   operatorId: string,
   reason: string | undefined,
-  now: Date,
+  _requestedAt: Date,
 ): Promise<StopResult> {
   const pool = runtime.pool;
   const account = runtime.account;
@@ -57,6 +58,7 @@ export async function stopAccount(
     throw new AccountControlError("NOT_READY", 503, "kernel has no loaded account");
   return withTransaction(pool, async (tx) => {
     const before = await lockAccountRow(tx, account.id);
+    const now = runtime.clock();
     const wasPaused = before.status === "PAUSED";
     const updated = wasPaused ? before : await setAccountStatus(tx, account.id, "PAUSED", now, { bumpEpoch: true });
     const invalidatedApprovals = await invalidateAllActiveApprovals(tx, account.id);
@@ -71,7 +73,7 @@ export async function stopAccount(
     for (const conflict of await listConflicts(tx, account.id, "OPEN")) {
       await resolveConflict(tx, conflict.id, "EXPIRED", { reason: "account stopped" }, operatorId, now);
     }
-    const inFlight = await listCommands(tx, account.id, ["ARMED", "OUTCOME_UNKNOWN"]);
+    const inFlight = await listOutstandingCommands(tx, account.id);
     if (!wasPaused) {
       await appendAuditEvent(tx, {
         id: newId("evt"),
@@ -96,7 +98,7 @@ export async function stopAccount(
       invalidated_approvals: invalidatedApprovals,
       note:
         inFlight.length > 0
-          ? "Commands armed before the stop remain in flight; their outcomes may still change and are not undone."
+          ? "Commands armed before the stop remain in flight or await reconciliation; their outcomes may still change and are not undone."
           : "No command was in flight.",
     };
   });
@@ -122,7 +124,7 @@ export async function resumeAccount(
   runtime: KernelRuntime,
   operatorId: string,
   acknowledgedIncidents: string[],
-  now: Date,
+  _requestedAt: Date,
 ): Promise<ResumeResult> {
   const pool = runtime.pool;
   const account = runtime.account;
@@ -136,22 +138,24 @@ export async function resumeAccount(
     detail: `${migrations.pending.length} pending, ${migrations.drift.length} drifted`,
   });
   checks.push({
-    name: "writer_lock",
-    ok: runtime.writer !== null,
-    detail: runtime.writer === null ? "not held by this process" : "held",
-  });
-  checks.push({
     name: "execution_adapter",
     ok: runtime.execution !== null,
     detail: runtime.execution === null ? "no qualified execution adapter for this mode" : "selected",
   });
   return withTransaction(pool, async (tx) => {
     const row = await lockAccountRow(tx, account.id);
-    const inFlight = await listCommands(tx, account.id, ["ARMED", "OUTCOME_UNKNOWN"]);
+    const writerHeld = await hasLiveWriterLease(runtime);
+    const now = runtime.clock();
+    checks.push({
+      name: "writer_lock",
+      ok: writerHeld,
+      detail: writerHeld ? "held" : "not held by this process",
+    });
+    const inFlight = await listOutstandingCommands(tx, account.id);
     checks.push({
       name: "unresolved_commands",
       ok: inFlight.length === 0,
-      detail: `${inFlight.length} armed or unknown`,
+      detail: `${inFlight.length} armed, unknown, or accepted commands awaiting reconciliation`,
     });
     const open = (await listIncidents(tx, account.id, "OPEN")).filter(
       (i) => i.severity === "CRITICAL" && !acknowledgedIncidents.includes(i.id),

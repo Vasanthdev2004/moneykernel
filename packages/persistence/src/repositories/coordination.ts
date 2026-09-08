@@ -1,10 +1,10 @@
 import type { ProposalState } from "@moneykernel/contracts";
 import type { PoolClient } from "pg";
 import type { ProposalRow, ReservationKind, ReservationState } from "./admission.ts";
-import type { CommandState } from "./commands.ts";
+import { type CommandState, listOutstandingCommands } from "./commands.ts";
 import type { LeaseRow } from "./registry.ts";
 
-/** Proposal states that have not consumed an attempt yet (prd.md 11.1, 10.2). */
+/** Candidate states; COMMAND_CREATED also requires checking that its command never armed. */
 export const PRE_ARM_STATES: ProposalState[] = [
   "COLLECTING",
   "CONFLICT_HELD",
@@ -99,9 +99,15 @@ export type IncidentRow = {
 
 // --- proposals ----------------------------------------------------------------
 
+const NEVER_ARMED = `NOT EXISTS (
+  SELECT 1 FROM commands c WHERE c.proposal_id = p.id
+    AND (c.armed_at IS NOT NULL OR c.state IN ('ARMED', 'ACCEPTED', 'OUTCOME_UNKNOWN', 'REJECTED_CONFIRMED'))
+)`;
+
 export async function listPreArmProposals(client: PoolClient, accountId: string): Promise<ProposalRow[]> {
   const result = await client.query<ProposalRow>(
-    "SELECT * FROM proposals WHERE account_id = $1 AND state = ANY($2::text[]) ORDER BY created_at, id",
+    `SELECT p.* FROM proposals p WHERE p.account_id = $1 AND p.state = ANY($2::text[])
+      AND ${NEVER_ARMED} ORDER BY p.created_at, p.id`,
     [accountId, PRE_ARM_STATES],
   );
   return result.rows;
@@ -114,7 +120,8 @@ export async function listPreArmProposalsForAgent(
 ): Promise<ProposalRow[]> {
   const result = await client.query<ProposalRow>(
     `SELECT p.* FROM proposals p JOIN intents i ON i.id = p.intent_id
-      WHERE p.account_id = $1 AND i.agent_id = $2 AND p.state = ANY($3::text[]) ORDER BY p.created_at, p.id`,
+      WHERE p.account_id = $1 AND i.agent_id = $2 AND p.state = ANY($3::text[])
+        AND ${NEVER_ARMED} ORDER BY p.created_at, p.id`,
     [accountId, agentId, PRE_ARM_STATES],
   );
   return result.rows;
@@ -337,15 +344,8 @@ export async function hasInFlightOppositeCommand(
   symbol: string,
   side: "BUY" | "SELL",
 ): Promise<boolean> {
-  const opposite = side === "BUY" ? "SELL" : "BUY";
-  const result = await client.query<{ n: number }>(
-    `SELECT count(*)::int AS n
-       FROM commands c JOIN proposals p ON p.id = c.proposal_id
-      WHERE c.account_id = $1 AND c.state IN ('ARMED', 'OUTCOME_UNKNOWN')
-        AND p.normalized_order->>'symbol' = $2 AND p.normalized_order->>'side' = $3`,
-    [accountId, symbol, opposite],
-  );
-  return (result.rows[0]?.n ?? 0) > 0;
+  const outstanding = await listOutstandingCommands(client, accountId);
+  return outstanding.some((c) => c.exact_payload.symbol === symbol && c.exact_payload.side !== side);
 }
 
 // --- orders and fills ----------------------------------------------------------
@@ -598,7 +598,11 @@ export async function resolveIncident(
 
 export async function countAgentIntentsSince(client: PoolClient, agentId: string, since: Date): Promise<number> {
   const result = await client.query<{ n: number }>(
-    "SELECT count(*)::int AS n FROM intents WHERE agent_id = $1 AND created_at >= $2",
+    `SELECT (
+       (SELECT count(*) FROM intents WHERE agent_id = $1 AND created_at >= $2)
+       + (SELECT count(*) FROM incidents WHERE agent_id = $1 AND created_at >= $2
+            AND type = 'HARD_AUTHORITY_VIOLATION' AND evidence_refs->>'record_kind' = 'DENIED_INTENT')
+     )::int AS n`,
     [agentId, since],
   );
   return result.rows[0]?.n ?? 0;
