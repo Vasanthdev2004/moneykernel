@@ -107,8 +107,8 @@
     "typescript_in_spike": "7.0.2",
     "docker_cli": "29.7.2",
     "docker_compose": "v5.4.0",
-    "docker_engine": "Desktop backend crashed at startup: 'initializing Ingest server: listening on unix://.../Docker/run/sailor-ingest.sock: remove ...: The file cannot be accessed by the system.' Stale socket file; fix attempted during Gate 0.",
-    "postgres": "not provisioned yet; Gate 1 uses Docker Compose, with an embedded-Postgres fallback if Docker stays down"
+    "docker_engine": "RUNNING 29.7.2. Docker Desktop 4.88.1 initially crashed on startup because it could not remove its own AF_UNIX socket files (%LOCALAPPDATA%\\Docker\\run\\sailor-ingest.sock, then %LOCALAPPDATA%\\docker-secrets-engine\\engine.sock; Windows error 1920). Fix: stop Docker Desktop, rename both directories aside, relaunch. Expect a repeat after an unclean shutdown.",
+    "postgres": "postgres:17 image pulled and runs; Gate 1 uses Docker Compose"
   },
   "evidence_files": [
     "docs/gate0/spot-testnet-exchangeinfo-BTCUSDT.json",
