@@ -8,6 +8,7 @@ import {
 } from "@moneykernel/contracts";
 import { countOutstandingCommands, getAccountById, withClient } from "@moneykernel/persistence";
 import type { FastifyInstance } from "fastify";
+import { requireOperator } from "../auth/operator.ts";
 import type { KernelRuntime } from "../boot.ts";
 import { computeReadiness } from "../readiness.ts";
 
@@ -34,7 +35,7 @@ export async function statusRoutes(app: FastifyInstance, options: { runtime: Ker
   const { runtime } = options;
 
   /** Current mode, account state, in-flight commands, provenance, integration truth (prd.md 15.2, FR-11). */
-  app.get("/v1/status", async (request, reply) => {
+  app.get("/v1/status", { preHandler: requireOperator(runtime) }, async (request, reply) => {
     const readiness = await computeReadiness(runtime);
     if (runtime.pool === null || runtime.account === null) {
       reply.code(503);

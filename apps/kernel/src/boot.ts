@@ -1,5 +1,5 @@
-import type { MarketAdapter } from "@moneykernel/contracts";
-import { FixtureMarketAdapter, loadScenario } from "@moneykernel/integrations";
+import type { ExecutionAdapter, MarketAdapter } from "@moneykernel/contracts";
+import { FixtureMarketAdapter, loadScenario, PaperExecutionAdapter } from "@moneykernel/integrations";
 import {
   type AccountRow,
   appendAuditEvent,
@@ -15,6 +15,7 @@ import {
   withClient,
   withTransaction,
 } from "@moneykernel/persistence";
+import { SessionStore } from "./auth/operator.ts";
 import type { KernelConfig } from "./config.ts";
 import { FIXTURES_DIR } from "./fixtures.ts";
 import { newId } from "./ids.ts";
@@ -30,6 +31,11 @@ export type KernelRuntime = {
   account: AccountRow | null;
   /** Market observation adapter selected at construction time by mode (prd.md 13.1); null when none is qualified. */
   market: MarketAdapter | null;
+  /** Execution adapter selected by mode at construction time; null until qualified (REPLAY/SHADOW: paper). */
+  execution: ExecutionAdapter | null;
+  sessions: SessionStore;
+  /** Operator idempotency replay cache; durable state machines make repeats safe regardless. */
+  operatorIdempotency: Map<string, { status: number; body: unknown }>;
   /** Checks established at boot that do not change while the process runs. */
   bootChecks: ReadinessCheck[];
   startedAt: Date;
@@ -83,6 +89,9 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
   let writer: WriterSession | null = null;
   let account: AccountRow | null = null;
   let market: MarketAdapter | null = null;
+  let execution: ExecutionAdapter | null = null;
+  const sessions = new SessionStore();
+  const operatorIdempotency = new Map<string, { status: number; body: unknown }>();
 
   const shutdown = async (): Promise<void> => {
     if (writer !== null) {
@@ -106,6 +115,9 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
     writer,
     account,
     market,
+    execution,
+    sessions,
+    operatorIdempotency,
     bootChecks: checks,
     startedAt,
     clock,
@@ -118,6 +130,12 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
     try {
       const scenario = loadScenario(fixtureId, FIXTURES_DIR);
       market = new FixtureMarketAdapter(scenario, clock, newId);
+      const feeRate = typeof scenario.policy?.fee_rate === "string" ? scenario.policy.fee_rate : "0.001";
+      execution = new PaperExecutionAdapter(scenario, clock, {
+        environment: config.environment,
+        feeRate,
+        feeAsset: config.quoteAsset,
+      });
       checks.push({ name: "market_adapter", ok: true, detail: `fixture ${scenario.scenario_id} (SYNTHETIC_FIXTURE)` });
     } catch (error) {
       checks.push({ name: "market_adapter", ok: false, detail: errorMessage(error) });
@@ -246,11 +264,13 @@ export async function boot(config: KernelConfig, options: BootOptions = {}): Pro
 
   checks.push({
     name: "execution_adapter",
-    ok: config.environment !== "TESTNET",
+    ok: execution !== null,
     detail:
       config.environment === "TESTNET"
         ? "Binance Spot Testnet adapter is not qualified (P1); refusing to start execution"
-        : "paper executor selected at construction time; no external write path exists in this mode",
+        : execution === null
+          ? "no execution adapter for this mode yet (paper executor needs a fixture book)"
+          : "paper executor selected at construction time; no external write path exists in this mode",
   });
 
   return runtime();

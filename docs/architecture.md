@@ -40,6 +40,15 @@ Dependency direction: `contracts <- domain <- persistence <- kernel`; `integrati
 
 The account row lock serializes every resource claim, which is what keeps two concurrent 80 USDT requests from both reserving a 100 USDT pool.
 
+## Coordination and authority (Gate 3)
+
+- Operator sessions (`POST /v1/auth/session`) exchange the bootstrap secret for an in-memory session: bearer token for API clients, HttpOnly cookie plus `X-CSRF-Token` and same-origin check for browsers. Every operator route sits behind it, including `/v1/status`.
+- A background sweep runs every 250 ms: it expires pre-arm proposals past their TTL and promotes `COLLECTING` proposals whose 750 ms window elapsed to `AWAITING_APPROVAL`, or into a conflict when an opposite-side candidate on the same symbol is still pre-arm. Conflict members are `CONFLICT_HELD`; unused approvals are invalidated and READY commands aborted.
+- Approval binds to proposal revision, hash, account epoch, policy version, lease revision; it is single-use and creates the READY command with a deterministic `mk_…` client order id. Mismatches are refused, never reinterpreted.
+- The dispatcher arms one READY command per pass: refresh inputs outside the transaction, recheck every authority and freshness condition inside it (including price drift against the proposal's mark and a re-evaluation of the exact approved order), consume the approval and attempt slot, commit, then send the exact persisted payload once. Observed outcomes are persisted as ACCEPTED (order + fills), REJECTED_CONFIRMED (holds released), or OUTCOME_UNKNOWN (reservations retained, account RECONCILING, incident opened).
+- Quarantine triggers on more than 10 unique intents or 3 hard authority violations in a trailing 60 s window, or by operator action; it invalidates the agent's pre-arm proposals, releases only never-armed holds, and opens a CRITICAL incident. Stop pauses the account, bumps the epoch, ends pre-arm candidates, and lists in-flight commands whose outcomes may still change. Resume is readiness-gated.
+- Accounting of fills (balances, attribution, lease consumption, hold settlement) is not yet applied; accepted commands stay unreconciled until Gate 4.
+
 ## Modes (prd.md 13.1)
 
 | Mode | Market context | Funds and orders | Adapter selected at construction time |

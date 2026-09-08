@@ -119,7 +119,17 @@ describe("accepted commands require reconciliation before readiness (INV-09, prd
       const ready = await app.inject({ method: "GET", url: "/health/ready" });
       expect(ready.statusCode).toBe(503);
       expect(ready.json().checks.find((c: { name: string }) => c.name === "unresolved_commands").ok).toBe(false);
-      const status = await app.inject({ method: "GET", url: "/v1/status" });
+      const login = await app.inject({
+        method: "POST",
+        url: "/v1/auth/session",
+        payload: { bootstrap_secret: "synthetic-readiness-test-secret" },
+      });
+      expect(login.statusCode).toBe(201);
+      const status = await app.inject({
+        method: "GET",
+        url: "/v1/status",
+        headers: { authorization: `Bearer ${login.json().session_token}` },
+      });
       expect(status.statusCode).toBe(200);
       expect(status.json().in_flight_commands).toBe(1);
       expect(status.json().unresolved_commands).toBe(1);

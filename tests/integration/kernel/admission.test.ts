@@ -347,6 +347,7 @@ describe("concurrent BUY admissions against one pool (T-11, T-12, INV-04)", () =
       max_symbol_share: "1",
       min_quote_cash_buffer: "0",
       valuation_buffer_quote: "0",
+      max_unique_intents_per_60s: 1000,
     };
     const alpha = s.agents[0];
     if (alpha === undefined) throw new Error("fixture has no agent");

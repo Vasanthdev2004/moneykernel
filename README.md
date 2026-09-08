@@ -12,8 +12,9 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 |---|---|
 | G0 integration spike | Done. Custom-client Agent OS session blocked by Binance's agent allowlist; see below. |
 | G1 foundation | Done: workspace, frozen contracts, decimal math, migrations, REPLAY boot, doctor. |
-| G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. See `docs/test-evidence.md`. |
-| G3 authority and coordination | Next: exact approval, command arming, opposing-intent conflicts, quarantine, stop. |
+| G2 deterministic vertical slice | Done: agent context → intent → pure policy evaluation → atomic reservations → durable receipt, with idempotency and concurrency tests. |
+| G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
+| G4 execution and observations | Next: fill reconciliation and accounting, restart recovery of unknown outcomes, SHADOW market adapter, real model proposal. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.

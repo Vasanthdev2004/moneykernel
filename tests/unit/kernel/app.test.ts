@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../../apps/kernel/src/app.ts";
+import { SessionStore } from "../../../apps/kernel/src/auth/operator.ts";
 import type { KernelRuntime } from "../../../apps/kernel/src/boot.ts";
 import { loadConfig } from "../../../apps/kernel/src/config.ts";
 
@@ -16,6 +17,9 @@ function unreadyRuntime(): KernelRuntime {
     writer: null,
     account: null,
     market: null,
+    execution: null,
+    sessions: new SessionStore(),
+    operatorIdempotency: new Map(),
     bootChecks: [
       { name: "configuration", ok: true, detail: "mode=REPLAY" },
       { name: "database", ok: false, detail: "connection refused" },
@@ -40,7 +44,20 @@ describe("kernel HTTP surface without a database (prd.md 19.5, 15.7)", () => {
     expect(readiness.checks.find((c: { name: string }) => c.name === "database")?.ok).toBe(false);
     expect(readiness.checks.find((c: { name: string }) => c.name === "writer_lock")?.ok).toBe(false);
 
-    const status = await app.inject({ method: "GET", url: "/v1/status" });
+    const unauthenticated = await app.inject({ method: "GET", url: "/v1/status" });
+    expect(unauthenticated.statusCode).toBe(401);
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/session",
+      payload: { bootstrap_secret: "unit-test-operator-secret-value" },
+    });
+    expect(login.statusCode).toBe(201);
+    const token = login.json().session_token as string;
+    const status = await app.inject({
+      method: "GET",
+      url: "/v1/status",
+      headers: { authorization: `Bearer ${token}` },
+    });
     expect(status.statusCode).toBe(503);
     expect(status.json().error.code).toBe("NOT_READY");
     expect(typeof status.json().error.request_id).toBe("string");

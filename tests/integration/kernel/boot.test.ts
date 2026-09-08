@@ -53,7 +53,17 @@ describe("kernel boot in REPLAY (prd.md 11.8, G1 exit criterion)", () => {
     expect(live.statusCode).toBe(200);
     const ready = await app.inject({ method: "GET", url: "/health/ready" });
     expect(ready.statusCode).toBe(200);
-    const status = await app.inject({ method: "GET", url: "/v1/status" });
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/session",
+      payload: { bootstrap_secret: "integration-test-operator-secret" },
+    });
+    expect(login.statusCode).toBe(201);
+    const status = await app.inject({
+      method: "GET",
+      url: "/v1/status",
+      headers: { authorization: `Bearer ${login.json().session_token}` },
+    });
     expect(status.statusCode).toBe(200);
     const body = status.json();
     expect(body.mode).toBe("REPLAY");

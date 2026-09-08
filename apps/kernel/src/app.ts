@@ -4,6 +4,8 @@ import type { KernelRuntime } from "./boot.ts";
 import { newId } from "./ids.ts";
 import { agentRoutes } from "./routes/agent.ts";
 import { healthRoutes } from "./routes/health.ts";
+import { operatorRoutes } from "./routes/operator.ts";
+import { operatorAuthRoutes } from "./routes/operator-auth.ts";
 import { statusRoutes } from "./routes/status.ts";
 
 function codeForStatus(status: number, fastifyCode: string | undefined): ErrorCode {
@@ -64,5 +66,7 @@ export function buildApp(runtime: KernelRuntime): FastifyInstance {
   app.register(healthRoutes, { runtime });
   app.register(statusRoutes, { runtime });
   app.register(agentRoutes, { runtime });
+  app.register(operatorAuthRoutes, { runtime });
+  app.register(operatorRoutes, { runtime });
   return app;
 }

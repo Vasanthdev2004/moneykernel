@@ -8,54 +8,38 @@ import {
   type TradeIntent,
   TradeIntentSchema,
 } from "@moneykernel/contracts";
-import {
-  dec,
-  type EvaluationInput,
-  type EvaluationResult,
-  evaluate,
-  type MarkView,
-  max,
-  mul,
-  type ObservationView,
-  type SymbolRulesView,
-  toDecimalString,
-  ZERO,
-} from "@moneykernel/domain";
+import { type EvaluationResult, evaluate } from "@moneykernel/domain";
+import type { PoolClient } from "@moneykernel/persistence";
 import {
   type AgentRow,
   appendAuditEvent,
-  countReservedAttemptsForLease,
   findIntentByIdempotencyKey,
   getCurrentPolicy,
   getLatestProposalForIntent,
   getLatestReceiptForIntent,
   getLeaseById,
-  getSnapshotsByIds,
   insertIntent,
   insertProposal,
   insertReceipt,
   insertReservation,
-  latestSnapshotsBySymbol,
-  ledgerVersion,
-  listAssetBalances,
-  listInventoryAllocations,
-  listPendingBuyProposals,
   lockAccountRow,
   lockAgentRow,
   nextIntentSeq,
   type ProposalRow,
   type ReceiptRow,
-  type SnapshotRow,
-  sumOutstandingQuote,
-  sumOutstandingQuoteForLease,
-  sumReservedBase,
   withClient,
   withTransaction,
 } from "@moneykernel/persistence";
 import type { KernelRuntime } from "../boot.ts";
 import { newId } from "../ids.ts";
-import { refreshMarks, refreshSymbolRules } from "./observations.ts";
+import { assembleEvaluationInput, refreshInputsForSymbol } from "./evaluation.ts";
 import { provenanceFor } from "./provenance.ts";
+import {
+  enforceBurstThreshold,
+  enforceHardViolationThreshold,
+  isHardViolation,
+  recordHardViolation,
+} from "./quarantine.ts";
 
 export class AdmissionError extends Error {
   readonly code: ErrorCode;
@@ -85,48 +69,7 @@ function parseIntent(body: unknown): TradeIntent {
   );
 }
 
-function markFromSnapshot(row: SnapshotRow): MarkView | null {
-  const symbol = row.payload.symbol;
-  const last = row.payload.last_price;
-  const bids = row.payload.bids;
-  let price: string | null = typeof last === "string" ? last : null;
-  if (price === null && Array.isArray(bids) && bids.length > 0) {
-    const top = bids[0] as { price?: unknown };
-    if (typeof top.price === "string") price = top.price;
-  }
-  if (typeof symbol !== "string" || price === null) return null;
-  return {
-    symbol,
-    price,
-    snapshot_id: row.id,
-    received_at: row.received_at.toISOString(),
-    payload_hash: row.payload_hash,
-  };
-}
-
-function rulesFromSnapshot(row: SnapshotRow | undefined): SymbolRulesView | null {
-  if (row === undefined) return null;
-  const p = row.payload as Record<string, unknown>;
-  const str = (k: string): string => (typeof p[k] === "string" ? (p[k] as string) : "");
-  const status = p.status;
-  return {
-    symbol: str("symbol"),
-    base_asset: str("base_asset"),
-    quote_asset: str("quote_asset"),
-    status: status === "TRADING" || status === "HALT" || status === "BREAK" ? status : "UNKNOWN",
-    tick_size: str("tick_size"),
-    step_size: str("step_size"),
-    min_qty: str("min_qty"),
-    max_qty: str("max_qty"),
-    min_notional: str("min_notional"),
-    max_notional: typeof p.max_notional === "string" ? p.max_notional : null,
-    unsupported_filters: Array.isArray(p.unsupported_filters) ? (p.unsupported_filters as string[]) : [],
-    snapshot_id: row.id,
-    payload_hash: row.payload_hash,
-  };
-}
-
-function responseFrom(
+export function responseFrom(
   runtime: KernelRuntime,
   intentId: string,
   receipt: ReceiptRow,
@@ -161,7 +104,8 @@ function responseFrom(
  * financial commits together with the decision receipt (INV-12); the account
  * row lock serializes all resource claims (INV-04); the same idempotency key
  * with the same canonical payload returns the recorded outcome (T-18) and with
- * a different payload is refused (T-19).
+ * a different payload is refused (T-19). Quarantine thresholds (prd.md 10.4)
+ * are enforced in the same transaction.
  */
 export async function submitIntent(
   runtime: KernelRuntime,
@@ -172,9 +116,7 @@ export async function submitIntent(
   if (pool === null || account === null) throw new AdmissionError("NOT_READY", 503, "kernel has no loaded account");
   const intent = parseIntent(input.body);
   const payloadHash = hashCanonical(intent);
-  const quote = account.quote_asset;
 
-  // Fast idempotent replay without refreshing observations.
   const existing = await withClient(pool, (client) =>
     findIntentByIdempotencyKey(client, account.id, input.agent.id, input.idempotencyKey),
   );
@@ -182,25 +124,18 @@ export async function submitIntent(
     if (existing.payload_hash !== payloadHash) {
       throw new AdmissionError("IDEMPOTENCY_KEY_REUSED", 409, "idempotency key was used with a different payload");
     }
-    return replay(runtime, existing.id);
+    return withClient(pool, (client) => loadOutcome(runtime, client, existing.id, 200));
   }
 
-  // Refresh marks and symbol rules outside the transaction (prd.md 11.3).
-  const balances = await withClient(pool, (client) => listAssetBalances(client, account.id));
-  const heldSymbols = balances
-    .filter((b) => b.asset !== quote && dec(b.owned_quantity).gt(0))
-    .map((b) => `${b.asset}${quote}`);
-  await refreshMarks(runtime, account.id, [intent.symbol, ...heldSymbols]);
-  await refreshSymbolRules(runtime, account.id, intent.symbol, newId);
+  await refreshInputsForSymbol(runtime, account.id, account.quote_asset, intent.symbol);
 
   return withTransaction(pool, async (tx) => {
     const now = runtime.clock();
     const accountRow = await lockAccountRow(tx, account.id);
-    const agent = await lockAgentRow(tx, input.agent.id);
+    let agent = await lockAgentRow(tx, input.agent.id);
     if (agent === null || agent.account_id !== account.id)
       throw new AdmissionError("FORBIDDEN", 403, "agent is not bound to this account");
 
-    // Re-check idempotency under the lock (a concurrent duplicate may have landed).
     const raced = await findIntentByIdempotencyKey(tx, account.id, agent.id, input.idempotencyKey);
     if (raced !== null) {
       if (raced.payload_hash !== payloadHash) {
@@ -209,98 +144,39 @@ export async function submitIntent(
       return loadOutcome(runtime, tx, raced.id, 200);
     }
 
-    const lease = await getLeaseById(tx, intent.lease_id, { lock: true });
-    if (lease === null || lease.account_id !== account.id) {
-      throw new AdmissionError("NOT_FOUND", 404, "lease not found for this identity");
-    }
     const policyRow = await getCurrentPolicy(tx, account.id);
     if (policyRow === null) throw new AdmissionError("NOT_READY", 503, "no policy version exists for this account");
     const policy = PolicySchema.parse(policyRow.canonical_policy);
 
-    const rulesRow = await latestSnapshotsBySymbol(tx, account.id, "SYMBOL_RULES", [intent.symbol]);
-    const rules = rulesFromSnapshot(rulesRow.get(intent.symbol));
-    const refRows = await getSnapshotsByIds(tx, account.id, intent.observation_ids);
-    const observations: ObservationView[] = refRows
-      .filter((r) => r.type === "MARKET")
-      .map((r) => ({
-        snapshot_id: r.id,
-        symbol: typeof r.payload.symbol === "string" ? r.payload.symbol : "",
-        received_at: r.received_at.toISOString(),
-        source_timestamp: r.source_time?.toISOString() ?? null,
-        payload_hash: r.payload_hash,
-      }));
-    const markRows = await latestSnapshotsBySymbol(tx, account.id, "MARKET", [intent.symbol, ...heldSymbols]);
-    const marks: MarkView[] = [...markRows.values()].map(markFromSnapshot).filter((m): m is MarkView => m !== null);
+    // Burst rule before evaluation: the request that crosses the limit is not admitted (prd.md 10.5).
+    const burst = await enforceBurstThreshold(tx, { accountId: account.id, agent, policy, now });
+    if (burst !== null) agent = burst.agent;
 
-    const quoteRow = balances.find((b) => b.asset === quote);
-    const holdings = balances
-      .filter((b) => b.asset !== quote)
-      .map((b) => ({ asset: b.asset, quantity: b.owned_quantity }));
-    const baseAsset = rules?.base_asset ?? "";
-    const allocations = await listInventoryAllocations(tx, account.id, agent.id);
-    const agentBase = allocations.find((a) => a.asset === baseAsset)?.owned_quantity ?? "0";
-
-    const pending = await listPendingBuyProposals(tx, account.id);
-    const symbolMark = marks.find((m) => m.symbol === intent.symbol);
-    let pendingExposure = ZERO;
-    let pendingFees = ZERO;
-    for (const p of pending) {
-      const order = p.normalized_order;
-      if (order.side !== "BUY") continue;
-      pendingFees = pendingFees.plus(dec(order.fee_reserve_quote));
-      if (order.symbol === intent.symbol) {
-        const unit =
-          symbolMark === undefined ? dec(order.limit_price) : max(dec(symbolMark.price), dec(order.limit_price));
-        pendingExposure = pendingExposure.plus(mul(dec(order.quantity), unit));
-      }
+    const lease = await getLeaseById(tx, intent.lease_id, { lock: true });
+    if (lease === null || lease.account_id !== account.id) {
+      await recordHardViolation(tx, {
+        accountId: account.id,
+        agentId: agent.id,
+        reason: "LEASE_NOT_FOUND",
+        evidence: { lease_id: intent.lease_id, idempotency_key: input.idempotencyKey },
+        now,
+      });
+      await enforceHardViolationThreshold(tx, { accountId: account.id, agent, policy, now });
+      throw new AdmissionError("NOT_FOUND", 404, "lease not found for this identity");
     }
 
-    const evaluation: EvaluationInput = {
-      now: now.toISOString(),
+    const { input: evaluation, baseAsset } = await assembleEvaluationInput({
+      tx,
+      accountRow,
+      agent,
+      lease,
+      policyRow,
+      policy,
       intent,
-      agent: { id: agent.id, status: agent.status, revision: agent.revision },
-      account: {
-        id: accountRow.id,
-        status: accountRow.status,
-        epoch: accountRow.epoch,
-        quote_asset: accountRow.quote_asset,
-      },
-      lease: {
-        id: lease.id,
-        revision: lease.revision,
-        agent_id: lease.agent_id,
-        status: lease.status,
-        budget_quote: lease.budget_quote,
-        consumed_quote: lease.consumed_quote,
-        attempt_limit: lease.attempt_limit,
-        attempts_consumed: lease.attempts_consumed,
-        starts_at: lease.starts_at.toISOString(),
-        expires_at: lease.expires_at.toISOString(),
-        allowed_symbols: lease.capability_json.allowed_symbols,
-        allowed_sides: lease.capability_json.allowed_sides,
-        allowed_order_types: lease.capability_json.allowed_order_types,
-      },
-      policy: { ...policy, version: policyRow.version },
-      symbol_rules: rules,
-      observations,
-      marks,
-      resources: {
-        quote_owned: quoteRow?.owned_quantity ?? "0",
-        outstanding_quote_reservations: await sumOutstandingQuote(tx, account.id),
-        unresolved_debit_quote: "0",
-        lease_outstanding_buy_quote: await sumOutstandingQuoteForLease(tx, lease.id),
-        lease_reserved_attempts: await countReservedAttemptsForLease(tx, lease.id),
-        agent_base_owned: agentBase,
-        agent_base_reserved: baseAsset === "" ? "0" : await sumReservedBase(tx, account.id, agent.id, baseAsset),
-        holdings,
-        pending_buy_exposure_quote: toDecimalString(pendingExposure),
-        pending_fee_reserves_quote: toDecimalString(pendingFees),
-        ledger_version: await ledgerVersion(tx, account.id),
-      },
-    };
-
+      now,
+    });
     const result = evaluate(evaluation);
-    const persisted = await persistDecision(runtime, tx, {
+    const response = await persistDecision(runtime, tx, {
       now,
       intent,
       payloadHash,
@@ -310,17 +186,20 @@ export async function submitIntent(
       accountEpoch: accountRow.epoch,
       lease: { id: lease.id, revision: lease.revision, expires_at: lease.expires_at },
       policy: { id: policyRow.id, version: policyRow.version, max_proposal_age_ms: policy.max_proposal_age_ms },
-      quoteAsset: quote,
+      quoteAsset: account.quote_asset,
       baseAsset,
       result,
     });
-    return { status: 201, response: persisted };
+    if (isHardViolation(result.reason_codes)) {
+      await enforceHardViolationThreshold(tx, { accountId: account.id, agent, policy, now });
+    }
+    return { status: 201, response };
   });
 }
 
-async function persistDecision(
+export async function persistDecision(
   runtime: KernelRuntime,
-  tx: Parameters<typeof insertIntent>[0],
+  tx: PoolClient,
   args: {
     now: Date;
     intent: TradeIntent;
@@ -338,8 +217,6 @@ async function persistDecision(
 ): Promise<DecisionResponse> {
   const { now, intent, result } = args;
   const intentId = newId("intent");
-  const receiptId = newId("receipt");
-  const engineVersion = runtime.config.engineVersion;
   const seq = await nextIntentSeq(tx, args.accountId);
   await insertIntent(tx, {
     id: intentId,
@@ -365,8 +242,143 @@ async function persistDecision(
     },
     occurredAt: now,
   });
+  const proposal = await recordProposalRevision(tx, {
+    runtime,
+    now,
+    intentId,
+    revision: 1,
+    state: "COLLECTING",
+    accountId: args.accountId,
+    agentId: args.agentId,
+    accountEpoch: args.accountEpoch,
+    lease: args.lease,
+    policy: args.policy,
+    quoteAsset: args.quoteAsset,
+    baseAsset: args.baseAsset,
+    result,
+  });
+  const receipt = await recordReceipt(tx, {
+    runtime,
+    now,
+    intentId,
+    proposalId: proposal?.id ?? null,
+    accountId: args.accountId,
+    result,
+  });
+  return responseFrom(
+    runtime,
+    intentId,
+    receipt,
+    proposal,
+    args.lease.revision,
+    args.policy.version,
+    args.accountEpoch,
+  );
+}
 
-  const evaluatedAt = now.toISOString();
+/** Inserts a proposal revision with its reservations when the result carries a candidate. Shared by admission and conflict revalidation. */
+export async function recordProposalRevision(
+  tx: PoolClient,
+  args: {
+    runtime: KernelRuntime;
+    now: Date;
+    intentId: string;
+    revision: number;
+    state: "COLLECTING" | "AWAITING_APPROVAL";
+    accountId: string;
+    agentId: string;
+    accountEpoch: number;
+    lease: { id: string; revision: number; expires_at: Date };
+    policy: { id: string; version: number; max_proposal_age_ms: number };
+    quoteAsset: string;
+    baseAsset: string;
+    result: EvaluationResult;
+  },
+): Promise<ProposalRow | null> {
+  const { now, result } = args;
+  if (result.candidate === null) return null;
+  const proposalId = newId("proposal");
+  const expiresAt = new Date(
+    Math.min(now.getTime() + args.policy.max_proposal_age_ms, args.lease.expires_at.getTime()),
+  );
+  const proposalHash = hashCanonical({
+    account_id: args.accountId,
+    intent_id: args.intentId,
+    revision: args.revision,
+    policy_version: args.policy.version,
+    lease_revision: args.lease.revision,
+    account_epoch: args.accountEpoch,
+    environment: args.runtime.config.environment,
+    order: result.candidate,
+  });
+  await insertProposal(tx, {
+    id: proposalId,
+    intentId: args.intentId,
+    accountId: args.accountId,
+    revision: args.revision,
+    normalizedOrder: result.candidate,
+    proposalHash,
+    state: args.state,
+    expiresAt,
+    policyId: args.policy.id,
+    leaseRevision: args.lease.revision,
+    accountEpoch: args.accountEpoch,
+    now,
+  });
+  const candidate: CandidateOrder = result.candidate;
+  const reservations: Array<{ asset: string; amount: string; kind: "QUOTE" | "BASE" | "ATTEMPT" }> = [];
+  if (candidate.side === "BUY")
+    reservations.push({ asset: args.quoteAsset, amount: candidate.total_quote_reserved, kind: "QUOTE" });
+  else reservations.push({ asset: args.baseAsset, amount: candidate.base_reserved, kind: "BASE" });
+  reservations.push({ asset: "ATTEMPT", amount: "1", kind: "ATTEMPT" });
+  for (const r of reservations) {
+    await insertReservation(tx, {
+      id: newId("rsv"),
+      accountId: args.accountId,
+      proposalId,
+      agentId: args.agentId,
+      ...r,
+      now,
+    });
+  }
+  await appendAuditEvent(tx, {
+    id: newId("evt"),
+    accountId: args.accountId,
+    type: "RESERVATION_CREATED",
+    payload: { proposal_id: proposalId, revision: args.revision, state: args.state, reservations },
+    occurredAt: now,
+  });
+  return {
+    id: proposalId,
+    intent_id: args.intentId,
+    account_id: args.accountId,
+    revision: args.revision,
+    normalized_order: candidate,
+    proposal_hash: proposalHash,
+    state: args.state,
+    expires_at: expiresAt,
+    policy_id: args.policy.id,
+    lease_revision: args.lease.revision,
+    account_epoch: args.accountEpoch,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export async function recordReceipt(
+  tx: PoolClient,
+  args: {
+    runtime: KernelRuntime;
+    now: Date;
+    intentId: string;
+    proposalId: string | null;
+    accountId: string;
+    result: EvaluationResult;
+  },
+): Promise<ReceiptRow> {
+  const { now, result } = args;
+  const receiptId = newId("receipt");
+  const engineVersion = args.runtime.config.engineVersion;
   const fingerprint = decisionFingerprint({
     engine_version: engineVersion,
     normalized_request: result.normalized_request,
@@ -374,84 +386,13 @@ async function persistDecision(
     outcome: result.outcome,
     reason_codes: result.reason_codes,
     checks: result.checks,
-    evaluated_at: evaluatedAt,
+    evaluated_at: now.toISOString(),
   });
-
-  let proposal: ProposalRow | null = null;
-  if (result.candidate !== null) {
-    const proposalId = newId("proposal");
-    const expiresAt = new Date(
-      Math.min(now.getTime() + args.policy.max_proposal_age_ms, args.lease.expires_at.getTime()),
-    );
-    const proposalHash = hashCanonical({
-      account_id: args.accountId,
-      intent_id: intentId,
-      revision: 1,
-      policy_version: args.policy.version,
-      lease_revision: args.lease.revision,
-      account_epoch: args.accountEpoch,
-      environment: runtime.config.environment,
-      order: result.candidate,
-    });
-    await insertProposal(tx, {
-      id: proposalId,
-      intentId,
-      accountId: args.accountId,
-      revision: 1,
-      normalizedOrder: result.candidate,
-      proposalHash,
-      state: "COLLECTING",
-      expiresAt,
-      policyId: args.policy.id,
-      leaseRevision: args.lease.revision,
-      accountEpoch: args.accountEpoch,
-      now,
-    });
-    const reservations: Array<{ asset: string; amount: string; kind: "QUOTE" | "BASE" | "ATTEMPT" }> = [];
-    const candidate: CandidateOrder = result.candidate;
-    if (candidate.side === "BUY")
-      reservations.push({ asset: args.quoteAsset, amount: candidate.total_quote_reserved, kind: "QUOTE" });
-    else reservations.push({ asset: args.baseAsset, amount: candidate.base_reserved, kind: "BASE" });
-    reservations.push({ asset: "ATTEMPT", amount: "1", kind: "ATTEMPT" });
-    for (const r of reservations) {
-      await insertReservation(tx, {
-        id: newId("rsv"),
-        accountId: args.accountId,
-        proposalId,
-        agentId: args.agentId,
-        ...r,
-        now,
-      });
-    }
-    proposal = {
-      id: proposalId,
-      intent_id: intentId,
-      account_id: args.accountId,
-      revision: 1,
-      normalized_order: candidate,
-      proposal_hash: proposalHash,
-      state: "COLLECTING",
-      expires_at: expiresAt,
-      policy_id: args.policy.id,
-      lease_revision: args.lease.revision,
-      account_epoch: args.accountEpoch,
-      created_at: now,
-      updated_at: now,
-    };
-    await appendAuditEvent(tx, {
-      id: newId("evt"),
-      accountId: args.accountId,
-      type: "RESERVATION_CREATED",
-      payload: { proposal_id: proposalId, reservations },
-      occurredAt: now,
-    });
-  }
-
   await insertReceipt(tx, {
     id: receiptId,
     accountId: args.accountId,
-    intentId,
-    proposalId: proposal?.id ?? null,
+    intentId: args.intentId,
+    proposalId: args.proposalId,
     outcome: result.outcome,
     reasons: result.reason_codes,
     inputRefs: result.input_refs,
@@ -467,20 +408,19 @@ async function persistDecision(
     type: "DECISION_RECORDED",
     payload: {
       receipt_id: receiptId,
-      intent_id: intentId,
-      proposal_id: proposal?.id ?? null,
+      intent_id: args.intentId,
+      proposal_id: args.proposalId,
       outcome: result.outcome,
       reason_codes: result.reason_codes,
       decision_fingerprint: fingerprint,
     },
     occurredAt: now,
   });
-
-  const receipt: ReceiptRow = {
+  return {
     id: receiptId,
     account_id: args.accountId,
-    intent_id: intentId,
-    proposal_id: proposal?.id ?? null,
+    intent_id: args.intentId,
+    proposal_id: args.proposalId,
     outcome: result.outcome,
     reasons: result.reason_codes,
     input_refs: result.input_refs,
@@ -490,20 +430,11 @@ async function persistDecision(
     evaluated_at: now,
     engine_version: engineVersion,
   };
-  return responseFrom(
-    runtime,
-    intentId,
-    receipt,
-    proposal,
-    args.lease.revision,
-    args.policy.version,
-    args.accountEpoch,
-  );
 }
 
-async function loadOutcome(
+export async function loadOutcome(
   runtime: KernelRuntime,
-  client: Parameters<typeof getLatestReceiptForIntent>[0],
+  client: PoolClient,
   intentId: string,
   status: 200 | 201,
 ): Promise<AdmissionOutcome> {
@@ -523,12 +454,6 @@ async function loadOutcome(
       refs.account_epoch ?? 0,
     ),
   };
-}
-
-async function replay(runtime: KernelRuntime, intentId: string): Promise<AdmissionOutcome> {
-  const pool = runtime.pool;
-  if (pool === null) throw new AdmissionError("NOT_READY", 503, "no database");
-  return withClient(pool, (client) => loadOutcome(runtime, client, intentId, 200));
 }
 
 /** Read-back for GET /v1/agent/intents/:id, scoped to the owning agent (FR-01). */

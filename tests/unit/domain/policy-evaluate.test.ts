@@ -140,6 +140,7 @@ describe("Scenario A — constrained acquisition (prd.md 27.1, T-02)", () => {
       fee_reserve_quote: "0.027",
       total_quote_reserved: "27.027",
       base_reserved: "0",
+      reference_mark: "100",
     });
     expect(check(result, RULE.LEASE_BUDGET)).toEqual({
       rule: "LEASE_BUDGET",

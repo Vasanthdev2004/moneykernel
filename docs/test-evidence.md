@@ -2,34 +2,46 @@
 
 Only runs that were actually executed are recorded here, with the command and the counts the runner printed. A green line without a command is not evidence (prd.md 20.5).
 
-## 2026-09-08 — Gate 2 deterministic vertical slice
+## 2026-09-08 — Gate 3 authority and coordination
 
 Environment: Windows 11, Node 24.19.0, pnpm 12.3.4, PostgreSQL 17.11 in Docker (compose service `db`, host port 5433 on this machine), TypeScript 7.0.2, Vitest 5.0.0, Biome 2.5.12.
 
 | Command | Result | What it covers |
 |---|---|---|
-| `pnpm lint` | clean | Biome, whole workspace (spikes excluded) |
-| `pnpm typecheck` | clean | root project and `apps/web` |
-| `pnpm test:contracts` | 81 tests passed | as in G1 plus strict normalized-request and fingerprint material validation |
-| `pnpm test:unit` | 72 tests passed | as in G1 plus the pure policy evaluator: Scenario A exact counterproposal (T-02), in-budget allow (T-01), below-minimum denial without upward rounding (T-03), step/tick normalization (T-04), two-request cash arithmetic (T-11), SELL proceeds never refill a lease (T-16), own-hold exclusion (T-17), stale/future/unknown observations, valuation blocked without a fresh mark, attempt limits, unsupported filters, lease window/status/identity denials, SELL inventory authority (T-13, T-14), determinism and fingerprint stability (FR-03, T-55) |
-| `pnpm test:property` | 7 properties × 400 runs passed | decimal properties |
-| `pnpm test:integration` | 34 tests passed | migrations and constraints (incl. 0002 order identity, 0003 reconciliation marker), kernel boot; admission over HTTP: agent bearer auth (401), Scenario A through `GET /v1/agent/context` and `POST /v1/agent/intents` with exact reservations (QUOTE 27.027 + ATTEMPT 1), receipt fingerprint recomputed from the stored receipt, audit chain verified; idempotent replay (T-18) and key reuse refused (T-19); exponent amount 422 and unknown field 400 with no state change (T-05, T-06); cross-agent intent read 404 (T-52); second request denied by consumed SOL headroom; two concurrent 80 USDT requests against 100 USDT reserve 80.08 + 19.9199 (T-11); fifty concurrent requests admit exactly 5 by attempt limit and reserve 150.15 (T-12); SELL beyond inventory denied and concurrent SELLs reserve base at most once (T-13, T-14) |
-| `pnpm run doctor` | all required checks passed | node, pnpm, docker engine, configuration, `.env` untracked, tracked-file secret scan, database, migrations (3 applied) |
-| manual: `pnpm dev`, `pnpm demo:seed`, curl | see below | REPLAY seed + real HTTP flow against the local database |
+| `pnpm lint` / `pnpm typecheck` | clean | |
+| `pnpm test:unit` | 72 passed | unchanged from G2 plus candidate `reference_mark` |
+| `pnpm test:property` | 7 × 400 runs passed | |
+| `pnpm test:contracts` | 81 passed | |
+| `pnpm test:integration` | 43 passed | G2 suites plus the coordination suite below and the reconciliation-readiness suite from the review session (now behind operator auth) |
+| `pnpm run doctor` | all required checks passed | |
+| manual: `pnpm dev`, `pnpm demo:seed`, curl | intent `ALLOW_PROPOSAL`/`COLLECTING` → background sweep → `AWAITING_APPROVAL` → operator login and exact approval `ACTIVE` → background dispatch → command `ACCEPTED`; status shows 1 unreconciled command (accounting arrives in G4) | the real process with its 250 ms loops, not the test harness |
 
-Manual smoke (REPLAY, local database): kernel booted and paused the account; `demo:seed` loaded Scenario A (policy v1, balances, symbol rules, agent tokens, leases) and resumed it; `GET /v1/agent/context` returned fresh SYNTHETIC_FIXTURE observations; the 80 USDT SOL intent returned `COUNTERPROPOSE` with the exact 0.270 SOL candidate; the same key replayed with HTTP 200.
+Coordination suite (`tests/integration/kernel/coordination.test.ts`), all against a real PostgreSQL database and the REPLAY fixture adapters with a virtual clock:
+
+- Operator sessions: wrong secret 401, bearer session accepted, cookie session without `X-CSRF-Token` refused on a mutation (403), five failures rate-limit the next login (429).
+- Exact approval and arming (FR-07, FR-08, INV-05, INV-06, T-20, T-21): approval refused before the 750 ms collection window elapses; tampered hash and wrong epoch refused with `STALE_APPROVAL`; exact approval stores one approval and creates one READY command with a stable `mk_…` client order id; the same idempotency key replays, a new key returns the same approval; `dispatchOnce` arms once, submits once to the paper executor (submit count 1), records the FILLED order and its fill, marks the attempt CONSUMED and the quote hold ARMED, increments the lease's attempts; a second dispatch is idle; the audit chain verifies.
+- Authority changes after approval: lease revocation invalidates the approved command before arming and releases holds (T-10); a lease expiring during operator delay aborts at dispatch with `LEASE_EXPIRED` (T-09); `PUT /v1/policy` needs `If-Match` and invalidates pending authority (T-22); stop bumps the epoch, ends pre-arm candidates, reports no in-flight command, blocks arming and new intents (`ACCOUNT_PAUSED`), is idempotent, and resume is readiness-gated (T-33).
+- Opposing intents (FR-06, T-24, T-25, T-28): BUY and SELL on the same symbol both `CONFLICT_HELD`, approval refused with `OPPOSING_INTENT`, dispatch idle; `SELECT` re-validates the winner into revision 2 awaiting approval and rejects the loser with holds released; an opposing intent arriving after approval invalidates the unused approval and aborts the READY command; `REJECT_BOTH` releases every hold.
+- Quarantine (FR-09, T-29, T-30, T-31, T-34): the 11th unique intent in 60 s is denied `AGENT_QUARANTINED` and releases the agent's holds; exact retries replay the recorded outcome; later intents stay denied; the open CRITICAL incident blocks resume until acknowledged; three hard authority violations quarantine; quarantine survives a kernel restart.
+
+## 2026-09-08 — Gate 2 deterministic vertical slice (commit bf91268)
+
+| Command | Result |
+|---|---|
+| `pnpm test:contracts` | 81 tests passed |
+| `pnpm test:unit` | 72 tests passed (pure policy evaluator incl. Scenario A exact) |
+| `pnpm test:property` | 7 × 400 runs |
+| `pnpm test:integration` | 34 tests passed (admission over HTTP, idempotency T-18/T-19, T-11/T-12 concurrency, T-13/T-14 SELL races) |
+| manual `pnpm dev` + `pnpm demo:seed` + curl | 80 USDT SOL BUY → `COUNTERPROPOSE` 0.27 SOL, 27.027 reserved; replay 200 |
 
 ## 2026-09-08 — Gate 1 foundation (commit 324bfa5)
 
-| Command | Result | What it covers |
-|---|---|---|
-| `pnpm lint` / `pnpm typecheck` | clean | |
-| `pnpm test:contracts` | 4 files, 71 tests passed | decimal canonicalization (T-05), strict intent schema (T-06, T-07), canonical JSON, event hash chain (T-54), receipt fingerprint (T-55), reason-code templates |
-| `pnpm test:unit` | 4 files, 52 tests passed | configuration contract (T-48, INV-13), HTTP surface without a database, decimal math incl. Scenario A arithmetic, migration file sequencing |
-| `pnpm test:property` | 7 properties × 400 runs passed | canonical round trip, floorToStep bounds, add/sub inverse, notional never over-committed, tick rounding brackets the price, cmp consistency |
-| `pnpm test:integration` | 2 files, 12 tests passed | migrations, constraints, writer lock, boot protocol, restart epoch increment |
-| `pnpm db:migrate` / `pnpm db:status` | 1 applied | |
-| `pnpm run doctor` | all required checks passed | |
-| manual boot + curl | live 200, ready 200, status 200, 404 envelope | REPLAY boot |
+| Command | Result |
+|---|---|
+| `pnpm test:contracts` | 71 tests passed |
+| `pnpm test:unit` | 52 tests passed |
+| `pnpm test:property` | 7 × 400 runs |
+| `pnpm test:integration` | 12 tests passed (migrations, constraints, writer lock, boot, restart epoch) |
+| `pnpm run doctor` | all required checks passed |
 
-Not yet exercised: `test:fault` (no fault tests until the dispatcher exists, G3/G4), `test:e2e` (Playwright arrives with the operator UI, G5).
+Not yet exercised: `test:fault` (fault injection arrives with reconciliation, G4/G6), `test:e2e` (Playwright arrives with the operator UI, G5).

@@ -41,6 +41,8 @@ export const CandidateOrderSchema = z.strictObject({
   fee_reserve_quote: NonNegativeDecimalStringSchema,
   total_quote_reserved: NonNegativeDecimalStringSchema,
   base_reserved: NonNegativeDecimalStringSchema,
+  /** Mark price the evaluator used for the symbol; dispatch-time drift is measured against it (prd.md 9.7). */
+  reference_mark: PositiveDecimalStringSchema,
 });
 export type CandidateOrder = z.infer<typeof CandidateOrderSchema>;
 

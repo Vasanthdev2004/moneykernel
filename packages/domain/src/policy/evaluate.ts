@@ -267,7 +267,7 @@ export function evaluate(input: EvaluationInput): EvaluationResult {
 
   return intent.side === "BUY"
     ? evaluateBuy(input, rules, symbolMark, usedMarks, log, finish)
-    : evaluateSell(input, rules, log, finish);
+    : evaluateSell(input, rules, symbolMark, log, finish);
 }
 
 type Finish = (
@@ -484,6 +484,7 @@ function evaluateBuy(
     fee_reserve_quote: toDecimalString(fee),
     total_quote_reserved: toDecimalString(total),
     base_reserved: "0",
+    reference_mark: toDecimalString(dec(symbolMark.price)),
   } as CandidateOrder;
 
   if (eq(notional, requestedNotional) && eq(limit, dec(intent.limit_price))) {
@@ -497,7 +498,13 @@ function evaluateBuy(
   return finish({ outcome: "COUNTERPROPOSE", limiting_rule: RULE.LOT_SIZE, candidate });
 }
 
-function evaluateSell(input: EvaluationInput, rules: SymbolRulesView, log: CheckLog, finish: Finish): EvaluationResult {
+function evaluateSell(
+  input: EvaluationInput,
+  rules: SymbolRulesView,
+  symbolMark: MarkView,
+  log: CheckLog,
+  finish: Finish,
+): EvaluationResult {
   const { intent, resources } = input;
   const deny = (): EvaluationResult => finish({ outcome: "DENY", limiting_rule: null, candidate: null });
   if (intent.size.kind !== "BASE_QUANTITY") return deny();
@@ -563,6 +570,7 @@ function evaluateSell(input: EvaluationInput, rules: SymbolRulesView, log: Check
     fee_reserve_quote: "0",
     total_quote_reserved: "0",
     base_reserved: toDecimalString(quantity),
+    reference_mark: toDecimalString(dec(symbolMark.price)),
   } as CandidateOrder;
 
   if (eq(quantity, requested) && eq(limit, dec(intent.limit_price))) {

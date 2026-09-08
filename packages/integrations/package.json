@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@moneykernel/contracts": "workspace:*",
+    "@moneykernel/domain": "workspace:*",
     "zod": "4.5.4"
   }
 }

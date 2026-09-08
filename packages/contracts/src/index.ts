@@ -16,6 +16,7 @@ export * from "./decision.ts";
 export * from "./errors.ts";
 export * from "./events.ts";
 export * from "./intent.ts";
+export * from "./operator.ts";
 export * from "./policy.ts";
 export * from "./primitives.ts";
 export * from "./reason-codes.ts";
