@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "reviewed_code_revision": "56a44fb5b07b9d9ef5dd1c41122753bc061cd0d8",
+  "base_revision": "f1b0062",
+  "rehearsal": {
+    "command": "pnpm demo:rehearse",
+    "passed": 12,
+    "rounds": 3,
+    "duration_seconds": 55.8,
+    "stamp": "g7-verified-20260908T102850Z"
+  },
+  "evidence_scope": "Synthetic REPLAY only. All twelve exports and verifier reports are retained. Round 1 includes all nine screenshots; rounds 2 and 3 retain JSON only. Scene D explicitly injects a process-local query outage until restart, alongside the dropped submission response.",
+  "integrity_scope": "Hashes identify the published files; recorded event heads come from the exports and are not independently trusted checkpoints.",
+  "scenes": [
+    {
+      "round": 1,
+      "scene": "A",
+      "account_alias": "demo-a-g7-verified-20260908t102850z-1",
+      "exported_at": "2026-09-08T10:28:58.187Z",
+      "export": "g7-verified-20260908T102850Z-run1/a.export.json",
+      "verification": "g7-verified-20260908T102850Z-run1/a.verification.json",
+      "event_count": 17,
+      "event_final_hash": "813330ba14872b0df530b7217ef8f4a43fd1eee56f4b6950c7d3a4b453f80056",
+      "verification_summary": {
+        "events": 17,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": [
+        "g7-verified-20260908T102850Z-run1/a1-ready-mode-and-integration.png",
+        "g7-verified-20260908T102850Z-run1/a2-counterproposal-drawer.png",
+        "g7-verified-20260908T102850Z-run1/a3-settled-fill-and-receipt.png"
+      ]
+    },
+    {
+      "round": 1,
+      "scene": "B",
+      "account_alias": "demo-b-g7-verified-20260908t102850z-1",
+      "exported_at": "2026-09-08T10:29:00.592Z",
+      "export": "g7-verified-20260908T102850Z-run1/b.export.json",
+      "verification": "g7-verified-20260908T102850Z-run1/b.verification.json",
+      "event_count": 24,
+      "event_final_hash": "c36119c0af7642216fac5069e93725ccd3b7bcdf551c271b406a36a1261e7dc7",
+      "verification_summary": {
+        "events": 24,
+        "receipts": 3,
+        "replayed": 3,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": [
+        "g7-verified-20260908T102850Z-run1/b1-opposing-intents-held.png",
+        "g7-verified-20260908T102850Z-run1/b2-winner-revalidated-loser-released.png"
+      ]
+    },
+    {
+      "round": 1,
+      "scene": "C",
+      "account_alias": "demo-c-g7-verified-20260908t102850z-1",
+      "exported_at": "2026-09-08T10:29:03.742Z",
+      "export": "g7-verified-20260908T102850Z-run1/c.export.json",
+      "verification": "g7-verified-20260908T102850Z-run1/c.verification.json",
+      "event_count": 33,
+      "event_final_hash": "bbe60e95b51cfba30bc5043af127542302dfc6df97bbb10c9391e8bea9e07290",
+      "verification_summary": {
+        "events": 33,
+        "receipts": 12,
+        "replayed": 12,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": [
+        "g7-verified-20260908T102850Z-run1/c1-burst-quarantined.png"
+      ]
+    },
+    {
+      "round": 1,
+      "scene": "D",
+      "account_alias": "demo-d-g7-verified-20260908t102850z-1",
+      "exported_at": "2026-09-08T10:29:10.692Z",
+      "export": "g7-verified-20260908T102850Z-run1/d.export.json",
+      "verification": "g7-verified-20260908T102850Z-run1/d.verification.json",
+      "event_count": 22,
+      "event_final_hash": "56b243886baad7e3e295efad7e3393024361a08ee52934ec97d8cfb5bea999ab",
+      "verification_summary": {
+        "events": 22,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": [
+        "g7-verified-20260908T102850Z-run1/d1-outcome-unknown-banner.png",
+        "g7-verified-20260908T102850Z-run1/d2-recovered-after-restart.png",
+        "g7-verified-20260908T102850Z-run1/d3-resumed-after-reconciliation.png"
+      ],
+      "venue_before_restart": "g7-verified-20260908T102850Z-run1/d.before-restart.venue.json",
+      "venue_after_restart": "g7-verified-20260908T102850Z-run1/d.after-restart.venue.json",
+      "client_order_id": "mk_d48db60e7fc11fcefaeb4ecf9d39d9e0",
+      "venue_submissions_before": 1,
+      "venue_submissions_after": 1
+    },
+    {
+      "round": 2,
+      "scene": "A",
+      "account_alias": "demo-a-g7-verified-20260908t102850z-2",
+      "exported_at": "2026-09-08T10:29:16.540Z",
+      "export": "g7-verified-20260908T102850Z-run2/a.export.json",
+      "verification": "g7-verified-20260908T102850Z-run2/a.verification.json",
+      "event_count": 17,
+      "event_final_hash": "eb203f528299e8392591d882ca7487b3165041fdf8f6bfbce49a24bb35a7aa79",
+      "verification_summary": {
+        "events": 17,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": []
+    },
+    {
+      "round": 2,
+      "scene": "B",
+      "account_alias": "demo-b-g7-verified-20260908t102850z-2",
+      "exported_at": "2026-09-08T10:29:19.205Z",
+      "export": "g7-verified-20260908T102850Z-run2/b.export.json",
+      "verification": "g7-verified-20260908T102850Z-run2/b.verification.json",
+      "event_count": 24,
+      "event_final_hash": "8de7e515f1c139d8659670ec9968cccf4c69a254601832a866f91bdc8d4c2983",
+      "verification_summary": {
+        "events": 24,
+        "receipts": 3,
+        "replayed": 3,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": []
+    },
+    {
+      "round": 2,
+      "scene": "C",
+      "account_alias": "demo-c-g7-verified-20260908t102850z-2",
+      "exported_at": "2026-09-08T10:29:22.077Z",
+      "export": "g7-verified-20260908T102850Z-run2/c.export.json",
+      "verification": "g7-verified-20260908T102850Z-run2/c.verification.json",
+      "event_count": 33,
+      "event_final_hash": "717950eb2a0ae6dc8b1ef37dd83e53e1cb7734bcf85dad6df70a9aaa59b98079",
+      "verification_summary": {
+        "events": 33,
+        "receipts": 12,
+        "replayed": 12,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": []
+    },
+    {
+      "round": 2,
+      "scene": "D",
+      "account_alias": "demo-d-g7-verified-20260908t102850z-2",
+      "exported_at": "2026-09-08T10:29:29.257Z",
+      "export": "g7-verified-20260908T102850Z-run2/d.export.json",
+      "verification": "g7-verified-20260908T102850Z-run2/d.verification.json",
+      "event_count": 22,
+      "event_final_hash": "f0ac97f79fa9c5e0065d22638e63b6e9af7d614ae0f3590cf0fccc04daa2d64b",
+      "verification_summary": {
+        "events": 22,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": [],
+      "venue_before_restart": "g7-verified-20260908T102850Z-run2/d.before-restart.venue.json",
+      "venue_after_restart": "g7-verified-20260908T102850Z-run2/d.after-restart.venue.json",
+      "client_order_id": "mk_0121ab02dac9d3f0591268cb4f79c4f4",
+      "venue_submissions_before": 1,
+      "venue_submissions_after": 1
+    },
+    {
+      "round": 3,
+      "scene": "A",
+      "account_alias": "demo-a-g7-verified-20260908t102850z-3",
+      "exported_at": "2026-09-08T10:29:35.005Z",
+      "export": "g7-verified-20260908T102850Z-run3/a.export.json",
+      "verification": "g7-verified-20260908T102850Z-run3/a.verification.json",
+      "event_count": 17,
+      "event_final_hash": "99a242b9c0415b24f11a5385267a43c75e7d2ee35df26a7334d01dba0839b1a2",
+      "verification_summary": {
+        "events": 17,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": []
+    },
+    {
+      "round": 3,
+      "scene": "B",
+      "account_alias": "demo-b-g7-verified-20260908t102850z-3",
+      "exported_at": "2026-09-08T10:29:37.729Z",
+      "export": "g7-verified-20260908T102850Z-run3/b.export.json",
+      "verification": "g7-verified-20260908T102850Z-run3/b.verification.json",
+      "event_count": 24,
+      "event_final_hash": "b886c6150646a1e25e2de577d0df39fb5ecee5276b1862134ac8bcc140538307",
+      "verification_summary": {
+        "events": 24,
+        "receipts": 3,
+        "replayed": 3,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": []
+    },
+    {
+      "round": 3,
+      "scene": "C",
+      "account_alias": "demo-c-g7-verified-20260908t102850z-3",
+      "exported_at": "2026-09-08T10:29:40.557Z",
+      "export": "g7-verified-20260908T102850Z-run3/c.export.json",
+      "verification": "g7-verified-20260908T102850Z-run3/c.verification.json",
+      "event_count": 33,
+      "event_final_hash": "5c3679f591621579dfa2ebcf6c7e509a909afa518e2902583d338584d0c89e3d",
+      "verification_summary": {
+        "events": 33,
+        "receipts": 12,
+        "replayed": 12,
+        "fingerprint_only": 0,
+        "commands": 0,
+        "fills": 0
+      },
+      "screenshots": []
+    },
+    {
+      "round": 3,
+      "scene": "D",
+      "account_alias": "demo-d-g7-verified-20260908t102850z-3",
+      "exported_at": "2026-09-08T10:29:46.507Z",
+      "export": "g7-verified-20260908T102850Z-run3/d.export.json",
+      "verification": "g7-verified-20260908T102850Z-run3/d.verification.json",
+      "event_count": 22,
+      "event_final_hash": "5d9a45b382580af702480ee5d56db8951c068c3864e5561d179f60da288ecee5",
+      "verification_summary": {
+        "events": 22,
+        "receipts": 1,
+        "replayed": 1,
+        "fingerprint_only": 0,
+        "commands": 1,
+        "fills": 1
+      },
+      "screenshots": [],
+      "venue_before_restart": "g7-verified-20260908T102850Z-run3/d.before-restart.venue.json",
+      "venue_after_restart": "g7-verified-20260908T102850Z-run3/d.after-restart.venue.json",
+      "client_order_id": "mk_74fc2cf33afa2c7522d82e019fc11c20",
+      "venue_submissions_before": 1,
+      "venue_submissions_after": 1
+    }
+  ],
+  "fresh_start": "g7-fresh-start.json",
+  "artifacts": [
+    {
+      "path": "g7-verified-20260908T102850Z-run1/a.export.json",
+      "bytes": 34934,
+      "sha256": "5db28fd44f5ebeb790bfeac213798f0788115ac6928585edc5c36939b8e05971"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/a.verification.json",
+      "bytes": 2198,
+      "sha256": "1cfd7fec8be6eb760e742f29e10d71392aabb48812a8029d4dfebfa3c7534218"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/a1-ready-mode-and-integration.png",
+      "bytes": 302355,
+      "sha256": "2384146040befce6535ee645c31df60c4da8a1d112fa4de0cfb133af405c7963"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/a2-counterproposal-drawer.png",
+      "bytes": 561406,
+      "sha256": "5182c0f8dbd591b180e84e1a7e6b30b64169dc16c2856f3e265dbd41dddd057f"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/a3-settled-fill-and-receipt.png",
+      "bytes": 537317,
+      "sha256": "c72bcf0a28cf07a5865d7b3e812f9a33838277bdd0ffbe1e8f8643655ff6d308"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/b.export.json",
+      "bytes": 59169,
+      "sha256": "68bc6e2688d7a7c5149d1d43787380e8ac6ad97021ad71be76c97b492824484a"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/b.verification.json",
+      "bytes": 2201,
+      "sha256": "7de38f868a6ba2a090131392aa0696f9591ac87836cf2f2ca9dda031874156db"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/b1-opposing-intents-held.png",
+      "bytes": 369292,
+      "sha256": "3acb92ca8c9ca014b35bbc255f43813149798ad05e09c6e7fe377317a558176d"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/b2-winner-revalidated-loser-released.png",
+      "bytes": 404029,
+      "sha256": "c647fb84250e8a2cb9d4194544482d414a50fb82af8196d19779f99997b83de0"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/c.export.json",
+      "bytes": 141229,
+      "sha256": "29429d8e2838feec8222f446e88dace8492e90e5f3d207dca15cb9ee25d6cc7d"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/c.verification.json",
+      "bytes": 2207,
+      "sha256": "66eb410540052b2457cd98bb5989fb064ab3e9fad46aadcb6d49d7b8e7c3cd89"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/c1-burst-quarantined.png",
+      "bytes": 382412,
+      "sha256": "217041f976dc66c30bf8d46318aa107f6673446c57f1fb00ffc290df1225fdcb"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d.after-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "b73d34359a54b05e44834b715949e3987a9322c3259d4dd6091416932f9b4b53"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d.before-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "b73d34359a54b05e44834b715949e3987a9322c3259d4dd6091416932f9b4b53"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d.export.json",
+      "bytes": 38316,
+      "sha256": "505dbced85438efa174c57263036c89f51bfc12205c1721e7e69e2c3a3bee1a8"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d.verification.json",
+      "bytes": 2198,
+      "sha256": "ceccf4027af5c71ca5b2f830b7153458d724af500d9396d077c883a65ae573a4"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d1-outcome-unknown-banner.png",
+      "bytes": 529916,
+      "sha256": "8ae091f1cde923c69775f1109190d6ba9debb02c83f6f3549ed81cbf7bc31f17"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d2-recovered-after-restart.png",
+      "bytes": 375802,
+      "sha256": "8092e4e32577169186d30e1769ebcce7903cff4c7405bbe76aadc28093a24577"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run1/d3-resumed-after-reconciliation.png",
+      "bytes": 380884,
+      "sha256": "f9438391e0deff5fddb491f666f38b3f6e470e6de2390deca7f7d3c90da1c848"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/a.export.json",
+      "bytes": 34934,
+      "sha256": "4fbc9a5909c3aca4e38620337050dfe9e85e7d3e46caa95e9414ea6711830a3d"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/a.verification.json",
+      "bytes": 2198,
+      "sha256": "58f385fbcb34d94af1bef9f5e472591c4b3cfd91f6410bf942bf160f022d618f"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/b.export.json",
+      "bytes": 59169,
+      "sha256": "a3d693315e69d65ef2b66c77cc8f892b97abb8ce819e05992e7024a3253ce3cd"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/b.verification.json",
+      "bytes": 2201,
+      "sha256": "93afd11773308cb3a99d5afd325928130812a2fe453037ee810e9a9fb8525849"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/c.export.json",
+      "bytes": 141224,
+      "sha256": "dcdc3bac07661e1eb3fc7804bacdf670ec6a0c439e55dfc5b8d79878a1a838b1"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/c.verification.json",
+      "bytes": 2207,
+      "sha256": "9d83a70d4ce4b8064f225417ecb4bd7a42739ce0b5b81444e39ea2ba60c77550"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/d.after-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "769f0517a1a2a47daeebdf2f5bf95d190e09b11e9bbd421ec4928cedfd878bc5"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/d.before-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "769f0517a1a2a47daeebdf2f5bf95d190e09b11e9bbd421ec4928cedfd878bc5"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/d.export.json",
+      "bytes": 38316,
+      "sha256": "da60e75c5dcfb71a2dd2979ff197056282d7d5073e037d7926873792ab4a87ae"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run2/d.verification.json",
+      "bytes": 2198,
+      "sha256": "6c73b3fd4d54f54a5946be95c3f9cb84b84f6b270e4ffa053e1067b867a53851"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/a.export.json",
+      "bytes": 34934,
+      "sha256": "34e241f9d799e1826bff4e6326608434ab6d89f1c53077495f1c5cd3b3584090"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/a.verification.json",
+      "bytes": 2198,
+      "sha256": "fffe13bb165d8bc8948ab03044b531c6d4c2986788c436f81928789e3c436f41"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/b.export.json",
+      "bytes": 59170,
+      "sha256": "9a8a3d141bd52c2c3ab62ae8450a3dbc5786239e751f0b7a766787219f3a6c47"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/b.verification.json",
+      "bytes": 2201,
+      "sha256": "f454495a02268e62d03d750e7f3a022f7c9c15516e1c3372a482280c5b645232"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/c.export.json",
+      "bytes": 141226,
+      "sha256": "0cf1957565af86badc54b6252e44d1ca8c8e00eac6aa11280538bca6089b3daf"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/c.verification.json",
+      "bytes": 2207,
+      "sha256": "db2b442f7610c8600f5a0b4c6d3df56c73b354a287e0806c1f6191e7cfb8b4f3"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/d.after-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "a6a533a64e7e1f78287e3149a6a57a6745afd7949bfb05ed06ad09f8d555f97a"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/d.before-restart.venue.json",
+      "bytes": 1661,
+      "sha256": "a6a533a64e7e1f78287e3149a6a57a6745afd7949bfb05ed06ad09f8d555f97a"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/d.export.json",
+      "bytes": 38316,
+      "sha256": "c9c17ed0a442d23f1e11bfdeb0466a8c1b5efc44ebe94d06cd8ee258d1c491d4"
+    },
+    {
+      "path": "g7-verified-20260908T102850Z-run3/d.verification.json",
+      "bytes": 2198,
+      "sha256": "34d62f03bdf48dd3996e3badbf54639f58832030b2059b9161f5fb6db064a89e"
+    },
+    {
+      "path": "g7-fresh-start.json",
+      "bytes": 375,
+      "sha256": "85da1afcb884c8c8cd3465ebfffb223d538d2cc19ec7663d90bfd2fad04fa007"
+    }
+  ]
+}

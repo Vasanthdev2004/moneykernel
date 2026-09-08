@@ -1,0 +1,4528 @@
+{
+  "schema_version": "1",
+  "exported_at": "2026-09-08T10:29:03.742Z",
+  "engine_version": "0.1.2",
+  "environment": "REPLAY",
+  "account": {
+    "id": "acct_7c94fe17e4c6d01c",
+    "alias": "demo-c-g7-verified-20260908t102850z-1",
+    "environment": "REPLAY",
+    "status": "READY",
+    "epoch": 1,
+    "quote_asset": "USDT",
+    "configuration_hash": "4cc860705f777526ac3053c178fb6e575a8105fc4211fc121fa1fb3402e78ca5"
+  },
+  "provenance": {
+    "execution_mode": "REPLAY",
+    "market_source": "SYNTHETIC_FIXTURE",
+    "model_source": "SCRIPTED",
+    "execution_source": "PAPER"
+  },
+  "integration_manifest": "docs/integration-manifest.json (checked_at 2026-09-08T05:58:00Z, status unknown)",
+  "policy_versions": [
+    {
+      "id": "policy_488b8e35b8b2e15f",
+      "version": 1,
+      "policy": {
+        "fee_rate": "0.001",
+        "fee_asset": "USDT",
+        "quote_asset": "USDT",
+        "schema_version": "1",
+        "max_symbol_share": "0.25",
+        "max_price_drift_bps": "50",
+        "max_proposal_age_ms": 120000,
+        "min_quote_cash_buffer": "10",
+        "proposal_hold_sweep_ms": 250,
+        "valuation_buffer_quote": "1",
+        "external_in_flight_limit": 1,
+        "max_order_notional_quote": "50",
+        "max_unique_intents_per_60s": 10,
+        "max_hard_violations_per_60s": 3,
+        "conflict_collection_window_ms": 750,
+        "max_market_observation_age_ms": 5000,
+        "max_account_observation_age_ms": 5000
+      },
+      "hash": "fdf49399f5c7c1703d145ee240585dfedb21865b843d92d31753a28364cc4ecc",
+      "created_by": "seed-script",
+      "created_at": "2026-09-08T10:29:02.082Z"
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_chaos_e323934a",
+      "name": "Chaos",
+      "strategy_kind": "SCRIPTED",
+      "status": "QUARANTINED",
+      "revision": 2,
+      "created_at": "2026-09-08T10:29:02.082Z",
+      "updated_at": "2026-09-08T10:29:03.050Z"
+    }
+  ],
+  "leases": [
+    {
+      "id": "lease_chaos_c_e323934a",
+      "agent_id": "agent_chaos_e323934a",
+      "revision": 1,
+      "budget_quote": "40.000000000000000000",
+      "consumed_quote": "0.000000000000000000",
+      "attempt_limit": 2,
+      "attempts_consumed": 0,
+      "starts_at": "2026-09-08T10:29:02.082Z",
+      "expires_at": "2026-09-08T10:49:02.082Z",
+      "status": "ACTIVE",
+      "capability_json": {
+        "allowed_sides": [
+          "BUY"
+        ],
+        "allowed_symbols": [
+          "SOLUSDT"
+        ],
+        "allowed_order_types": [
+          "LIMIT_IOC"
+        ]
+      },
+      "created_at": "2026-09-08T10:29:02.082Z",
+      "updated_at": "2026-09-08T10:29:02.082Z"
+    }
+  ],
+  "intents": [
+    {
+      "id": "intent_d48df7df7be783cc",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-001",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 1",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_7c6639084399570f"
+        ]
+      },
+      "payload_hash": "a83560208851941758c151e2065515003e85e0ecd19d1bcf9cec903f5d7e2542",
+      "account_seq": 1,
+      "created_at": "2026-09-08T10:29:02.465Z"
+    },
+    {
+      "id": "intent_81692c4be40d2e0f",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-002",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 2",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_2abbd84a74056fd4"
+        ]
+      },
+      "payload_hash": "aaaedd83269a99f0c9135da6832ace6e179d73798aa0013b9b178afc5e54dabd",
+      "account_seq": 2,
+      "created_at": "2026-09-08T10:29:02.540Z"
+    },
+    {
+      "id": "intent_bac415822f36a48d",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-003",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 3",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_c4ef345119990ec0"
+        ]
+      },
+      "payload_hash": "ae4b2a827bd4c1b04b0abb1bdd75e7c57a0738a1c0fae7a90f0211c00bc9232a",
+      "account_seq": 3,
+      "created_at": "2026-09-08T10:29:02.606Z"
+    },
+    {
+      "id": "intent_1312c9e57114140c",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-004",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 4",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_7cd95eccab58812e"
+        ]
+      },
+      "payload_hash": "ec6431fef1a6a8b6edfea93fa6cc38ab6e82c59ea8caee34a5a84b8b2c141106",
+      "account_seq": 4,
+      "created_at": "2026-09-08T10:29:02.668Z"
+    },
+    {
+      "id": "intent_bfc37449d897526a",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-005",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 5",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_1e4aca5240cf2d34"
+        ]
+      },
+      "payload_hash": "aecff52ecebfd915e34c66cb6a1f154156d3ac6869c5520f3e6043c650f51399",
+      "account_seq": 5,
+      "created_at": "2026-09-08T10:29:02.725Z"
+    },
+    {
+      "id": "intent_3926bd9eeba6cacc",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-006",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 6",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_f4efc05a316462e6"
+        ]
+      },
+      "payload_hash": "66fc9a1fb0a5056dde1b9f131e1a3db235c86dc996a3f2900b9e41b66c8a3b10",
+      "account_seq": 6,
+      "created_at": "2026-09-08T10:29:02.778Z"
+    },
+    {
+      "id": "intent_82f3e6c9ac961fab",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-007",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 7",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_2a37b60170832215"
+        ]
+      },
+      "payload_hash": "11f1048d3ef311e4d9316d03b4bd6d24b97229743da3446937902d489074e5d1",
+      "account_seq": 7,
+      "created_at": "2026-09-08T10:29:02.835Z"
+    },
+    {
+      "id": "intent_98ee921be07eef9a",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-008",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 8",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_cb28fe0647438096"
+        ]
+      },
+      "payload_hash": "7c916ae82a459e33e84e1437a3b8ca2ceae46f93d514ea5b65e00cf4f284623d",
+      "account_seq": 8,
+      "created_at": "2026-09-08T10:29:02.890Z"
+    },
+    {
+      "id": "intent_cb2e61af33ff10bb",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-009",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 9",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_2f1d080e64fb12d4"
+        ]
+      },
+      "payload_hash": "8030aaf58bfefe19b5cd04c2ccab9e5877e61a358b98f84bb8990230fcdc4b0d",
+      "account_seq": 9,
+      "created_at": "2026-09-08T10:29:02.940Z"
+    },
+    {
+      "id": "intent_48f6ef5f83678c39",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-010",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 10",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_f1ec12b221d22d10"
+        ]
+      },
+      "payload_hash": "2a2325638cd15d6cfa0ed3c5b7e6f54ef031a44fa5709123d59dfafcbfd31152",
+      "account_seq": 10,
+      "created_at": "2026-09-08T10:29:02.996Z"
+    },
+    {
+      "id": "intent_61ed8df27a078ee8",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-011",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "burst request 11",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_64fad5f964523cb0"
+        ]
+      },
+      "payload_hash": "cf3c80cbdc9dcf4986d64f0c02c604d4bb9a0b5115fe8613f8138eaf94b17de6",
+      "account_seq": 11,
+      "created_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "intent_016393d7d0f832c3",
+      "agent_id": "agent_chaos_e323934a",
+      "lease_id": "lease_chaos_c_e323934a",
+      "idempotency_key": "demo-c-1-later",
+      "canonical_payload": {
+        "side": "BUY",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "amount": "7",
+          "quote_asset": "USDT"
+        },
+        "symbol": "SOLUSDT",
+        "lease_id": "lease_chaos_c_e323934a",
+        "rationale": "after quarantine",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "schema_version": "1",
+        "observation_ids": [
+          "snap_3167cd1e32cdbe55"
+        ]
+      },
+      "payload_hash": "6bcbdd6053c1b67925ec49eb5f7e1ddaf8e5c0d184f8f7ff3ebec9ee14431508",
+      "account_seq": 12,
+      "created_at": "2026-09-08T10:29:03.662Z"
+    }
+  ],
+  "receipts": [
+    {
+      "decision_id": "receipt_6bb5127cb92b40f7",
+      "intent_id": "intent_d48df7df7be783cc",
+      "proposal_id": "proposal_2405f807b950f00b",
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_7c6639084399570f"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_2901d505050f5f8f",
+          "snap_7c6639084399570f",
+          "snap_dc71a22008d67f88"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "ALLOW_PROPOSAL",
+      "reason_codes": [],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.465Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "15",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        },
+        {
+          "rule": "PRICE_TICK",
+          "result": "PASS",
+          "observed": "100",
+          "limit": "0.01",
+          "unit": "USDT"
+        },
+        {
+          "rule": "VALUATION",
+          "result": "PASS",
+          "observed": "1000",
+          "limit": null,
+          "unit": "USDT"
+        },
+        {
+          "rule": "LEASE_BUDGET",
+          "result": "PASS",
+          "observed": "7.007",
+          "limit": "40",
+          "unit": "USDT"
+        },
+        {
+          "rule": "ORDER_NOTIONAL_CAP",
+          "result": "PASS",
+          "observed": "7",
+          "limit": "50",
+          "unit": "USDT"
+        },
+        {
+          "rule": "QUOTE_AVAILABILITY",
+          "result": "PASS",
+          "observed": "7.007",
+          "limit": "990",
+          "unit": "USDT"
+        },
+        {
+          "rule": "SYMBOL_EXPOSURE_LIMIT",
+          "result": "PASS",
+          "observed": "0.007007056105498236",
+          "limit": "0.25",
+          "unit": "RATIO"
+        },
+        {
+          "rule": "LOT_SIZE",
+          "result": "PASS",
+          "observed": "0.07",
+          "limit": "0.001..9000",
+          "unit": "SOL"
+        },
+        {
+          "rule": "MIN_NOTIONAL",
+          "result": "PASS",
+          "observed": "7",
+          "limit": "5",
+          "unit": "USDT"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.465Z",
+      "decision_fingerprint": "2b22ed92d9c2cb452fc07f95fe2af6162a803734f60e33ecbcc7da6b2e4295f6",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.465Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.450Z",
+            "snapshot_id": "snap_dc71a22008d67f88",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 1",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_7c6639084399570f"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "0",
+          "pending_fee_reserves_quote": "0",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "0"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.429Z",
+            "snapshot_id": "snap_7c6639084399570f",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_2901d505050f5f8f",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_85166547fe8aa5d6",
+      "intent_id": "intent_81692c4be40d2e0f",
+      "proposal_id": "proposal_a7f21d8dbf1a02b7",
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_2abbd84a74056fd4"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_228cf50900f5aa52",
+          "snap_2abbd84a74056fd4",
+          "snap_c799c182b0bfad6c"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "ALLOW_PROPOSAL",
+      "reason_codes": [],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.540Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "10",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        },
+        {
+          "rule": "PRICE_TICK",
+          "result": "PASS",
+          "observed": "100",
+          "limit": "0.01",
+          "unit": "USDT"
+        },
+        {
+          "rule": "VALUATION",
+          "result": "PASS",
+          "observed": "1000",
+          "limit": null,
+          "unit": "USDT"
+        },
+        {
+          "rule": "LEASE_BUDGET",
+          "result": "PASS",
+          "observed": "7.007",
+          "limit": "32.993",
+          "unit": "USDT"
+        },
+        {
+          "rule": "ORDER_NOTIONAL_CAP",
+          "result": "PASS",
+          "observed": "7",
+          "limit": "50",
+          "unit": "USDT"
+        },
+        {
+          "rule": "QUOTE_AVAILABILITY",
+          "result": "PASS",
+          "observed": "7.007",
+          "limit": "982.993",
+          "unit": "USDT"
+        },
+        {
+          "rule": "SYMBOL_EXPOSURE_LIMIT",
+          "result": "PASS",
+          "observed": "0.014014210409355086",
+          "limit": "0.25",
+          "unit": "RATIO"
+        },
+        {
+          "rule": "LOT_SIZE",
+          "result": "PASS",
+          "observed": "0.07",
+          "limit": "0.001..9000",
+          "unit": "SOL"
+        },
+        {
+          "rule": "MIN_NOTIONAL",
+          "result": "PASS",
+          "observed": "7",
+          "limit": "5",
+          "unit": "USDT"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.540Z",
+      "decision_fingerprint": "b5118482cd480c0efb1a345103d21366a00ea7784862e2c18a4c6a907b112402",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.540Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.530Z",
+            "snapshot_id": "snap_c799c182b0bfad6c",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 2",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_2abbd84a74056fd4"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 1,
+          "pending_buy_exposure_quote": "7",
+          "pending_fee_reserves_quote": "0.007",
+          "lease_outstanding_buy_quote": "7.007000000000000000",
+          "outstanding_quote_reservations": "7.007000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.521Z",
+            "snapshot_id": "snap_2abbd84a74056fd4",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_228cf50900f5aa52",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_2c70f3b44809dfd6",
+      "intent_id": "intent_bac415822f36a48d",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_c4ef345119990ec0"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_fc8e12baa7c6e45a",
+          "snap_083ccc26194b6f3a",
+          "snap_c4ef345119990ec0"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.606Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "13",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.606Z",
+      "decision_fingerprint": "11e4f98ba43f26d5a1884ea38acdddc095d549e445d4b2b29fa021c9259e409c",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.606Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.593Z",
+            "snapshot_id": "snap_083ccc26194b6f3a",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 3",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_c4ef345119990ec0"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.584Z",
+            "snapshot_id": "snap_c4ef345119990ec0",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_fc8e12baa7c6e45a",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_1e34525abc2bfa6b",
+      "intent_id": "intent_1312c9e57114140c",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_7cd95eccab58812e"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_58e8508dc11438c3",
+          "snap_6dae96bd55c1a0c9",
+          "snap_7cd95eccab58812e"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.668Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "12",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.668Z",
+      "decision_fingerprint": "302eeb060f1cfa3add09813f4f93bd9586278e173a5a3ec3aac845f25ab3a4d5",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.668Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.656Z",
+            "snapshot_id": "snap_6dae96bd55c1a0c9",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 4",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_7cd95eccab58812e"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.646Z",
+            "snapshot_id": "snap_7cd95eccab58812e",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_58e8508dc11438c3",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_23af7944107ffae9",
+      "intent_id": "intent_bfc37449d897526a",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_1e4aca5240cf2d34"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_3e3a2e12a5eb743f",
+          "snap_1e4aca5240cf2d34",
+          "snap_815831606284244a"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.725Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "9",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.725Z",
+      "decision_fingerprint": "eae8ae53383cce4357da4b605930585530b200c8a81eb22922183c1cfae3c60a",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.725Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.716Z",
+            "snapshot_id": "snap_815831606284244a",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 5",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_1e4aca5240cf2d34"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.707Z",
+            "snapshot_id": "snap_1e4aca5240cf2d34",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_3e3a2e12a5eb743f",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_16797c796fc205f9",
+      "intent_id": "intent_3926bd9eeba6cacc",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_f4efc05a316462e6"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_17cc4d4f3ebefbe0",
+          "snap_8bfd538743d91b5e",
+          "snap_f4efc05a316462e6"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.778Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "10",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.778Z",
+      "decision_fingerprint": "0eb85b1b71101b7bd5d688e7c1066b6f9b303f29cdb5525b1d84f66f7050d60d",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.778Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.768Z",
+            "snapshot_id": "snap_8bfd538743d91b5e",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 6",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_f4efc05a316462e6"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.760Z",
+            "snapshot_id": "snap_f4efc05a316462e6",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_17cc4d4f3ebefbe0",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_2000e6f0d66c4919",
+      "intent_id": "intent_82f3e6c9ac961fab",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_2a37b60170832215"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_529771d4a99d716d",
+          "snap_2a37b60170832215",
+          "snap_f181d78b02ece8bc"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.835Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "12",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.835Z",
+      "decision_fingerprint": "4368acb849bda5a861df479766d11f21cfcc528e789e99012edb3fa349519495",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.835Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.823Z",
+            "snapshot_id": "snap_f181d78b02ece8bc",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 7",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_2a37b60170832215"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.815Z",
+            "snapshot_id": "snap_2a37b60170832215",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_529771d4a99d716d",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_f2934320a7a2a61d",
+      "intent_id": "intent_98ee921be07eef9a",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_cb28fe0647438096"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_062a0e3429ec17a5",
+          "snap_83b8598b75a71405",
+          "snap_cb28fe0647438096"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.890Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "11",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.890Z",
+      "decision_fingerprint": "bed5222609408b17d02bf76125f22a457aba44b64b04b6a4372e0708dec71b49",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.890Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.879Z",
+            "snapshot_id": "snap_83b8598b75a71405",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 8",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_cb28fe0647438096"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.869Z",
+            "snapshot_id": "snap_cb28fe0647438096",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_062a0e3429ec17a5",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_1c180b12ec005c73",
+      "intent_id": "intent_cb2e61af33ff10bb",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_2f1d080e64fb12d4"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_92a05250b28a4da9",
+          "snap_2065e91e55936b22",
+          "snap_2f1d080e64fb12d4"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.940Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "9",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.940Z",
+      "decision_fingerprint": "5cf0c52fb4fef35f38690239cd7d65956b23de8b8a86cb94069ffa8bc1e04081",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.940Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.931Z",
+            "snapshot_id": "snap_2065e91e55936b22",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 9",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_2f1d080e64fb12d4"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.923Z",
+            "snapshot_id": "snap_2f1d080e64fb12d4",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_92a05250b28a4da9",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_a789d6051094c231",
+      "intent_id": "intent_48f6ef5f83678c39",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_f1ec12b221d22d10"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_2a572d807827385f",
+          "snap_43c4c6c0fc1849de",
+          "snap_f1ec12b221d22d10"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "SUBMISSION_LIMIT"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:02.996Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "9",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "FAIL",
+          "observed": "2",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:02.996Z",
+      "decision_fingerprint": "8562c62a142fb631710d9b98139f2ae34bcd681cafbb49f8a97e249a93379070",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:02.996Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "ACTIVE",
+          "revision": 1
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.987Z",
+            "snapshot_id": "snap_43c4c6c0fc1849de",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 10",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_f1ec12b221d22d10"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 2,
+          "pending_buy_exposure_quote": "14",
+          "pending_fee_reserves_quote": "0.014",
+          "lease_outstanding_buy_quote": "14.014000000000000000",
+          "outstanding_quote_reservations": "14.014000000000000000"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:02.978Z",
+            "snapshot_id": "snap_f1ec12b221d22d10",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_2a572d807827385f",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_85c390bfb9726ddf",
+      "intent_id": "intent_61ed8df27a078ee8",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_64fad5f964523cb0"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_2d2611182dfa0d52",
+          "snap_2c5cb020fc089ff1",
+          "snap_64fad5f964523cb0"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "AGENT_QUARANTINED"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "FAIL",
+          "observed": "QUARANTINED",
+          "limit": "ACTIVE",
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:03.050Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "10",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:03.050Z",
+      "decision_fingerprint": "6298ceaa32669b84f7ca09f0a8b1916814ad7ff7969cfe0340f6bb1d3b184c44",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:03.050Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "QUARANTINED",
+          "revision": 2
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:03.040Z",
+            "snapshot_id": "snap_2c5cb020fc089ff1",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "burst request 11",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_64fad5f964523cb0"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "0",
+          "pending_fee_reserves_quote": "0",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "0"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:03.031Z",
+            "snapshot_id": "snap_64fad5f964523cb0",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_2d2611182dfa0d52",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    },
+    {
+      "decision_id": "receipt_13ce190683b26e67",
+      "intent_id": "intent_016393d7d0f832c3",
+      "proposal_id": null,
+      "engine_version": "0.1.2",
+      "normalized_request": {
+        "account_id": "acct_7c94fe17e4c6d01c",
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "size": {
+          "kind": "QUOTE_NOTIONAL",
+          "quote_asset": "USDT",
+          "amount": "7"
+        },
+        "limit_price": "100",
+        "observation_ids": [
+          "snap_3167cd1e32cdbe55"
+        ],
+        "strategy_run_id": null
+      },
+      "input_refs": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 1,
+        "ledger_version": 1,
+        "snapshot_ids": [
+          "rules_124ef77f9092dbf7",
+          "snap_3167cd1e32cdbe55",
+          "snap_dcddcef24d8cfd30"
+        ],
+        "snapshot_hashes": [
+          "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+          "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+        ]
+      },
+      "outcome": "DENY",
+      "reason_codes": [
+        "AGENT_QUARANTINED"
+      ],
+      "checks": [
+        {
+          "rule": "ACCOUNT_STATUS",
+          "result": "PASS",
+          "observed": "READY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "EXECUTION_RECONCILIATION",
+          "result": "PASS",
+          "observed": "0",
+          "limit": "0",
+          "unit": "commands"
+        },
+        {
+          "rule": "AGENT_STATUS",
+          "result": "FAIL",
+          "observed": "QUARANTINED",
+          "limit": "ACTIVE",
+          "unit": null
+        },
+        {
+          "rule": "LEASE_IDENTITY",
+          "result": "PASS",
+          "observed": "lease_chaos_c_e323934a",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_STATUS",
+          "result": "PASS",
+          "observed": "ACTIVE",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "LEASE_WINDOW",
+          "result": "PASS",
+          "observed": "2026-09-08T10:29:03.662Z",
+          "limit": "2026-09-08T10:49:02.082Z",
+          "unit": null
+        },
+        {
+          "rule": "ORDER_TYPE",
+          "result": "PASS",
+          "observed": "LIMIT_IOC",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_ALLOWED",
+          "result": "PASS",
+          "observed": "SOLUSDT",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SIDE_ALLOWED",
+          "result": "PASS",
+          "observed": "BUY",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "SYMBOL_RULES",
+          "result": "PASS",
+          "observed": "TRADING",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FILTER_SUPPORT",
+          "result": "PASS",
+          "observed": "none",
+          "limit": null,
+          "unit": null
+        },
+        {
+          "rule": "FEE_MODEL",
+          "result": "PASS",
+          "observed": "USDT",
+          "limit": "USDT",
+          "unit": null
+        },
+        {
+          "rule": "OBSERVATION_FRESHNESS",
+          "result": "PASS",
+          "observed": "10",
+          "limit": "5000",
+          "unit": "ms"
+        },
+        {
+          "rule": "SUBMISSION_LIMIT",
+          "result": "PASS",
+          "observed": "1",
+          "limit": "2",
+          "unit": "attempts"
+        }
+      ],
+      "evaluated_at": "2026-09-08T10:29:03.662Z",
+      "decision_fingerprint": "01fd7a9dbf4af29cdddcd074a36eea690bb83a64ec110804fd9dfdf84f675163",
+      "evaluation_input": {
+        "now": "2026-09-08T10:29:03.662Z",
+        "agent": {
+          "id": "agent_chaos_e323934a",
+          "status": "QUARANTINED",
+          "revision": 2
+        },
+        "lease": {
+          "id": "lease_chaos_c_e323934a",
+          "status": "ACTIVE",
+          "agent_id": "agent_chaos_e323934a",
+          "revision": 1,
+          "starts_at": "2026-09-08T10:29:02.082Z",
+          "expires_at": "2026-09-08T10:49:02.082Z",
+          "budget_quote": "40.000000000000000000",
+          "allowed_sides": [
+            "BUY"
+          ],
+          "attempt_limit": 2,
+          "consumed_quote": "0.000000000000000000",
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "attempts_consumed": 0,
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "marks": [
+          {
+            "price": "100",
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:03.652Z",
+            "snapshot_id": "snap_dcddcef24d8cfd30",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61"
+          }
+        ],
+        "intent": {
+          "side": "BUY",
+          "size": {
+            "kind": "QUOTE_NOTIONAL",
+            "amount": "7",
+            "quote_asset": "USDT"
+          },
+          "symbol": "SOLUSDT",
+          "lease_id": "lease_chaos_c_e323934a",
+          "rationale": "after quarantine",
+          "order_type": "LIMIT_IOC",
+          "limit_price": "100",
+          "schema_version": "1",
+          "observation_ids": [
+            "snap_3167cd1e32cdbe55"
+          ]
+        },
+        "policy": {
+          "version": 1,
+          "fee_rate": "0.001",
+          "fee_asset": "USDT",
+          "quote_asset": "USDT",
+          "schema_version": "1",
+          "max_symbol_share": "0.25",
+          "max_price_drift_bps": "50",
+          "max_proposal_age_ms": 120000,
+          "min_quote_cash_buffer": "10",
+          "proposal_hold_sweep_ms": 250,
+          "valuation_buffer_quote": "1",
+          "external_in_flight_limit": 1,
+          "max_order_notional_quote": "50",
+          "max_unique_intents_per_60s": 10,
+          "max_hard_violations_per_60s": 3,
+          "conflict_collection_window_ms": 750,
+          "max_market_observation_age_ms": 5000,
+          "max_account_observation_age_ms": 5000
+        },
+        "account": {
+          "id": "acct_7c94fe17e4c6d01c",
+          "epoch": 1,
+          "status": "READY",
+          "quote_asset": "USDT",
+          "outstanding_commands": 0
+        },
+        "resources": {
+          "holdings": [],
+          "quote_owned": "1000.000000000000000000",
+          "ledger_version": 1,
+          "agent_base_owned": "0",
+          "agent_base_reserved": "0",
+          "account_base_reserved": "0",
+          "unresolved_debit_quote": "0",
+          "lease_reserved_attempts": 0,
+          "pending_buy_exposure_quote": "0",
+          "pending_fee_reserves_quote": "0",
+          "lease_outstanding_buy_quote": "0",
+          "outstanding_quote_reservations": "0"
+        },
+        "observations": [
+          {
+            "symbol": "SOLUSDT",
+            "received_at": "2026-09-08T10:29:03.643Z",
+            "snapshot_id": "snap_3167cd1e32cdbe55",
+            "payload_hash": "b777c18363a19cf7cfbd09856c47ec481c02aeebcebb69ea9be5ac528bde0a61",
+            "source_timestamp": "2026-09-08T12:00:00.000Z"
+          }
+        ],
+        "symbol_rules": {
+          "status": "TRADING",
+          "symbol": "SOLUSDT",
+          "max_qty": "9000",
+          "min_qty": "0.001",
+          "max_price": null,
+          "min_price": null,
+          "step_size": "0.001",
+          "tick_size": "0.01",
+          "base_asset": "SOL",
+          "quote_asset": "USDT",
+          "snapshot_id": "rules_124ef77f9092dbf7",
+          "max_notional": null,
+          "min_notional": "5",
+          "payload_hash": "be4272ba582f76ceec5bc59617795e1485478fd9c70ef1c566d54c31bce8847a",
+          "unsupported_filters": []
+        }
+      }
+    }
+  ],
+  "proposals": [
+    {
+      "id": "proposal_2405f807b950f00b",
+      "intent_id": "intent_d48df7df7be783cc",
+      "revision": 1,
+      "normalized_order": {
+        "side": "BUY",
+        "symbol": "SOLUSDT",
+        "quantity": "0.07",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "base_reserved": "0",
+        "notional_quote": "7",
+        "reference_mark": "100",
+        "fee_reserve_quote": "0.007",
+        "total_quote_reserved": "7.007"
+      },
+      "proposal_hash": "e7b98661963fcc7fe96f8cc9ce82e7a98e6c43113378eeb846167e3c60729e10",
+      "state": "INVALIDATED",
+      "expires_at": "2026-09-08T10:31:02.465Z",
+      "policy_id": "policy_488b8e35b8b2e15f",
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "created_at": "2026-09-08T10:29:02.465Z",
+      "updated_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "proposal_a7f21d8dbf1a02b7",
+      "intent_id": "intent_81692c4be40d2e0f",
+      "revision": 1,
+      "normalized_order": {
+        "side": "BUY",
+        "symbol": "SOLUSDT",
+        "quantity": "0.07",
+        "order_type": "LIMIT_IOC",
+        "limit_price": "100",
+        "base_reserved": "0",
+        "notional_quote": "7",
+        "reference_mark": "100",
+        "fee_reserve_quote": "0.007",
+        "total_quote_reserved": "7.007"
+      },
+      "proposal_hash": "307bae15cac49e0168f4e42d300b0404ecb2ef19b995afc02bb012c52a92aac0",
+      "state": "INVALIDATED",
+      "expires_at": "2026-09-08T10:31:02.540Z",
+      "policy_id": "policy_488b8e35b8b2e15f",
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "created_at": "2026-09-08T10:29:02.540Z",
+      "updated_at": "2026-09-08T10:29:03.050Z"
+    }
+  ],
+  "reservations": [
+    {
+      "id": "rsv_4391b99eba7998b9",
+      "proposal_id": "proposal_2405f807b950f00b",
+      "agent_id": "agent_chaos_e323934a",
+      "asset": "ATTEMPT",
+      "amount": "1.000000000000000000",
+      "kind": "ATTEMPT",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:02.465Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "rsv_d7a4d039903da4de",
+      "proposal_id": "proposal_2405f807b950f00b",
+      "agent_id": "agent_chaos_e323934a",
+      "asset": "USDT",
+      "amount": "7.007000000000000000",
+      "kind": "QUOTE",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:02.465Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "rsv_1996fc5ded386b28",
+      "proposal_id": "proposal_a7f21d8dbf1a02b7",
+      "agent_id": "agent_chaos_e323934a",
+      "asset": "USDT",
+      "amount": "7.007000000000000000",
+      "kind": "QUOTE",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:02.540Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "rsv_f24a6deb2df27631",
+      "proposal_id": "proposal_a7f21d8dbf1a02b7",
+      "agent_id": "agent_chaos_e323934a",
+      "asset": "ATTEMPT",
+      "amount": "1.000000000000000000",
+      "kind": "ATTEMPT",
+      "state": "RELEASED",
+      "created_at": "2026-09-08T10:29:02.540Z",
+      "armed_at": null,
+      "released_at": "2026-09-08T10:29:03.050Z"
+    }
+  ],
+  "approvals": [],
+  "commands": [],
+  "orders": [],
+  "fills": [],
+  "ledger_entries": [
+    {
+      "id": "ledger_9c0fea8960222b58",
+      "agent_id": null,
+      "asset": "USDT",
+      "signed_delta": "1000.000000000000000000",
+      "category": "BASELINE",
+      "source_fill_id": null,
+      "source_ref": "baseline_c7ed8dfa0a964f9c",
+      "sequence": 1,
+      "created_at": "2026-09-08T10:29:02.082Z"
+    }
+  ],
+  "balances": [
+    {
+      "asset": "USDT",
+      "owned_quantity": "1000.000000000000000000",
+      "version": 1
+    }
+  ],
+  "allocations": [
+    {
+      "agent_or_unassigned_id": "UNASSIGNED",
+      "asset": "USDT",
+      "owned_quantity": "1000.000000000000000000",
+      "version": 1
+    }
+  ],
+  "conflicts": [],
+  "incidents": [
+    {
+      "id": "incident_b42ebef3a8963740",
+      "agent_id": "agent_chaos_e323934a",
+      "type": "AGENT_QUARANTINED",
+      "severity": "CRITICAL",
+      "status": "OPEN",
+      "evidence_refs": {
+        "limit": 10,
+        "trigger": "INTENT_BURST",
+        "window_ms": 60000,
+        "invalidated_proposals": [
+          "proposal_2405f807b950f00b",
+          "proposal_a7f21d8dbf1a02b7"
+        ],
+        "released_reservations": 4,
+        "unique_intents_in_window": 10
+      },
+      "resolved_by": null,
+      "created_at": "2026-09-08T10:29:03.050Z",
+      "resolved_at": null
+    }
+  ],
+  "audit_events": [
+    {
+      "id": "evt_0f581eb228f2b27a",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 1,
+      "type": "ACCOUNT_CREATED",
+      "payload": {
+        "alias": "demo-c-g7-verified-20260908t102850z-1",
+        "epoch": 1,
+        "status": "PAUSED",
+        "environment": "REPLAY",
+        "engine_version": "0.1.2",
+        "configuration_hash": "4cc860705f777526ac3053c178fb6e575a8105fc4211fc121fa1fb3402e78ca5"
+      },
+      "payload_hash": "d1216703fc161cce6ecae98b86994c8cd2668e0c6a48b2b159ef5cb6b8a23652",
+      "previous_hash": null,
+      "event_hash": "9e029ac951311ee7c81f82a45bc4bc3ba854e4f7610953c12142b42056906e5d",
+      "occurred_at": "2026-09-08T10:29:01.252Z"
+    },
+    {
+      "id": "evt_c33db4c958316367",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 2,
+      "type": "POLICY_UPDATED",
+      "payload": {
+        "hash": "fdf49399f5c7c1703d145ee240585dfedb21865b843d92d31753a28364cc4ecc",
+        "version": 1,
+        "policy_id": "policy_488b8e35b8b2e15f",
+        "created_by": "seed-script"
+      },
+      "payload_hash": "6b88fceddce40550c3c118e568719e7167caa70e9e28c6de5f421e32a0bcd74f",
+      "previous_hash": "9e029ac951311ee7c81f82a45bc4bc3ba854e4f7610953c12142b42056906e5d",
+      "event_hash": "f1eb812c82b4d9ab26bbda9548a62a01640b25ff1555a201d5e56d936929ba8b",
+      "occurred_at": "2026-09-08T10:29:02.082Z"
+    },
+    {
+      "id": "evt_4226d7098b7a899e",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 3,
+      "type": "AGENT_REGISTERED",
+      "payload": {
+        "name": "Chaos",
+        "agent_id": "agent_chaos_e323934a",
+        "strategy_kind": "SCRIPTED"
+      },
+      "payload_hash": "9d303054afe32d4cec38fd44a8273f59e7dcd44dcf032e2da6d9b0b05392475f",
+      "previous_hash": "f1eb812c82b4d9ab26bbda9548a62a01640b25ff1555a201d5e56d936929ba8b",
+      "event_hash": "6a1b4a9ee6d37285852dfb112f24215ae33c6b14733182ccdde926b6e0b0a346",
+      "occurred_at": "2026-09-08T10:29:02.082Z"
+    },
+    {
+      "id": "evt_f86911961fd29701",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 4,
+      "type": "LEASE_ISSUED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "starts_at": "2026-09-08T10:29:02.082Z",
+        "expires_at": "2026-09-08T10:49:02.082Z",
+        "budget_quote": "40.000000000000000000",
+        "capabilities": {
+          "allowed_sides": [
+            "BUY"
+          ],
+          "allowed_symbols": [
+            "SOLUSDT"
+          ],
+          "allowed_order_types": [
+            "LIMIT_IOC"
+          ]
+        },
+        "attempt_limit": 2
+      },
+      "payload_hash": "57e8317057e29aaf826d4f2eb85ec07f719bdad659ae316db5acdddc1524650e",
+      "previous_hash": "6a1b4a9ee6d37285852dfb112f24215ae33c6b14733182ccdde926b6e0b0a346",
+      "event_hash": "fb38b8547de07a3bdf577832f7728facf595dc4088fe7b34c463f1a501c620d2",
+      "occurred_at": "2026-09-08T10:29:02.082Z"
+    },
+    {
+      "id": "evt_39d9ce3d85714e2e",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 5,
+      "type": "INVENTORY_ASSIGNED",
+      "payload": {
+        "note": "virtual baseline; internal attribution, not a transfer",
+        "balances": {
+          "USDT": "1000"
+        },
+        "allocations": {
+          "UNASSIGNED": {
+            "USDT": "1000"
+          }
+        },
+        "operator_id": "seed-script",
+        "baseline_ref": "baseline_c7ed8dfa0a964f9c",
+        "ledger_version": 1
+      },
+      "payload_hash": "156602618a6d72e36129bd32da1a8151e769a19b656c66ce1387566f8a8f61fe",
+      "previous_hash": "fb38b8547de07a3bdf577832f7728facf595dc4088fe7b34c463f1a501c620d2",
+      "event_hash": "9711ab36240c77e66d6cd90fc77e405d162ab43487138373d38aca36d413fd07",
+      "occurred_at": "2026-09-08T10:29:02.082Z"
+    },
+    {
+      "id": "evt_b27332b35dc2bec2",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 6,
+      "type": "ACCOUNT_RESUMED",
+      "payload": {
+        "epoch": 1,
+        "status": "READY",
+        "operator_id": "seed-script"
+      },
+      "payload_hash": "68ce2f09de61b81f20174199b4461cd5c07cab0c01db845d1f8a8c92882603dc",
+      "previous_hash": "9711ab36240c77e66d6cd90fc77e405d162ab43487138373d38aca36d413fd07",
+      "event_hash": "8714277a8ea267d639f4cbc1a0bd68a75296afed5273e4c678a03a8f06f6a41f",
+      "occurred_at": "2026-09-08T10:29:02.082Z"
+    },
+    {
+      "id": "evt_d7874aa55f4f70cc",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 7,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_d48df7df7be783cc",
+        "account_seq": 1,
+        "payload_hash": "a83560208851941758c151e2065515003e85e0ecd19d1bcf9cec903f5d7e2542"
+      },
+      "payload_hash": "f72132a5333e3bac55113741fbb9081a456cf93d802d6163c7db83a25956a89c",
+      "previous_hash": "8714277a8ea267d639f4cbc1a0bd68a75296afed5273e4c678a03a8f06f6a41f",
+      "event_hash": "da6817f950432bed26fe8ce0fa34f6e44fc5c20fb09c4268dc0772b17db82748",
+      "occurred_at": "2026-09-08T10:29:02.465Z"
+    },
+    {
+      "id": "evt_3310ea8067aa6485",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 8,
+      "type": "RESERVATION_CREATED",
+      "payload": {
+        "state": "COLLECTING",
+        "revision": 1,
+        "proposal_id": "proposal_2405f807b950f00b",
+        "reservations": [
+          {
+            "kind": "QUOTE",
+            "asset": "USDT",
+            "amount": "7.007"
+          },
+          {
+            "kind": "ATTEMPT",
+            "asset": "ATTEMPT",
+            "amount": "1"
+          }
+        ]
+      },
+      "payload_hash": "f2cfd7e2d2a399afeb9722d739bc314a61a27c3db8c6917acb980dd4d926550b",
+      "previous_hash": "da6817f950432bed26fe8ce0fa34f6e44fc5c20fb09c4268dc0772b17db82748",
+      "event_hash": "3e128c70695cee2ea70d34b01d8348f2c55e6b750092961eda08e3822d58692a",
+      "occurred_at": "2026-09-08T10:29:02.465Z"
+    },
+    {
+      "id": "evt_f1b7c6495c7289f5",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 9,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "ALLOW_PROPOSAL",
+        "intent_id": "intent_d48df7df7be783cc",
+        "receipt_id": "receipt_6bb5127cb92b40f7",
+        "proposal_id": "proposal_2405f807b950f00b",
+        "reason_codes": [],
+        "decision_fingerprint": "2b22ed92d9c2cb452fc07f95fe2af6162a803734f60e33ecbcc7da6b2e4295f6"
+      },
+      "payload_hash": "a5ba01168f01766ce914a7476e4b87bf688b5361844bc484021e66cbe4523e31",
+      "previous_hash": "3e128c70695cee2ea70d34b01d8348f2c55e6b750092961eda08e3822d58692a",
+      "event_hash": "8b276e15d80133cfa782f5c7589bb5267ec5f2bb2e2b4d748c01f10160235e8b",
+      "occurred_at": "2026-09-08T10:29:02.465Z"
+    },
+    {
+      "id": "evt_106efcd8c8acfbd1",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 10,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_81692c4be40d2e0f",
+        "account_seq": 2,
+        "payload_hash": "aaaedd83269a99f0c9135da6832ace6e179d73798aa0013b9b178afc5e54dabd"
+      },
+      "payload_hash": "b13d82b20334fd4bf28ee60e80e6c25bd0043139fe3986caa35a9fbea5474aa6",
+      "previous_hash": "8b276e15d80133cfa782f5c7589bb5267ec5f2bb2e2b4d748c01f10160235e8b",
+      "event_hash": "1a851894ce75e6fb69902e99ec87c40eb65c4b06c4dd45db1ad4d4dc6bd77635",
+      "occurred_at": "2026-09-08T10:29:02.540Z"
+    },
+    {
+      "id": "evt_e46619c8131efeba",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 11,
+      "type": "RESERVATION_CREATED",
+      "payload": {
+        "state": "COLLECTING",
+        "revision": 1,
+        "proposal_id": "proposal_a7f21d8dbf1a02b7",
+        "reservations": [
+          {
+            "kind": "QUOTE",
+            "asset": "USDT",
+            "amount": "7.007"
+          },
+          {
+            "kind": "ATTEMPT",
+            "asset": "ATTEMPT",
+            "amount": "1"
+          }
+        ]
+      },
+      "payload_hash": "4a22af609187839611f7783a78b16bac7d241154af7e73ca2ac7dabb244e7a89",
+      "previous_hash": "1a851894ce75e6fb69902e99ec87c40eb65c4b06c4dd45db1ad4d4dc6bd77635",
+      "event_hash": "3201d4742be326a14b77d7a308483055f983dd03ca279742c5b09a933f81af7b",
+      "occurred_at": "2026-09-08T10:29:02.540Z"
+    },
+    {
+      "id": "evt_f4d536edf5e3e3b1",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 12,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "ALLOW_PROPOSAL",
+        "intent_id": "intent_81692c4be40d2e0f",
+        "receipt_id": "receipt_85166547fe8aa5d6",
+        "proposal_id": "proposal_a7f21d8dbf1a02b7",
+        "reason_codes": [],
+        "decision_fingerprint": "b5118482cd480c0efb1a345103d21366a00ea7784862e2c18a4c6a907b112402"
+      },
+      "payload_hash": "33d3e633fb8fbb351155f6ab81f70ce2b90001aa17fad9a77da68d080020953f",
+      "previous_hash": "3201d4742be326a14b77d7a308483055f983dd03ca279742c5b09a933f81af7b",
+      "event_hash": "7acaa892d4003cc5f20d66b01befedbd41b2498e86cce32ffda0ade1bad8cc67",
+      "occurred_at": "2026-09-08T10:29:02.540Z"
+    },
+    {
+      "id": "evt_7731f5200b54bc65",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 13,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_bac415822f36a48d",
+        "account_seq": 3,
+        "payload_hash": "ae4b2a827bd4c1b04b0abb1bdd75e7c57a0738a1c0fae7a90f0211c00bc9232a"
+      },
+      "payload_hash": "f3689c4accab722186426eba0ecb368c216d917e8786b47045128bc667423d71",
+      "previous_hash": "7acaa892d4003cc5f20d66b01befedbd41b2498e86cce32ffda0ade1bad8cc67",
+      "event_hash": "07ca682ee769994338332a27dcf39d9ea358cea1dece7fc16134e66adba2f9a5",
+      "occurred_at": "2026-09-08T10:29:02.606Z"
+    },
+    {
+      "id": "evt_2d1193fcfa40cb05",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 14,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_bac415822f36a48d",
+        "receipt_id": "receipt_2c70f3b44809dfd6",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "11e4f98ba43f26d5a1884ea38acdddc095d549e445d4b2b29fa021c9259e409c"
+      },
+      "payload_hash": "dee001f856a2ac8690182395076cfff7670318c1d8a281b5b4ab8a3184349b49",
+      "previous_hash": "07ca682ee769994338332a27dcf39d9ea358cea1dece7fc16134e66adba2f9a5",
+      "event_hash": "0183c6e85160085adb26186bea64bc6636433f21531192575d20337cda64fc9a",
+      "occurred_at": "2026-09-08T10:29:02.606Z"
+    },
+    {
+      "id": "evt_6f9f9da3b7da2a83",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 15,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_1312c9e57114140c",
+        "account_seq": 4,
+        "payload_hash": "ec6431fef1a6a8b6edfea93fa6cc38ab6e82c59ea8caee34a5a84b8b2c141106"
+      },
+      "payload_hash": "91bf68e9bb637331a0b3c129977d27927f86f8d1facca75e4abacd7e209d8975",
+      "previous_hash": "0183c6e85160085adb26186bea64bc6636433f21531192575d20337cda64fc9a",
+      "event_hash": "e8488cf5a2a13c6dbd5ca787681b5d059b01db1cbb4fc01f56b8a05f2d32f273",
+      "occurred_at": "2026-09-08T10:29:02.668Z"
+    },
+    {
+      "id": "evt_50cf7558ca4eaae0",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 16,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_1312c9e57114140c",
+        "receipt_id": "receipt_1e34525abc2bfa6b",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "302eeb060f1cfa3add09813f4f93bd9586278e173a5a3ec3aac845f25ab3a4d5"
+      },
+      "payload_hash": "a2c1e9852bd9fd1defb100bb76830450effa2582fb8d5b6b9ed989638302c5bc",
+      "previous_hash": "e8488cf5a2a13c6dbd5ca787681b5d059b01db1cbb4fc01f56b8a05f2d32f273",
+      "event_hash": "333ff4c7fb933d4b29b7c702a5a85d5ba32b4565c8df6a244067db208e012063",
+      "occurred_at": "2026-09-08T10:29:02.668Z"
+    },
+    {
+      "id": "evt_b9502695b7275bfd",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 17,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_bfc37449d897526a",
+        "account_seq": 5,
+        "payload_hash": "aecff52ecebfd915e34c66cb6a1f154156d3ac6869c5520f3e6043c650f51399"
+      },
+      "payload_hash": "26b611e96bfb318332548bc49c4e0ec91ab88356e9bfb40623850d34ff952e08",
+      "previous_hash": "333ff4c7fb933d4b29b7c702a5a85d5ba32b4565c8df6a244067db208e012063",
+      "event_hash": "778e4404aefedfdcfe2a55217495dbcf019fdf4568a0871c9db828fea1b268c8",
+      "occurred_at": "2026-09-08T10:29:02.725Z"
+    },
+    {
+      "id": "evt_3937a488c5acd2b7",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 18,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_bfc37449d897526a",
+        "receipt_id": "receipt_23af7944107ffae9",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "eae8ae53383cce4357da4b605930585530b200c8a81eb22922183c1cfae3c60a"
+      },
+      "payload_hash": "593bbacf4170c67773a030e3581764724074878408e517ff6a7862fa82fbf64a",
+      "previous_hash": "778e4404aefedfdcfe2a55217495dbcf019fdf4568a0871c9db828fea1b268c8",
+      "event_hash": "d23ef58a64bdaa872551b9e3b04152de2a9bd30e726d9574ddacdd4e83bc2b72",
+      "occurred_at": "2026-09-08T10:29:02.725Z"
+    },
+    {
+      "id": "evt_dd72a7342dac769d",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 19,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_3926bd9eeba6cacc",
+        "account_seq": 6,
+        "payload_hash": "66fc9a1fb0a5056dde1b9f131e1a3db235c86dc996a3f2900b9e41b66c8a3b10"
+      },
+      "payload_hash": "0f0ecd3ee5f35d546788f4a5c524acc2c1d00651c13e5fcd6ac3c2d80e27579f",
+      "previous_hash": "d23ef58a64bdaa872551b9e3b04152de2a9bd30e726d9574ddacdd4e83bc2b72",
+      "event_hash": "8b38bb934f09cc3d1dac76261124ddaddcfc2b7ed8695c724ef3f4b57d902c8b",
+      "occurred_at": "2026-09-08T10:29:02.778Z"
+    },
+    {
+      "id": "evt_755cf2c5510dc6e2",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 20,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_3926bd9eeba6cacc",
+        "receipt_id": "receipt_16797c796fc205f9",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "0eb85b1b71101b7bd5d688e7c1066b6f9b303f29cdb5525b1d84f66f7050d60d"
+      },
+      "payload_hash": "88b702b96d2a0846f8981ba20060122920cfe3ad63a82978f7bb36ad0a94237e",
+      "previous_hash": "8b38bb934f09cc3d1dac76261124ddaddcfc2b7ed8695c724ef3f4b57d902c8b",
+      "event_hash": "2a47f8e51706510151ec1709b8e4c3b3a600125504d191bcec8352990ab6727a",
+      "occurred_at": "2026-09-08T10:29:02.778Z"
+    },
+    {
+      "id": "evt_3a00f20190193aa7",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 21,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_82f3e6c9ac961fab",
+        "account_seq": 7,
+        "payload_hash": "11f1048d3ef311e4d9316d03b4bd6d24b97229743da3446937902d489074e5d1"
+      },
+      "payload_hash": "68f8bb14937a881fb694365e57f515eba5b0ada013a88e872524683900b95261",
+      "previous_hash": "2a47f8e51706510151ec1709b8e4c3b3a600125504d191bcec8352990ab6727a",
+      "event_hash": "8c60ddb63014141c6cdc2c2e335634706acde072c16f50d5570c2e247cb49513",
+      "occurred_at": "2026-09-08T10:29:02.835Z"
+    },
+    {
+      "id": "evt_fd8e61e3f92bf680",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 22,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_82f3e6c9ac961fab",
+        "receipt_id": "receipt_2000e6f0d66c4919",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "4368acb849bda5a861df479766d11f21cfcc528e789e99012edb3fa349519495"
+      },
+      "payload_hash": "6c505f3753d1cec3fad70a6540a969d97c49287ea2b1df1818785a738b6be5e7",
+      "previous_hash": "8c60ddb63014141c6cdc2c2e335634706acde072c16f50d5570c2e247cb49513",
+      "event_hash": "d28c98e8582cd2afd068036a9cf7ad74e67751f1e8d38ec3aa8e5c46a31e4f3d",
+      "occurred_at": "2026-09-08T10:29:02.835Z"
+    },
+    {
+      "id": "evt_930917ea199a04ce",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 23,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_98ee921be07eef9a",
+        "account_seq": 8,
+        "payload_hash": "7c916ae82a459e33e84e1437a3b8ca2ceae46f93d514ea5b65e00cf4f284623d"
+      },
+      "payload_hash": "12bea0ff99759932e41ddb8ae33b87daaa9d6e6108e426e7976eb34eab26814b",
+      "previous_hash": "d28c98e8582cd2afd068036a9cf7ad74e67751f1e8d38ec3aa8e5c46a31e4f3d",
+      "event_hash": "098fcc71b7330970ae2970c8f6ba3fad70e2d90115a1864cae2332f9c0a80bd9",
+      "occurred_at": "2026-09-08T10:29:02.890Z"
+    },
+    {
+      "id": "evt_9128d0a69dd1e2f8",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 24,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_98ee921be07eef9a",
+        "receipt_id": "receipt_f2934320a7a2a61d",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "bed5222609408b17d02bf76125f22a457aba44b64b04b6a4372e0708dec71b49"
+      },
+      "payload_hash": "115e4b71da704f323253fbbdc8556778b110a59e3273adff873bf394cf3eef86",
+      "previous_hash": "098fcc71b7330970ae2970c8f6ba3fad70e2d90115a1864cae2332f9c0a80bd9",
+      "event_hash": "cc0ccc4211501911aaa611d277956bade5e8824e34cf64c151b535740a8b7177",
+      "occurred_at": "2026-09-08T10:29:02.890Z"
+    },
+    {
+      "id": "evt_574f02f1570794b8",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 25,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_cb2e61af33ff10bb",
+        "account_seq": 9,
+        "payload_hash": "8030aaf58bfefe19b5cd04c2ccab9e5877e61a358b98f84bb8990230fcdc4b0d"
+      },
+      "payload_hash": "3e7a8341549c4f85d728fc70469d5d3a6547e777616450ac658456413e109281",
+      "previous_hash": "cc0ccc4211501911aaa611d277956bade5e8824e34cf64c151b535740a8b7177",
+      "event_hash": "d0cb1f32abf3f08156f3c5426d81b8b73388fbddf1468bd6f871a5cb137a1ff1",
+      "occurred_at": "2026-09-08T10:29:02.940Z"
+    },
+    {
+      "id": "evt_bb0cb7e25550d9c7",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 26,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_cb2e61af33ff10bb",
+        "receipt_id": "receipt_1c180b12ec005c73",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "5cf0c52fb4fef35f38690239cd7d65956b23de8b8a86cb94069ffa8bc1e04081"
+      },
+      "payload_hash": "69db809a7aeccf11cbf2865c322681a643f8af947630a43a3d99ebf205cf7690",
+      "previous_hash": "d0cb1f32abf3f08156f3c5426d81b8b73388fbddf1468bd6f871a5cb137a1ff1",
+      "event_hash": "80d8cfb94007ae971a3fd732beab4b970901870ab9e0dcf08a7cd59d331f389f",
+      "occurred_at": "2026-09-08T10:29:02.940Z"
+    },
+    {
+      "id": "evt_e9c4c5b91d57a4af",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 27,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_48f6ef5f83678c39",
+        "account_seq": 10,
+        "payload_hash": "2a2325638cd15d6cfa0ed3c5b7e6f54ef031a44fa5709123d59dfafcbfd31152"
+      },
+      "payload_hash": "4bc55ec74e9367ada33686eb20f328e48e8cd666c47a3cf3f8333a1974f2e748",
+      "previous_hash": "80d8cfb94007ae971a3fd732beab4b970901870ab9e0dcf08a7cd59d331f389f",
+      "event_hash": "7858995d29ee1988fdf1b68f61b312eae381cada9a34c8c6b7d67a45e667db39",
+      "occurred_at": "2026-09-08T10:29:02.996Z"
+    },
+    {
+      "id": "evt_3296b3261be290ce",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 28,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_48f6ef5f83678c39",
+        "receipt_id": "receipt_a789d6051094c231",
+        "proposal_id": null,
+        "reason_codes": [
+          "SUBMISSION_LIMIT"
+        ],
+        "decision_fingerprint": "8562c62a142fb631710d9b98139f2ae34bcd681cafbb49f8a97e249a93379070"
+      },
+      "payload_hash": "4fcf7cc37bd1409fa021c6c6a311066875edd2748a3fb0c484c0d0b30346663d",
+      "previous_hash": "7858995d29ee1988fdf1b68f61b312eae381cada9a34c8c6b7d67a45e667db39",
+      "event_hash": "4387224ba95cabb362f13d2024d5c7bcfaddbfb0209b36ad8075a163600c03d6",
+      "occurred_at": "2026-09-08T10:29:02.996Z"
+    },
+    {
+      "id": "evt_fd3a2fe75c2c1341",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 29,
+      "type": "AGENT_QUARANTINED",
+      "payload": {
+        "note": "new authority blocked; armed or unknown commands retained; holdings unchanged",
+        "trigger": "INTENT_BURST",
+        "agent_id": "agent_chaos_e323934a",
+        "revision": 2,
+        "incident_id": "incident_b42ebef3a8963740",
+        "operator_id": null,
+        "invalidated_proposals": [
+          "proposal_2405f807b950f00b",
+          "proposal_a7f21d8dbf1a02b7"
+        ],
+        "released_reservations": 4
+      },
+      "payload_hash": "8031442702cc7cc88f58698cefe731883688f4d4b19fb9ca1ab8c823202c4e46",
+      "previous_hash": "4387224ba95cabb362f13d2024d5c7bcfaddbfb0209b36ad8075a163600c03d6",
+      "event_hash": "d1c3ecead0677770fc992ec0c0ea296dbe548e121074a1ceddc65bdf41022cc3",
+      "occurred_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "evt_0a89becae732a75b",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 30,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_61ed8df27a078ee8",
+        "account_seq": 11,
+        "payload_hash": "cf3c80cbdc9dcf4986d64f0c02c604d4bb9a0b5115fe8613f8138eaf94b17de6"
+      },
+      "payload_hash": "d707f41a581a2f664d231781cbbf3503cb3e4a03391131993bb1ad031a2de5fd",
+      "previous_hash": "d1c3ecead0677770fc992ec0c0ea296dbe548e121074a1ceddc65bdf41022cc3",
+      "event_hash": "aec51696d0f2e7fe5a4027fb520f8b503935adab7b66527491463e15fe010263",
+      "occurred_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "evt_3a5f621d319ce246",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 31,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_61ed8df27a078ee8",
+        "receipt_id": "receipt_85c390bfb9726ddf",
+        "proposal_id": null,
+        "reason_codes": [
+          "AGENT_QUARANTINED"
+        ],
+        "decision_fingerprint": "6298ceaa32669b84f7ca09f0a8b1916814ad7ff7969cfe0340f6bb1d3b184c44"
+      },
+      "payload_hash": "247bbd8d7b63e54f9fb74ee7584f06d80ce648f1fd4a27f1836a1b327a0a420c",
+      "previous_hash": "aec51696d0f2e7fe5a4027fb520f8b503935adab7b66527491463e15fe010263",
+      "event_hash": "a8ca6e6e7ec11ce2f62544b2d0ad28f99a66f1f109c4b9181d3d43def34ed339",
+      "occurred_at": "2026-09-08T10:29:03.050Z"
+    },
+    {
+      "id": "evt_f907e027ed447764",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 32,
+      "type": "INTENT_RECEIVED",
+      "payload": {
+        "agent_id": "agent_chaos_e323934a",
+        "lease_id": "lease_chaos_c_e323934a",
+        "intent_id": "intent_016393d7d0f832c3",
+        "account_seq": 12,
+        "payload_hash": "6bcbdd6053c1b67925ec49eb5f7e1ddaf8e5c0d184f8f7ff3ebec9ee14431508"
+      },
+      "payload_hash": "2a8dbbbb44e6a880cf7403c6aa73f686161c94623951e7dffa3ae487bc13e191",
+      "previous_hash": "a8ca6e6e7ec11ce2f62544b2d0ad28f99a66f1f109c4b9181d3d43def34ed339",
+      "event_hash": "ac92d9cbcb6ad94ec519447c18f71f947ba7d02b4207232239991131d581d3b9",
+      "occurred_at": "2026-09-08T10:29:03.662Z"
+    },
+    {
+      "id": "evt_a1cd28a77b56c372",
+      "account_id": "acct_7c94fe17e4c6d01c",
+      "account_seq": 33,
+      "type": "DECISION_RECORDED",
+      "payload": {
+        "outcome": "DENY",
+        "intent_id": "intent_016393d7d0f832c3",
+        "receipt_id": "receipt_13ce190683b26e67",
+        "proposal_id": null,
+        "reason_codes": [
+          "AGENT_QUARANTINED"
+        ],
+        "decision_fingerprint": "01fd7a9dbf4af29cdddcd074a36eea690bb83a64ec110804fd9dfdf84f675163"
+      },
+      "payload_hash": "6985845eb4857f011735a4fd80125c315887ad2bad927ff9ecc2627caab071a3",
+      "previous_hash": "ac92d9cbcb6ad94ec519447c18f71f947ba7d02b4207232239991131d581d3b9",
+      "event_hash": "bbe60e95b51cfba30bc5043af127542302dfc6df97bbb10c9391e8bea9e07290",
+      "occurred_at": "2026-09-08T10:29:03.662Z"
+    }
+  ],
+  "checkpoint": {
+    "previous_hash": null,
+    "event_count": 33,
+    "final_hash": "bbe60e95b51cfba30bc5043af127542302dfc6df97bbb10c9391e8bea9e07290",
+    "final_seq": 33
+  }
+}

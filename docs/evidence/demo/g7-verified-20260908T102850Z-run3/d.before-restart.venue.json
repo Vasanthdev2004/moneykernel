@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "simulator_version": "paper-2",
+  "orders": {
+    "mk_74fc2cf33afa2c7522d82e019fc11c20": {
+      "order": {
+        "environment": "REPLAY",
+        "client_order_id": "mk_74fc2cf33afa2c7522d82e019fc11c20",
+        "exchange_order_id": "paper-1",
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "status": "EXPIRED",
+        "quantity": "0.2",
+        "limit_price": "100",
+        "executed_base": "0.12",
+        "executed_quote": "12",
+        "last_observed_at": "2026-09-08T10:29:44.325Z",
+        "source_timestamp": "2026-09-08T10:29:44.325Z",
+        "raw_hash": "76a02fb9d42cd30c4b0055bcc7102d66abcd25931954e68309d3118dac477f75"
+      },
+      "fills": [
+        {
+          "fill_id": "mk_74fc2cf33afa2c7522d82e019fc11c20-f1",
+          "order": {
+            "client_order_id": "mk_74fc2cf33afa2c7522d82e019fc11c20",
+            "exchange_order_id": "paper-1",
+            "symbol": "SOLUSDT"
+          },
+          "symbol": "SOLUSDT",
+          "side": "BUY",
+          "base_qty": "0.12",
+          "price": "100",
+          "quote_qty": "12",
+          "commission_asset": "USDT",
+          "commission_qty": "0.012",
+          "event_time": "2026-09-08T10:29:44.325Z",
+          "raw_hash": "c599445a0831023990bb41b9f5c8b317132ce48a9b4eda00dd2dffad94a7249d"
+        }
+      ],
+      "book_id": "snapshot_fixture_sol_thin_01",
+      "book_hash": "dc666ba3ccfe1d0942aa931e19f19b2db3f1fb0ce79c77b83e7e80d9d2c5a9cf",
+      "accepted_at": "2026-09-08T10:29:44.325Z"
+    }
+  },
+  "consumed": {
+    "snapshot_fixture_sol_thin_01:BUY:0": "0.12"
+  },
+  "sequence": 1,
+  "submissions": 1
+}

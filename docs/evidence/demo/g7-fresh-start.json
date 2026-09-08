@@ -1,0 +1,18 @@
+{
+  "revision": "56a44fb5b07b9d9ef5dd1c41122753bc061cd0d8",
+  "alias": "fresh-g7-mtsj5wtt",
+  "ready_status": 200,
+  "intent_status": 201,
+  "outcome": "COUNTERPROPOSE",
+  "quantity": "0.27",
+  "approval_status": 201,
+  "verification": {
+    "events": 17,
+    "receipts": 1,
+    "replayed": 1,
+    "fingerprint_only": 0,
+    "commands": 1,
+    "fills": 1
+  },
+  "ok": true
+}
