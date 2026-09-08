@@ -15,6 +15,7 @@ export * from "./decimal-string.ts";
 export * from "./decision.ts";
 export * from "./errors.ts";
 export * from "./events.ts";
+export * from "./export.ts";
 export * from "./intent.ts";
 export * from "./operator.ts";
 export * from "./policy.ts";

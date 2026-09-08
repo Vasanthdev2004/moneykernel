@@ -413,6 +413,7 @@ export async function resolveConflictRequest(
         proposalId: revised?.id ?? null,
         accountId: account.id,
         result,
+        evaluationInput: input,
       });
       selected = {
         previous_proposal_id: winner.id,

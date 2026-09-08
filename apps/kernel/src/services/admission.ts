@@ -8,7 +8,7 @@ import {
   type TradeIntent,
   TradeIntentSchema,
 } from "@moneykernel/contracts";
-import { type EvaluationResult, evaluate } from "@moneykernel/domain";
+import { type EvaluationInput, type EvaluationResult, evaluate } from "@moneykernel/domain";
 import type { PoolClient } from "@moneykernel/persistence";
 import {
   type AgentRow,
@@ -259,6 +259,7 @@ export async function submitIntent(
       quoteAsset: account.quote_asset,
       baseAsset,
       result,
+      evaluationInput: evaluation,
     });
     if (isHardViolation(result.reason_codes)) {
       await enforceHardViolationThreshold(tx, { accountId: account.id, agent, policy, now });
@@ -287,6 +288,8 @@ export async function persistDecision(
     quoteAsset: string;
     baseAsset: string;
     result: EvaluationResult;
+    /** The exact evaluator input, archived with the receipt for verification replay (T-55). */
+    evaluationInput?: EvaluationInput;
   },
 ): Promise<DecisionResponse> {
   const { now, intent, result } = args;
@@ -338,6 +341,7 @@ export async function persistDecision(
     proposalId: proposal?.id ?? null,
     accountId: args.accountId,
     result,
+    evaluationInput: args.evaluationInput,
   });
   return responseFrom(
     runtime,
@@ -449,6 +453,7 @@ export async function recordReceipt(
     proposalId: string | null;
     accountId: string;
     result: EvaluationResult;
+    evaluationInput?: EvaluationInput;
   },
 ): Promise<ReceiptRow> {
   const { now, result } = args;
@@ -476,6 +481,7 @@ export async function recordReceipt(
     decisionFingerprint: fingerprint,
     evaluatedAt: now,
     engineVersion,
+    evaluationInput: args.evaluationInput,
   });
   await appendAuditEvent(tx, {
     id: newId("evt"),
@@ -496,6 +502,7 @@ export async function recordReceipt(
     account_id: args.accountId,
     intent_id: args.intentId,
     proposal_id: args.proposalId,
+    evaluation_input: args.evaluationInput ?? null,
     outcome: result.outcome,
     reasons: result.reason_codes,
     input_refs: result.input_refs,

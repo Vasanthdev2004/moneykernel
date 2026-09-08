@@ -103,6 +103,8 @@ export interface KernelClient {
   commands(): Promise<CommandsResponse>;
   command(id: string): Promise<CommandDetail>;
   ledger(): Promise<LedgerResponse>;
+  /** Sanitized run export for `pnpm verify:receipt` (prd.md 15.2, 23.4). */
+  runExport(): Promise<Record<string, unknown>>;
   intentDocument(id: string): Promise<IntentDocument>;
   proposalDocument(id: string): Promise<IntentDocument>;
   eventsTail(limit: number): Promise<EventsResponse>;
@@ -206,6 +208,7 @@ export function createClient(handlers: ClientHandlers): KernelClient {
     commands: () => get<CommandsResponse>("/v1/commands"),
     command: (id) => get<CommandDetail>(`/v1/commands/${enc(id)}`),
     ledger: () => get<LedgerResponse>("/v1/ledger"),
+    runExport: () => get<Record<string, unknown>>("/v1/runs/current/export"),
     intentDocument: (id) => get<IntentDocument>(`/v1/intents/${enc(id)}`),
     proposalDocument: (id) => get<IntentDocument>(`/v1/proposals/${enc(id)}`),
     eventsTail: (limit) => get<EventsResponse>(`/v1/events?tail=1&limit=${limit}`),

@@ -7,6 +7,25 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Gate 6 adversarial hardening and replay evidence
+
+Environment: as Gate 5. Migration 0005 applied (`decision_receipts.evaluation_input`).
+
+| Command | Result | What it covers |
+|---|---|---|
+| `pnpm lint` / `pnpm typecheck` / `pnpm build` | clean | |
+| `pnpm test:unit` / `pnpm test:property` / `pnpm test:contracts` | 203 / 7 × 400 / 90 passed | plus the verifier suite (17 tests) and the review session's console unit tests: a consistent synthetic bundle passes; an edited event payload fails the chain at its sequence (T-54); an edited outcome fails fingerprint and replay; an edited archived context changes the replayed candidate (T-55); a null context counts as fingerprint-only; a changed fill quantity fails numerical agreement; a removed ledger entry fails conservation; an injected token hash or bearer token fails the secret scan without being echoed (T-58); CLI exit codes 0/2 |
+| `pnpm test:integration` | 133 passed, 3 skipped (online, opt-in) | plus `export.test.ts` and the review session's console-safety suite: contract-valid bundle with archived evaluator context, verified chain, no token or hash strings, 404 for a foreign account id |
+| `pnpm test:fault` | 5 passed | T-33 stop racing dispatch over six rounds (arm sequence always precedes the stop sequence or no arm happened; venue submissions equal arms); T-43 database refusal before the arm commit (trigger fault): no submission, holds stay HELD, same command arms once afterwards; T-44 writer lock lost: dispatch idle, readiness false; T-45 unsupported fee asset (BNB): hold ARMED, CRITICAL incident plus fill-detail warning, resume refused, fee retained at the venue; T-36/T-37/T-38 amnesiac venue across two restarts then settlement from real venue memory with one submission |
+| `pnpm test:e2e` | 7 passed | plus the review session's operator-safety and session-revocation specs |
+| `pnpm demo:replay -- scenario-a-constrained-acquisition` | 5 checks passed; `verify:receipt: passed` (9 events, 1 receipt replayed) | outcome COUNTERPROPOSE, limiting SYMBOL_EXPOSURE_LIMIT, exact candidate 0.27 SOL @ 100 / 27 / 0.027 / 27.027, original request unchanged, export verifies |
+| `pnpm demo:replay -- scenario-b-opposing-intents` | 8 checks passed; `verify:receipt: passed` | candidates 0.0005 / 0.0002 BTC, both CONFLICT_HELD after the window, one conflict, SELECT re-validates the winner to AWAITING_APPROVAL and releases the loser's holds, no command, export verifies |
+| `pnpm demo:replay -- scenario-c-burst-quarantine` | 6 checks passed; `verify:receipt: passed` | request 11 denied AGENT_QUARANTINED with none earlier, agent QUARANTINED, holds released, no command, a later request denied, export verifies |
+| `pnpm demo:replay -- scenario-d-lost-response --runs 3` | 3 runs × 11 checks passed on three fresh aliases; every export verifies (21 events, 1 fill each) | dropped response, restart, recovery: one submission, stable client order id, EXPIRED 0.12 / 12, fee 0.012, lease consumed 12.012, hold 12.012 consumed / 8.008 released, no replacement order; three isolated runs (T-60), each export verifies |
+| `pnpm run doctor` | all required checks passed | |
+
+The six verified exports are committed under `docs/evidence/replays/` (one per replay above). Re-verify any of them with `pnpm verify:receipt -- docs/evidence/replays/<file>`.
+
 ## 2026-09-08 — Gate 5 operator experience
 
 Subsequent independent corrections and the combined 415-test / 7-browser-test

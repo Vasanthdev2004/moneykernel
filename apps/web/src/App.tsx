@@ -577,6 +577,16 @@ export function App() {
         stopInFlight={runner.isInFlight(ACTION.stop)}
         resumeInFlight={runner.isInFlight(ACTION.resume)}
         onRefresh={refreshAll}
+        onExport={() => {
+          void client
+            .runExport()
+            .then((bundle) => {
+              const alias = String((bundle.account as { alias?: string } | undefined)?.alias ?? "run");
+              downloadJson(`moneykernel-run-${alias}.json`, bundle);
+              pushToast("success", "Run export downloaded", "Verify it offline with pnpm verify:receipt -- <file>");
+            })
+            .catch((error: unknown) => pushToast("error", "export failed", describeError(error)));
+        }}
         onStop={() => setDialog({ kind: "stop" })}
         onResume={() => {
           setResumeFailure(null);

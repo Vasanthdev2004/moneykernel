@@ -43,6 +43,8 @@ export type PaperFaults = {
    * fill detail lagging the order state, which must keep a conservative buffer (prd.md 11.6, 28.3).
    */
   overstateExecutedFor?: Set<string>;
+  /** Client order ids whose fills charge commission in the given asset instead of the configured fee asset (T-45). */
+  commissionAssetFor?: Map<string, string>;
 };
 
 /** Where the paper venue reads the book it walks: the scenario's constant book, or the mode's live observation adapter. */
@@ -219,7 +221,7 @@ export class PaperExecutionAdapter implements ExecutionAdapter {
         base_qty: toDecimalString(take),
         price: toDecimalString(price),
         quote_qty: toDecimalString(quote),
-        commission_asset: this.feeAsset,
+        commission_asset: this.faults.commissionAssetFor?.get(command.client_order_id) ?? this.feeAsset,
         commission_qty: toDecimalString(feeReserve(quote, this.feeRate)),
         event_time: now.toISOString(),
         raw_hash: hashCanonical({

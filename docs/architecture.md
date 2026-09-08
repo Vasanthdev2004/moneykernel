@@ -67,7 +67,14 @@ The account row lock serializes every resource claim, which is what keeps two co
 - Mandatory state distinctions (prd.md 17.4) are carried by the data, not the UI: `COUNTERPROPOSE` is an outcome, `AWAITING_APPROVAL` a proposal state, `APPROVED`/`COMMAND_CREATED` precede arming, `ACCEPTED` is a command state distinct from the order's `FILLED`/`EXPIRED`, and an `OUTCOME_UNKNOWN` banner stays until the command reconciles.
 - Browser tests (`pnpm test:e2e`, Playwright) start a kernel on a fresh REPLAY alias and the Vite server, seed Scenario A, and drive login, exact approval, settlement, receipt export, stop, readiness-gated resume, and reload catch-up.
 
-## Modes (prd.md 13.1)
+## Evidence: export, verification, replay, faults (Gate 6, prd.md 14.5, 22.2, 23.4)
+
+- `GET /v1/runs/current/export` returns the sanitized run bundle (`RunExportSchema` in contracts): account, policy versions, agents without token hashes, leases, intents, receipts with their archived evaluator input (migration 0005), proposals, reservations, approvals, commands, orders, fills, ledger entries, balances, attribution, conflicts, incidents, and the full hash-chained event log with a genesis checkpoint.
+- `pnpm verify:receipt -- <file>` (`scripts/verify-receipt.ts`) checks a bundle offline with only the contracts and domain packages: schema, event chain (T-54), receipt fingerprints, decision replay through the pure evaluator (T-55), linkage, numerical agreement between candidate, command payload, order, fills, reservations, and ledger, ledger conservation, a secret scan (T-58), and sanitization. Exit 0 passed, 1 failed, 2 unreadable.
+- `pnpm demo:replay -- <scenario-id> [--runs N]` (`scripts/demo-replay.ts`) boots an in-process REPLAY kernel on a fresh alias with a virtual clock, seeds the scenario, drives its steps (intents, exact approval, dispatch with the recorded fault, crash, restart, reconcile, or scenario C's burst) through the HTTP handlers, checks the fixture's `expected` block, exports the run, and verifies the export. Runs never share an account or event chain (T-60).
+- `pnpm test:fault` names each injected crash point: stop racing dispatch, database refusal before the arm commit, writer lock loss, unsupported fee asset, and an amnesiac venue across restarts.
+
+
 
 | Mode | Market context | Funds and orders | Adapter selected at construction time |
 |---|---|---|---|

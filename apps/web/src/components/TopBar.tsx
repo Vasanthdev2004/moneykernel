@@ -21,6 +21,7 @@ export function TopBar({
   stopInFlight,
   resumeInFlight,
   onRefresh,
+  onExport,
   onStop,
   onResume,
   onLogout,
@@ -34,6 +35,7 @@ export function TopBar({
   stopInFlight: boolean;
   resumeInFlight: boolean;
   onRefresh: () => void;
+  onExport: () => void;
   onStop: () => void;
   onResume: () => void;
   onLogout: () => void;
@@ -85,6 +87,15 @@ export function TopBar({
             {stream.label}
           </Badge>
         </span>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onExport}
+          data-testid="export-run"
+          title="Download the sanitized run export for pnpm verify:receipt"
+        >
+          Export run
+        </button>
         <button type="button" className="btn btn-ghost" onClick={onRefresh} disabled={refreshing}>
           {refreshing ? "Refreshing…" : "Refresh"}
           {lastRefreshAt !== null && (

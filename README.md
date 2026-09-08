@@ -16,7 +16,8 @@ Built for the Binance Agent OS Mini Hackathon (Track A) as a v0.1 prototype.
 | G3 authority and coordination | Done: operator sessions, exact single-use approval, command arming with dispatch-time rechecks, paper submission, opposing-intent conflicts, deterministic quarantine, stop/resume. See `docs/test-evidence.md`. |
 | G4 execution and observations | Implemented: fill accounting, paper venue journal, restart recovery, operator reconciliation, SHADOW public REST reads, and strategy providers. Independent corrections and remaining qualification limits are in [G4 review evidence](docs/g4-fix-test-evidence.md). Unqualified exchange filters block proposals; MCP access, T-26 deferral, and successful fresh model-to-SHADOW execution remain unverified or incomplete. |
 | G5 operator experience | Implemented and independently reviewed: operations console, exact approvals, agent/lease controls, conflicts, receipts, incidents, commands, integration status, and SSE timeline. Session, cash-buffer, state-label, and responsive fixes have [G5 review evidence](docs/g5-fix-test-evidence.md), including 7 passing browser tests. |
-| G6 adversarial hardening | Next: fault tests, replay verification (`demo:replay`, `verify:receipt`), secret checks, three clean demo runs. |
+| G6 adversarial hardening | Done: fault layer (`pnpm test:fault`), sanitized run export, standalone `verify:receipt` (chain, fingerprints, evaluator replay, numerical agreement, secret scan), offline `demo:replay` for all four scenarios with isolated runs. See `docs/decisions/0008-g6-export-verify-replay.md`. |
+| G7 release candidate | Next: three clean demo rehearsals, sanitized export in the repository, recording, submission checklist. |
 
 - `prd.md` is the full product requirements document, technical design, and delivery plan.
 - `docs/architecture.md` describes the layering, boot sequence, and modes.
@@ -39,7 +40,7 @@ pnpm dev                      # kernel on http://127.0.0.1:8080 (account starts 
 pnpm dev:web                  # console on http://127.0.0.1:5173
 ```
 
-Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`); `pnpm test:e2e` (Playwright, real kernel and console). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+Tests: `pnpm test:unit`, `pnpm test:property`, `pnpm test:contracts` (no database); `pnpm test:integration`, `pnpm test:fault` (use `DATABASE_URL_TEST`; run them one at a time, they share the database); `pnpm test:e2e` (Playwright, real kernel and console). `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 
 ### Try the vertical slice (REPLAY)
 
@@ -89,7 +90,14 @@ pnpm agent:run -- --token <mka_...> --provider agent-session --proposal proposal
 
 A recorded response is always labelled `RECORDED MODEL RESPONSE`; a provider timeout or invalid output records `NO_PROPOSAL` and never fabricates a decision. The historical submission under `docs/evidence/model-runs/` used a proposal rebound to newer context; it does not verify a model proposal based on that fresh context. See the evidence directory's README for the preserved artifacts and limitation. Receipts keep the provenance labels decided in `docs/decisions/0003-g2-verification-fixes.md` until G6 binds live-model labels to run evidence.
 
-Commands the PRD requires but a later gate implements (`demo:replay`, `verify:receipt`) exit with code 2 and say so.
+### Replay and verification (prd.md 22.2)
+
+```bash
+pnpm demo:replay -- scenario-d-lost-response --runs 3   # isolated virtual runs, expectations checked, export verified
+pnpm verify:receipt -- .moneykernel/replays/<alias>/export.json
+```
+
+`demo:replay` needs the database and `.env` (REPLAY mode) but no exchange or model access. `verify:receipt` needs nothing but the file: it re-verifies the event hash chain, every receipt fingerprint, re-runs the pure evaluator on each receipt's archived context, checks that candidate, command, order, fills, reservations, and ledger agree numerically, and scans for secrets. The operator console exports the current run from `GET /v1/runs/current/export`.
 
 ## Gate 0 outcome (2026-09-08)
 
@@ -107,6 +115,19 @@ Commands the PRD requires but a later gate implements (`demo:replay`, `verify:re
 - Mainnet order execution is explicitly excluded from v0.1. `BINANCE_MAINNET_API_KEY`, `LIVE`, and `SKIP_SAFETY_CHECKS` abort startup if present.
 - Only order primitive: Spot LIMIT with IOC time-in-force.
 - All financial numbers are decimal strings; floats are rejected at the contract boundary.
+
+## Known limitations (prd.md 23.4, 26)
+
+Implemented P0 behaviour is what the tests above exercise. The following is not claimed:
+
+- **Agent OS MCP.** The backend owns no Agent OS session (Gate 0: Binance's authorization server admits only allowlisted agents). Market context comes from Binance's public Spot REST endpoints and is labelled `BINANCE_PUBLIC_REST`; a relay through a supported agent session is designed (`BINANCE_MCP_VIA_SUPPORTED_AGENT`) but not exercised in this repository.
+- **Model route.** No provider key was available, so the Anthropic provider is tested only against a fake endpoint. The one real proposal in `docs/evidence/model-runs/` came through the supported-agent-session route. Receipts label seeded agents `SCRIPTED`; live-model labels are bound to run evidence only in the runner traces (decisions 0003, 0006).
+- **Testnet.** P1. The Spot Testnet read adapter exists; execution is unqualified and refuses to start. Nothing here proves any exchange's behaviour; the paper venue is a demonstration model, not a market-impact or profitability backtest.
+- **Fees and filters.** Quote-asset and base-asset commissions are modelled; any other fee asset opens a CRITICAL incident and keeps the hold. `PRICE_FILTER`, `LOT_SIZE`, and `NOTIONAL` are enforced; `PERCENT_PRICE(_BY_SIDE)` is bounded only by the drift policy; unknown filter types deny with `FILTER_UNSUPPORTED`.
+- **Freshness.** Referenced observations must be under 5 s old at admission (policy default), so a slow model path earns `STALE_MARKET_DATA` rather than an exemption.
+- **Operations.** One kernel instance, no hot failover; operator sessions live in memory (a restart logs everyone out and pauses the account); the event stream polls committed events every 500 ms; the integration, fault, and browser suites share one database and must run one at a time.
+- **Evidence.** `verify:receipt` proves that the exported records are intact, internally consistent, and re-derivable by the pure evaluator. It does not prove that Binance or a model was honest, and there is no external anchoring of checkpoints (P2).
+- **Not production-ready.** No claim of guaranteed maximum loss, exactly-once execution under every failure, or risk-free trading (prd.md 23.3).
 
 ## License
 

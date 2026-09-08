@@ -42,6 +42,8 @@ export type ReceiptRow = {
   decision_fingerprint: string;
   evaluated_at: Date;
   engine_version: string;
+  /** Archived evaluator input (migration 0005); null for receipts written before it existed. */
+  evaluation_input: unknown | null;
 };
 
 export type ReservationKind = "QUOTE" | "BASE" | "ATTEMPT";
@@ -225,12 +227,14 @@ export async function insertReceipt(
     decisionFingerprint: string;
     evaluatedAt: Date;
     engineVersion: string;
+    /** The exact evaluator input, archived for verification replay (prd.md 14.5, T-55). */
+    evaluationInput?: unknown;
   },
 ): Promise<void> {
   await client.query(
     `INSERT INTO decision_receipts (id, account_id, intent_id, proposal_id, outcome, reasons, input_refs, checks,
-                                    normalized_request, decision_fingerprint, evaluated_at, engine_version)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10, $11, $12)`,
+                                    normalized_request, decision_fingerprint, evaluated_at, engine_version, evaluation_input)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10, $11, $12, $13::jsonb)`,
     [
       input.id,
       input.accountId,
@@ -244,6 +248,7 @@ export async function insertReceipt(
       input.decisionFingerprint,
       input.evaluatedAt,
       input.engineVersion,
+      input.evaluationInput === undefined ? null : JSON.stringify(input.evaluationInput),
     ],
   );
 }
