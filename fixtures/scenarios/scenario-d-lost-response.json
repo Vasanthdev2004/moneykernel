@@ -5,7 +5,34 @@
   "environment": "REPLAY",
   "virtual_clock_start": "2026-09-08T12:00:00Z",
   "symbol_rules_ref": "scenario-a-constrained-acquisition",
-  "market_snapshots_ref": "scenario-a-constrained-acquisition",
+  "policy": {
+    "max_order_notional_quote": "50",
+    "max_symbol_share": "0.25",
+    "min_quote_cash_buffer": "10",
+    "valuation_buffer_quote": "1",
+    "max_proposal_age_ms": 120000,
+    "max_market_observation_age_ms": 5000,
+    "max_account_observation_age_ms": 5000,
+    "max_price_drift_bps": "50",
+    "conflict_collection_window_ms": 750,
+    "max_unique_intents_per_60s": 10,
+    "max_hard_violations_per_60s": 3,
+    "fee_rate": "0.001",
+    "fee_asset": "USDT",
+    "quote_asset": "USDT"
+  },
+  "market_snapshots": [
+    {
+      "snapshot_id": "snapshot_fixture_sol_thin_01",
+      "symbol": "SOLUSDT",
+      "source": "SYNTHETIC_FIXTURE",
+      "source_timestamp": "2026-09-08T12:00:00Z",
+      "bids": [{ "price": "99.99", "quantity": "50" }],
+      "asks": [{ "price": "100", "quantity": "0.12" }, { "price": "100.5", "quantity": "50" }],
+      "last_price": "100"
+    }
+  ],
+  "marks": { "SOLUSDT": "100" },
   "account": {
     "alias": "scenario-d",
     "quote_asset": "USDT",
@@ -43,7 +70,7 @@
         "order_type": "LIMIT_IOC",
         "size": { "kind": "QUOTE_NOTIONAL", "quote_asset": "USDT", "amount": "20" },
         "limit_price": "100",
-        "observation_ids": ["snapshot_fixture_sol_01"]
+        "observation_ids": ["snapshot_fixture_sol_thin_01"]
       }
     },
     { "at": "2026-09-08T12:00:01Z", "action": "OPERATOR_APPROVE_EXACT" },
@@ -70,6 +97,7 @@
       "executed_quote": "12",
       "fee_quote": "0.012",
       "lease_consumed_quote": "12.012",
+      "reservation_consumed_quote": "12.012",
       "reservation_released_quote": "8.008",
       "replacement_orders": 0
     }

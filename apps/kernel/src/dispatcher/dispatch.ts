@@ -22,9 +22,7 @@ import {
   getIntentById,
   getLeaseById,
   getProposalById,
-  insertFillOnce,
   insertIncident,
-  insertOrder,
   latestSnapshotsBySymbol,
   listReservationsForProposal,
   lockAccountRow,
@@ -40,12 +38,21 @@ import { newId } from "../ids.ts";
 import { type ApprovedCommandPayload, exactPayloadForProposal, proposalBindingHash } from "../services/approvals.ts";
 import { assembleEvaluationInput, markFromSnapshot, refreshInputsForSymbol } from "../services/evaluation.ts";
 import { endProposalInTx, sweepProposalsInTx } from "../services/proposals.ts";
+import { type ApplyResult, applyObservedOrderInTx } from "../services/reconciliation.ts";
 import { hasLiveWriterLease } from "../services/writer.ts";
 
 export type DispatchReport =
   | { kind: "IDLE"; detail: string }
   | { kind: "ABORTED_PRE_ARM"; command_id: string; reason_codes: ReasonCode[] }
-  | { kind: "ARMED"; command_id: string; client_order_id: string; outcome: ExecutionResult["kind"]; fills: number };
+  | {
+      kind: "ARMED";
+      command_id: string;
+      client_order_id: string;
+      outcome: ExecutionResult["kind"];
+      fills: number;
+      /** Accounting applied in the same transaction as the observed response (prd.md 11.3 step 9). */
+      reconciliation: ApplyResult | null;
+    };
 
 const NO_ARM: DispatchReport = { kind: "IDLE", detail: "nothing to dispatch" };
 
@@ -322,52 +329,19 @@ async function submitArmed(
     const page = await execution.listRelevantFills({ since_event_time: null, since_fill_id: null });
     fills = page.fills.filter((f) => f.order.client_order_id === payload.client_order_id);
   }
+  let reconciliation: ApplyResult | null = null;
   await withTransaction(pool, async (tx) => {
     await lockAccountRow(tx, account.id);
     if (result.kind === "ACCEPTED") {
-      const orderRow = await insertOrder(tx, {
-        id: newId("order"),
-        accountId: account.id,
-        commandId: command.id,
-        exchangeOrderId: result.order.exchange_order_id,
-        clientOrderId: payload.client_order_id,
-        symbol: result.order.symbol,
-        status: result.order.status,
-        executedBase: result.order.executed_base,
-        executedQuote: result.order.executed_quote,
-        observedAt: now,
-      });
-      for (const fill of fills) {
-        await insertFillOnce(tx, {
-          id: newId("fill"),
-          accountId: account.id,
-          orderId: orderRow.id,
-          exchangeTradeId: fill.fill_id,
-          symbol: fill.symbol,
-          baseQty: fill.base_qty,
-          price: fill.price,
-          quoteQty: fill.quote_qty,
-          commissionAsset: fill.commission_asset,
-          commissionQty: fill.commission_qty,
-          eventTime: new Date(fill.event_time),
-        });
-      }
-      await updateCommandState(tx, command.id, "ACCEPTED", now, { outcomeRef: orderRow.id });
-      await appendAuditEvent(tx, {
-        id: newId("evt"),
-        accountId: account.id,
-        type: "ORDER_OBSERVED",
-        payload: {
-          command_id: command.id,
-          order_id: orderRow.id,
-          client_order_id: payload.client_order_id,
-          status: result.order.status,
-          executed_base: result.order.executed_base,
-          executed_quote: result.order.executed_quote,
-          fills: fills.length,
-          note: "accepted is not reconciled; accounting settles in reconciliation",
-        },
-        occurredAt: now,
+      // Persist the normalized response and reconcile observed fills in one transaction (prd.md 11.3 step 9).
+      const locked = await getCommandById(tx, command.id, { lock: true });
+      if (locked === null) throw new Error(`command ${command.id} vanished`);
+      reconciliation = await applyObservedOrderInTx(tx, runtime, {
+        command: locked,
+        order: result.order,
+        fills,
+        now,
+        source: "DISPATCH",
       });
     } else if (result.kind === "REJECTED_CONFIRMED") {
       await updateCommandState(tx, command.id, "REJECTED_CONFIRMED", now, {
@@ -420,5 +394,6 @@ async function submitArmed(
     client_order_id: payload.client_order_id,
     outcome: result.kind,
     fills: fills.length,
+    reconciliation,
   };
 }

@@ -27,6 +27,35 @@ function executionSourceFor(runtime: KernelRuntime): ExecutionSource {
   return runtime.config.environment === "TESTNET" ? "BINANCE_TESTNET" : "PAPER";
 }
 
+function marketDataStatus(runtime: KernelRuntime): StatusResponse["integration"]["market_data"] {
+  const env = runtime.config.environment;
+  const health = runtime.marketHealth;
+  if (env === "REPLAY") {
+    return {
+      state: "NOT_CONFIGURED",
+      detail: "REPLAY uses synthetic or archived fixtures; no live market connection by design",
+      last_successful_read_at: health.last_successful_read_at,
+    };
+  }
+  if (runtime.market === null)
+    return { state: "NOT_CONNECTED", detail: "no market adapter", last_successful_read_at: null };
+  if (health.last_successful_read_at === null) {
+    return {
+      state: "NOT_CONNECTED",
+      detail: health.last_error === null ? "no read attempted yet" : `last read failed: ${health.last_error}`,
+      last_successful_read_at: null,
+    };
+  }
+  const stale = runtime.clock().getTime() - Date.parse(health.last_successful_read_at) > 60_000;
+  return {
+    state: stale || health.last_error !== null ? "DEGRADED" : "CONNECTED",
+    detail: `${env === "SHADOW" ? "Binance public REST" : "Spot Testnet public REST"} reads, labelled ${marketSourceFor(runtime)}${
+      health.last_error === null ? "" : `; last error: ${health.last_error}`
+    }`,
+    last_successful_read_at: health.last_successful_read_at,
+  };
+}
+
 function modelSourceFor(): ModelSource {
   // Provider configuration is not evidence of a model invocation. G2 has no model runner.
   return "DISABLED";
@@ -83,27 +112,22 @@ export async function statusRoutes(app: FastifyInstance, options: { runtime: Ker
             "Binance authorization server refuses non-allowlisted agents (Gate 0). No backend-owned Agent OS session exists; supported-agent relay pending.",
           last_successful_read_at: null,
         },
-        market_data: {
-          state: env === "REPLAY" ? "NOT_CONFIGURED" : "NOT_CONNECTED",
-          detail:
-            env === "REPLAY"
-              ? "REPLAY uses synthetic or archived fixtures; no live market connection by design"
-              : "market read adapter arrives in G4",
-          last_successful_read_at: null,
-        },
+        market_data: marketDataStatus(runtime),
         execution: {
-          state: env === "TESTNET" ? "BLOCKED" : "NOT_CONNECTED",
+          state: env === "TESTNET" ? "BLOCKED" : runtime.execution === null ? "NOT_CONNECTED" : "CONNECTED",
           detail:
             env === "TESTNET"
-              ? "Testnet execution unqualified (P1)"
-              : "paper executor arrives in G4; no external write path in this mode",
+              ? "Testnet execution unqualified (P1); no order write path"
+              : runtime.execution === null
+                ? "no execution adapter"
+                : `paper executor over the ${env === "REPLAY" ? "fixture" : "live public"} book; virtual fills only, no external write path`,
           last_successful_read_at: null,
         },
         model: {
           state: modelDisabled ? "NOT_CONFIGURED" : "NOT_CONNECTED",
           detail: modelDisabled
-            ? "MODEL_PROVIDER=disabled; scripted and recorded proposals only"
-            : `${runtime.config.modelProvider} provider configured; strategy runner arrives in G4`,
+            ? "MODEL_PROVIDER=disabled in the kernel; proposals arrive through the agent API (scripted, recorded, live provider, or supported agent session) and are labelled per agent strategy kind"
+            : `${runtime.config.modelProvider} provider configured for the strategy runner; the kernel itself never calls a model`,
           last_successful_read_at: null,
         },
       },

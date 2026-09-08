@@ -14,7 +14,7 @@ const clock = () => new Date("2026-09-08T12:00:00Z");
 const configuredProvider = {
   MODEL_PROVIDER: "anthropic",
   MODEL_ID: "synthetic-provenance-test-model",
-  MODEL_API_KEY: "synthetic-key-no-provider-call",
+  MODEL_API_KEY: "synthetic-no-call-key",
 };
 
 async function start(strategyKind: string, providerConfigured = false) {

@@ -186,10 +186,13 @@ describe("exact approval, arming, and paper execution (FR-07, FR-08, INV-05, INV
     const commands = await withClient(pool, (c) => listCommands(c, h.accountId));
     expect(commands.map((c) => c.state)).toEqual(["ACCEPTED"]);
     const reservations = await withClient(pool, (c) => listReservationsForProposal(c, String(again.body.proposal_id)));
+    // G4: the accepted paper fill is reconciled in the same transaction; the quote hold is consumed, not left armed.
     expect(reservations.map((r) => [r.kind, r.state])).toEqual([
       ["ATTEMPT", "CONSUMED"],
-      ["QUOTE", "ARMED"],
+      ["QUOTE", "CONSUMED"],
     ]);
+    expect(report.reconciliation?.reconciled).toBe(true);
+    expect(commands[0]?.reconciled_at).not.toBeNull();
     const lease = await withClient(pool, (c) => getLeaseById(c, alpha.lease_id));
     expect(lease?.attempts_consumed).toBe(1);
     expect((await dispatchOnce(h.runtime, new Date(h.clock.now))).kind).toBe("IDLE");

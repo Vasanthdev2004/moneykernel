@@ -28,3 +28,6 @@ Thumbs.db
 # editor
 .vscode/
 .idea/
+
+# operational state outside the database (paper venue journals, model run traces)
+.moneykernel/

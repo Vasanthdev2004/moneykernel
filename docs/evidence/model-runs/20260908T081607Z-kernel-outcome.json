@@ -1,0 +1,84 @@
+{
+  "decision": {
+    "intent_id": "intent_78a1d61f7c547650",
+    "proposal_id": "proposal_51389ec4a59ce224",
+    "proposal_revision": 1,
+    "outcome": "COUNTERPROPOSE",
+    "state": "COLLECTING",
+    "reason_codes": [
+      "SIZE_NORMALIZED"
+    ],
+    "candidate": {
+      "symbol": "SOLUSDT",
+      "side": "BUY",
+      "order_type": "LIMIT_IOC",
+      "quantity": "0.145",
+      "limit_price": "102.8",
+      "notional_quote": "14.906",
+      "fee_reserve_quote": "0.014906",
+      "total_quote_reserved": "14.920906",
+      "base_reserved": "0",
+      "reference_mark": "102.68"
+    },
+    "authority": {
+      "policy_version": 1,
+      "lease_revision": 1,
+      "account_epoch": 2,
+      "requires_operator_approval": true
+    },
+    "provenance": {
+      "execution_mode": "SHADOW",
+      "market_source": "BINANCE_PUBLIC_REST",
+      "model_source": "SCRIPTED",
+      "execution_source": "PAPER"
+    },
+    "receipt_id": "receipt_ffac6e93ff285277",
+    "proposal_hash": "465087ef64960e2a520e315ed411e0d65c10d4f83ffd0b309d2725316e40f9db",
+    "expires_at": "2026-09-08T08:18:08.873Z"
+  },
+  "approve": {
+    "approval_id": "approval_bc1f61ec6153db68",
+    "proposal_id": "proposal_51389ec4a59ce224",
+    "proposal_revision": 1,
+    "proposal_hash": "465087ef64960e2a520e315ed411e0d65c10d4f83ffd0b309d2725316e40f9db",
+    "state": "ACTIVE",
+    "expires_at": "2026-09-08T08:18:08.873Z",
+    "note": "Approval stored. Execution still requires dispatch-time revalidation; this is not a fill."
+  },
+  "command": {
+    "id": "cmd_0f55a3670845c76a",
+    "state": "ACCEPTED",
+    "client_order_id": "mk_f23c3ff05346e63545e5034c0bba01cf",
+    "reconciled_at": "2026-09-08T08:16:10.717Z"
+  },
+  "order": {
+    "status": "FILLED",
+    "executed_base": "0.145000000000000000",
+    "executed_quote": "14.890050000000000000"
+  },
+  "fills": [
+    {
+      "base": "0.145000000000000000",
+      "price": "102.690000000000000000",
+      "fee": "0.014890050000000000",
+      "asset": "USDT"
+    }
+  ],
+  "ledger": [
+    [
+      "FILL_BASE",
+      "SOL",
+      "0.145000000000000000"
+    ],
+    [
+      "FILL_QUOTE",
+      "USDT",
+      "-14.890050000000000000"
+    ],
+    [
+      "FILL_FEE",
+      "USDT",
+      "-0.014890050000000000"
+    ]
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "produced_at": "2026-09-08T08:16:08.931Z",
+  "run_id": "16d8023008480156",
+  "role": "alpha",
+  "provider_source": "SUPPORTED_AGENT_SESSION",
+  "model_id": "claude-fable-5-1 via Claude Code session (proposal authored from the 08:11:29Z context dump of the same account; observation id bound to this fresh dump so the kernel can judge freshness)",
+  "prompt_version": "1",
+  "context_hash": "69c7cbc5610dc9db45830260868a187bc56f4cf88a3022efcdc3a0caf376d2ca",
+  "dry_run": false,
+  "latency_ms": 0,
+  "repair_attempts": 0,
+  "validation": "VALID",
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null
+  },
+  "rationale": "Alpha acquisition within the remaining lease budget: 40 USDT granted, 19.93 consumed, one submission attempt left, so request 15 USDT and keep headroom for fees and lot rounding. Observation snap_705cdd1bd51af6b1 is the fresh read of the SOLUSDT top of book I reviewed at 08:11:29Z (bid 102.64 / ask 102.65, 336 SOL visible depth, one-tick spread). IOC limit 102.80 crosses the top of book with a 15 bps cushion inside the 50 bps drift band; any unfilled remainder expires. No external research used.",
+  "output_kind": "PROPOSAL",
+  "intent": {
+    "schema_version": "1",
+    "lease_id": "lease_alpha_d_77892606",
+    "symbol": "SOLUSDT",
+    "side": "BUY",
+    "order_type": "LIMIT_IOC",
+    "size": {
+      "kind": "QUOTE_NOTIONAL",
+      "quote_asset": "USDT",
+      "amount": "15"
+    },
+    "limit_price": "102.8",
+    "observation_ids": [
+      "snap_705cdd1bd51af6b1"
+    ],
+    "rationale": "Alpha acquisition within the remaining lease budget: 40 USDT granted, 19.93 consumed, one submission attempt left, so request 15 USDT and keep headroom for fees and lot rounding. Observation snap_705cdd1bd51af6b1 is the fresh read of the SOLUSDT top of book I reviewed at 08:11:29Z (bid 102.64 / ask 102.65, 336 SOL visible depth, one-tick spread). IOC limit 102.80 crosses the top of book with a 15 bps cushion inside the 50 bps drift band; any unfilled remainder expires. No external research used.",
+    "strategy_run_id": "16d8023008480156"
+  },
+  "kernel": {
+    "status": 201,
+    "body": {
+      "intent_id": "intent_78a1d61f7c547650",
+      "proposal_id": "proposal_51389ec4a59ce224",
+      "proposal_revision": 1,
+      "outcome": "COUNTERPROPOSE",
+      "state": "COLLECTING",
+      "reason_codes": [
+        "SIZE_NORMALIZED"
+      ],
+      "candidate": {
+        "symbol": "SOLUSDT",
+        "side": "BUY",
+        "order_type": "LIMIT_IOC",
+        "quantity": "0.145",
+        "limit_price": "102.8",
+        "notional_quote": "14.906",
+        "fee_reserve_quote": "0.014906",
+        "total_quote_reserved": "14.920906",
+        "base_reserved": "0",
+        "reference_mark": "102.68"
+      },
+      "authority": {
+        "policy_version": 1,
+        "lease_revision": 1,
+        "account_epoch": 2,
+        "requires_operator_approval": true
+      },
+      "provenance": {
+        "execution_mode": "SHADOW",
+        "market_source": "BINANCE_PUBLIC_REST",
+        "model_source": "SCRIPTED",
+        "execution_source": "PAPER"
+      },
+      "receipt_id": "receipt_ffac6e93ff285277",
+      "proposal_hash": "465087ef64960e2a520e315ed411e0d65c10d4f83ffd0b309d2725316e40f9db",
+      "expires_at": "2026-09-08T08:18:08.873Z"
+    }
+  }
+}

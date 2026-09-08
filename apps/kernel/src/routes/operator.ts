@@ -21,17 +21,21 @@ import {
   completeOperatorRequest,
   countOutstandingCommands,
   findActiveLeaseForAgent,
+  getCommandById,
   getCurrentPolicy,
   getIntentById,
   getLeaseById,
+  getOrderForCommand,
   listAgents,
   listAssetBalances,
   listCommands,
   listConflictMembers,
   listConflicts,
+  listFillsForOrder,
   listIncidents,
   listInventoryAllocations,
   listLeases,
+  listLedgerEntries,
   listPreArmProposals,
   listPreArmProposalsForAgent,
   lockAccountRow,
@@ -51,6 +55,7 @@ import { resumeAccount, stopAccount } from "../services/account-control.ts";
 import { approveProposal } from "../services/approvals.ts";
 import { endProposalInTx, rejectProposal, resolveConflictRequest } from "../services/proposals.ts";
 import { quarantineAgentInTx } from "../services/quarantine.ts";
+import { reconcileCommand } from "../services/reconciliation.ts";
 import { issueLease, LeaseConflictError, registerAgent, setPolicy } from "../services/registry.ts";
 
 type ServiceError = Error & { code: ErrorCode; status: number; details?: unknown; reasonCodes?: string[] };
@@ -720,5 +725,73 @@ export async function operatorRoutes(app: FastifyInstance, options: { runtime: K
         reconciled_at: c.reconciled_at?.toISOString() ?? null,
       })),
     };
+  });
+
+  /** One command with its observed order, recorded fills, and the ledger entries those fills produced. */
+  app.get("/v1/commands/:id", async (request, reply) => {
+    const blocked = requireRuntime(reply, request);
+    if (blocked !== null || runtime.pool === null || runtime.account === null) return blocked;
+    const accountId = runtime.account.id;
+    const { id } = request.params as { id: string };
+    const detail = await withClient(runtime.pool, async (client) => {
+      const command = await getCommandById(client, id);
+      if (command === null || command.account_id !== accountId) return null;
+      const order = await getOrderForCommand(client, command.id);
+      const fills = order === null ? [] : await listFillsForOrder(client, order.id);
+      const ledger = [];
+      for (const fill of fills) ledger.push(...(await listLedgerEntries(client, accountId, { sourceFillId: fill.id })));
+      return { command, order, fills, ledger };
+    });
+    if (detail === null) {
+      reply.code(404);
+      return errorEnvelope("NOT_FOUND", "command not found", request.id);
+    }
+    return {
+      command: {
+        ...detail.command,
+        created_at: detail.command.created_at.toISOString(),
+        updated_at: detail.command.updated_at.toISOString(),
+        armed_at: detail.command.armed_at?.toISOString() ?? null,
+        reconciled_at: detail.command.reconciled_at?.toISOString() ?? null,
+      },
+      order:
+        detail.order === null
+          ? null
+          : { ...detail.order, last_observed_at: detail.order.last_observed_at.toISOString() },
+      fills: detail.fills.map((f) => ({ ...f, event_time: f.event_time.toISOString() })),
+      ledger_entries: detail.ledger.map((l) => ({ ...l, created_at: l.created_at.toISOString() })),
+      reconciliation_schedule: runtime.reconciliation.get(detail.command.id) ?? null,
+    };
+  });
+
+  /**
+   * Operator-triggered reconciliation of one unsettled command: query the venue by the stable order identity and
+   * apply what it reports. Never submits. Resets the automatic backoff so a bounded investigation can continue.
+   */
+  app.post("/v1/commands/:id/reconcile", async (request, reply) => {
+    const blocked = requireRuntime(reply, request);
+    if (blocked !== null) return blocked;
+    const { id } = request.params as { id: string };
+    return idempotent(request, reply, `reconcile:${id}`, async () => {
+      runtime.reconciliation.delete(id);
+      const report = await reconcileCommand(runtime, id, runtime.clock(), "OPERATOR");
+      return { status: 200, body: report };
+    });
+  });
+
+  /** Controlled balances, attribution, and the append-only inventory journal (prd.md 14.3). */
+  app.get("/v1/ledger", async (request, reply) => {
+    const blocked = requireRuntime(reply, request);
+    if (blocked !== null || runtime.pool === null || runtime.account === null) return blocked;
+    const accountId = runtime.account.id;
+    return withClient(runtime.pool, async (client) => ({
+      balances: await listAssetBalances(client, accountId),
+      allocations: await listInventoryAllocations(client, accountId),
+      entries: (await listLedgerEntries(client, accountId, { limit: 500 })).map((l) => ({
+        ...l,
+        created_at: l.created_at.toISOString(),
+      })),
+      server_time: runtime.clock().toISOString(),
+    }));
   });
 }

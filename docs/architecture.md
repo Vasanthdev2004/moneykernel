@@ -47,15 +47,25 @@ The account row lock serializes every resource claim, which is what keeps two co
 - Approval binds to proposal revision, hash, account epoch, policy version, lease revision; it is single-use and creates the READY command with a deterministic `mk_…` client order id. Mismatches are refused, never reinterpreted.
 - The dispatcher arms one READY command per pass: refresh inputs outside the transaction, recheck every authority and freshness condition inside it (including price drift against the proposal's mark and a re-evaluation of the exact approved order), consume the approval and attempt slot, commit, then send the exact persisted payload once. Observed outcomes are persisted as ACCEPTED (order + fills), REJECTED_CONFIRMED (holds released), or OUTCOME_UNKNOWN (reservations retained, account RECONCILING, incident opened).
 - Quarantine triggers on more than 10 unique intents or 3 hard authority violations in a trailing 60 s window, or by operator action; it invalidates the agent's pre-arm proposals, releases only never-armed holds, and opens a CRITICAL incident. Stop pauses the account, bumps the epoch, ends pre-arm candidates, and lists in-flight commands whose outcomes may still change. Resume is readiness-gated.
-- Accounting of fills (balances, attribution, lease consumption, hold settlement) is not yet applied; accepted commands stay unreconciled until Gate 4.
+
+## Execution, reconciliation, recovery (Gate 4)
+
+- The venue response is persisted and reconciled in one transaction (prd.md 11.3 step 9, 28.3). Each fill is inserted by its external identity; only a newly inserted fill appends ledger entries (`FILL_BASE`, `FILL_QUOTE`, `FILL_FEE`), moves controlled balances and the agent's attribution, and adds executed BUY cost plus quote fee to the lease's consumed budget. The ledger's unique index on (fill, category, asset) makes a second application impossible (T-39). SELL proceeds credit the account's quote balance and never replenish acquisition budget (T-16).
+- On a terminal order whose fill detail matches the venue's totals, the armed hold is settled: the executed part stays as `CONSUMED`, the unfilled remainder becomes a separate `RELEASED` row (T-40), and `commands.reconciled_at` is stamped. Mismatched totals or an unsupported fee asset open an incident and keep the hold as a conservative buffer (T-45).
+- The paper venue (`paper-2`) walks the observed book within the limit, applies the configured fee model, expires the IOC remainder, and keeps its own journal under `MONEYKERNEL_STATE_DIR` (`.moneykernel/paper-venue-<mode>-<alias>.json`), written before any response leaves. Liquidity consumption is keyed by book observation.
+- Boot recovery (prd.md 11.8): after pausing the account and advancing the epoch, every armed, unknown, or unsettled command is queried at the venue by its stable client order id and reconciled; nothing is ever resent. A command still `ARMED` that the venue does not know becomes `OUTCOME_UNKNOWN` with a CRITICAL incident (T-37); `NOT_FOUND` never means rejected (T-36). Stale approvals are invalidated; proposals they covered and proposals whose TTL elapsed end with their never-armed holds released; other pre-arm proposals keep their holds until their own TTL. Armed holds are never touched by pre-arm paths (T-42).
+- A background pass re-queries unsettled commands with exponential backoff, at most six times; `POST /v1/commands/:id/reconcile` lets an operator continue. Settling the last outstanding command moves a `RECONCILING` account to `PAUSED` (`ACCOUNT_RECONCILED`); `POST /v1/account/resume` requires zero outstanding commands and no unacknowledged CRITICAL incident.
+- `GET /v1/commands/:id` returns the command, its observed order, recorded fills, and the ledger entries they produced; `GET /v1/ledger` returns balances, attribution, and the journal.
+- SHADOW reads the live book through a read-only Binance public REST adapter (`BINANCE_PUBLIC_REST`, GET only, allowlisted hosts, no credentials); the paper venue then walks that live book. TESTNET uses the same adapter against Spot Testnet for reads only.
+- The strategy runner (`apps/agents`, prd.md 16) turns an agent's bounded context into at most one intent per run through a provider (scripted, recorded, Anthropic Messages API, or a supported agent session bound to the context hash), validates strictly with one repair attempt, records a trace, and submits through the agent API only.
 
 ## Modes (prd.md 13.1)
 
 | Mode | Market context | Funds and orders | Adapter selected at construction time |
 |---|---|---|---|
-| REPLAY | Synthetic or archived fixtures | Virtual, deterministic | Paper executor |
-| SHADOW | Binance public REST reads, labelled as such | Virtual ledger, paper fills | Paper executor |
-| TESTNET | Testnet reads | External Testnet orders (P1, unqualified) | Refuses to start until qualified |
+| REPLAY | Synthetic or archived fixtures (`SYNTHETIC_FIXTURE`) | Virtual, deterministic | Fixture market adapter + paper executor over the fixture book |
+| SHADOW | Binance public REST reads (`BINANCE_PUBLIC_REST`, read-only) | Virtual ledger, paper fills on the live book | Public REST market adapter + paper executor over the live book |
+| TESTNET | Spot Testnet public reads (`BINANCE_TESTNET_REST`) | External Testnet orders (P1, unqualified) | Read adapter only; execution refuses to start until qualified |
 
 There is no LIVE mode and no configuration option that creates one. Agent OS MCP observations cannot be obtained by the backend itself (Gate 0 finding); if relayed through a supported agent session they are labelled `BINANCE_MCP_VIA_SUPPORTED_AGENT` and treated as untrusted agent context.
 

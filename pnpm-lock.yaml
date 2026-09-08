@@ -138,7 +138,14 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1))
 
-  apps/agents: {}
+  apps/agents:
+    dependencies:
+      '@moneykernel/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
 
   apps/kernel:
     dependencies:

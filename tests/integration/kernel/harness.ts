@@ -1,6 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { dec, toDecimalString, ZERO } from "@moneykernel/domain";
-import type { Scenario } from "@moneykernel/integrations";
+import {
+  MemoryPaperVenueStore,
+  type PaperFaults,
+  type PaperVenueStore,
+  type Scenario,
+} from "@moneykernel/integrations";
 import { createPool, listOutstandingReservations, migrate, withClient } from "@moneykernel/persistence";
 import { expect } from "vitest";
 import { buildApp } from "../../../apps/kernel/src/app.ts";
@@ -20,6 +25,10 @@ export type Harness = {
   clock: { now: number };
   accountId: string;
   alias: string;
+  fixtureId: string;
+  /** The paper venue's memory; survives `restartHarness` like a real venue survives a kernel crash. */
+  paperVenueStore: PaperVenueStore;
+  paperFaults: PaperFaults;
   /** Advances the virtual clock. */
   tick: (ms: number) => void;
 };
@@ -36,10 +45,20 @@ export async function migrateTestDatabase(): Promise<void> {
 export async function startHarness(
   scenario: Scenario,
   fixtureId: string,
-  options: { alias?: string; seed?: boolean } = {},
+  options: {
+    alias?: string;
+    seed?: boolean;
+    paperVenueStore?: PaperVenueStore;
+    paperFaults?: PaperFaults;
+    clock?: { now: number };
+    seedResult?: SeedResult;
+    allowFailedChecks?: boolean;
+  } = {},
 ): Promise<Harness> {
   const alias = options.alias ?? `h-${randomBytes(3).toString("hex")}`;
-  const clock = { now: Date.parse("2026-09-08T12:00:00Z") };
+  const clock = options.clock ?? { now: Date.parse("2026-09-08T12:00:00Z") };
+  const paperVenueStore = options.paperVenueStore ?? new MemoryPaperVenueStore();
+  const paperFaults = options.paperFaults ?? {};
   const config = loadConfig({
     DATABASE_URL: DATABASE_URL_TEST,
     OPERATOR_BOOTSTRAP_SECRET: OPERATOR_SECRET,
@@ -48,15 +67,49 @@ export async function startHarness(
     REPLAY_FIXTURE: fixtureId,
     LOG_LEVEL: "silent",
   });
-  const runtime = await boot(config, { clock: () => new Date(clock.now) });
+  const runtime = await boot(config, { clock: () => new Date(clock.now), paperVenueStore, paperFaults });
   const failed = runtime.bootChecks.filter((c) => !c.ok);
-  if (failed.length > 0 || runtime.account === null) throw new Error(`boot not ready: ${JSON.stringify(failed)}`);
+  if ((failed.length > 0 && !options.allowFailedChecks) || runtime.account === null)
+    throw new Error(`boot not ready: ${JSON.stringify(failed)}`);
   const seed =
-    options.seed === false
+    options.seedResult ??
+    (options.seed === false
       ? { account_id: runtime.account.id, policy_version: 0, agents: [], symbols: [] }
-      : await seedScenario(runtime, scenario, { operatorId: "test" });
+      : await seedScenario(runtime, scenario, { operatorId: "test" }));
   const app = buildApp(runtime);
-  return { runtime, app, seed, clock, accountId: runtime.account.id, alias, tick: (ms) => (clock.now += ms) };
+  return {
+    runtime,
+    app,
+    seed,
+    clock,
+    accountId: runtime.account.id,
+    alias,
+    fixtureId,
+    paperVenueStore,
+    paperFaults,
+    tick: (ms) => (clock.now += ms),
+  };
+}
+
+/**
+ * Simulates a kernel crash and restart: the process state is gone, the
+ * database and the venue's own memory remain. Pass a different store to model
+ * a venue that never saw the order.
+ */
+export async function restartHarness(
+  h: Harness,
+  scenario: Scenario,
+  options: { paperVenueStore?: PaperVenueStore; paperFaults?: PaperFaults } = {},
+): Promise<Harness> {
+  await stopHarness(h);
+  return startHarness(scenario, h.fixtureId, {
+    alias: h.alias,
+    paperVenueStore: options.paperVenueStore ?? h.paperVenueStore,
+    paperFaults: options.paperFaults ?? h.paperFaults,
+    clock: h.clock,
+    seedResult: h.seed,
+    allowFailedChecks: true,
+  });
 }
 
 export async function stopHarness(h: Harness): Promise<void> {

@@ -66,8 +66,11 @@ export async function refreshMarks(
       const snapshot = await runtime.market.getSnapshot(symbol);
       await recordMarketSnapshot(runtime.pool, accountId, snapshot);
       result.snapshots.push(snapshot);
+      runtime.marketHealth.last_successful_read_at = snapshot.received_at;
     } catch (error) {
-      result.failures.push({ symbol, error: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      runtime.marketHealth.last_error = message;
+      result.failures.push({ symbol, error: message });
     }
   }
   return result;

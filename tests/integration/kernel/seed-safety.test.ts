@@ -18,14 +18,14 @@ function scenario(): Scenario {
   return loadScenario("scenario-b-opposing-intents", FIXTURES_DIR);
 }
 
-async function start(mode = "REPLAY"): Promise<KernelRuntime> {
+async function start(mode = "REPLAY", fixture = "scenario-b-opposing-intents"): Promise<KernelRuntime> {
   const runtime = await boot(
     loadConfig({
       DATABASE_URL: DATABASE_URL_TEST,
       OPERATOR_BOOTSTRAP_SECRET: "seed-safety-review-secret",
       MONEYKERNEL_MODE: mode,
       MONEYKERNEL_ACCOUNT_ALIAS: `seed-safety-${randomBytes(6).toString("hex")}`,
-      REPLAY_FIXTURE: "scenario-b-opposing-intents",
+      REPLAY_FIXTURE: fixture,
       LOG_LEVEL: "silent",
       ...(mode === "TESTNET"
         ? { BINANCE_TESTNET_API_KEY: "test-placeholder", BINANCE_TESTNET_API_SECRET: "test-placeholder" }
@@ -197,7 +197,7 @@ describe("scenario initialization and inventory conservation", () => {
   });
 
   it("refuses initial activation when readiness is blocked", async () => {
-    const runtime = await start("SHADOW");
+    const runtime = await start("REPLAY", "scenario-that-does-not-exist");
     const before = await state(runtime);
     await expect(seedScenario(runtime, scenario())).rejects.toThrow(/readiness/);
     expect(await state(runtime)).toEqual(before);

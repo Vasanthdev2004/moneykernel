@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/raw", "!**/pnpm-lock.yaml", "!spikes"]
+    "includes": ["**", "!**/dist", "!**/raw", "!**/pnpm-lock.yaml", "!spikes", "!docs/evidence"]
   },
   "formatter": {
     "enabled": true,

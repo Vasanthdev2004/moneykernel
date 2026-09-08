@@ -40,6 +40,8 @@ const EnvSchema = z.object({
     .string()
     .regex(/^[a-z0-9][a-z0-9-]{0,80}$/, "REPLAY_FIXTURE must be a scenario id")
     .default("scenario-a-constrained-acquisition"),
+  /** Operational state that is not the database: paper venue journals, model run traces. Never secrets. */
+  MONEYKERNEL_STATE_DIR: z.string().min(1).default(".moneykernel"),
 });
 
 export type ModelProvider = "disabled" | "anthropic" | "openai";
@@ -62,6 +64,7 @@ export type KernelConfig = {
   enablePublicMutations: boolean;
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   replayFixture: string;
+  stateDir: string;
   /** Hash of the non-secret configuration; stored on the account row and shown in status. */
   configurationHash: string;
   warnings: string[];
@@ -161,6 +164,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
     enablePublicMutations: e.ENABLE_PUBLIC_MUTATIONS,
     logLevel: e.LOG_LEVEL,
     replayFixture: e.REPLAY_FIXTURE,
+    stateDir: e.MONEYKERNEL_STATE_DIR,
     configurationHash,
     warnings,
   };
@@ -185,6 +189,7 @@ export function redactedConfig(config: KernelConfig): Record<string, unknown> {
     enable_public_mutations: config.enablePublicMutations,
     log_level: config.logLevel,
     replay_fixture: config.environment === "REPLAY" ? config.replayFixture : null,
+    state_dir: config.stateDir,
     configuration_hash: config.configurationHash,
     warnings: config.warnings,
   };

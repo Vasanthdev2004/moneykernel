@@ -1,5 +1,5 @@
 import { loadScenario } from "@moneykernel/integrations";
-import { countOutstandingCommands, listOutstandingCommands } from "@moneykernel/persistence";
+import { countOutstandingCommands, listCommands, listOutstandingCommands, withClient } from "@moneykernel/persistence";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { dispatchOnce } from "../../../apps/kernel/src/dispatcher/dispatch.ts";
 import { FIXTURES_DIR } from "../../../apps/kernel/src/fixtures.ts";
@@ -24,10 +24,17 @@ afterAll(async () => {
   for (const h of harnesses) await stopHarness(h);
 });
 
+/**
+ * An accepted command whose accounting cannot settle: the paper venue's order summary reports more executed base
+ * than the fills it lists (fill detail lag), so reconciliation keeps the armed hold as a conservative buffer and
+ * leaves `reconciled_at` unset (prd.md 11.6). Since G4 a clean paper fill settles inside the dispatch transaction.
+ */
 async function acceptedCommand() {
+  const faults = { overstateExecutedFor: new Set<string>() };
   const h = await startHarness(
     loadScenario("scenario-a-constrained-acquisition", FIXTURES_DIR),
     "scenario-a-constrained-acquisition",
+    { paperFaults: faults },
   );
   harnesses.push(h);
   const alpha = seededAgent(h, "agent_alpha");
@@ -56,6 +63,10 @@ async function acceptedCommand() {
     { "idempotency-key": "control-approve-01" },
   );
   expect(approval.status).toBe(201);
+  const readyPool = h.runtime.pool;
+  if (readyPool === null) throw new Error("no pool");
+  for (const command of await withClient(readyPool, (c) => listCommands(c, h.accountId)))
+    faults.overstateExecutedFor.add(command.client_order_id);
   const dispatch = await dispatchOnce(h.runtime, new Date(h.clock.now));
   if (dispatch.kind !== "ARMED" || dispatch.outcome !== "ACCEPTED")
     throw new Error(`unexpected dispatch: ${JSON.stringify(dispatch)}`);

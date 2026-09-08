@@ -3,6 +3,7 @@ import { boot } from "./boot.ts";
 import { ConfigError, loadConfig, redactedConfig } from "./config.ts";
 import { dispatchOnce } from "./dispatcher/dispatch.ts";
 import { sweepProposals } from "./services/proposals.ts";
+import { reconcileOutstanding } from "./services/reconciliation.ts";
 
 async function main(): Promise<void> {
   let config: ReturnType<typeof loadConfig>;
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
   const runtime = await boot(config, { log: (message) => console.error(`[boot] ${message}`) });
   const app = buildApp(runtime);
   app.log.info({ config: redactedConfig(config) }, "configuration loaded");
+  if (runtime.recovery !== null) app.log.info({ recovery: runtime.recovery }, "boot recovery");
   for (const check of runtime.bootChecks) {
     app.log[check.ok ? "info" : "warn"](
       { check: check.name, detail: check.detail },
@@ -27,9 +29,11 @@ async function main(): Promise<void> {
     );
   }
 
-  // Background coordination: proposal sweep (collection window, conflicts, expiry) and single-writer dispatch.
+  // Background coordination: proposal sweep (collection window, conflicts, expiry), single-writer dispatch,
+  // and bounded re-queries of unsettled commands by stable identity (never resends).
   let sweeping = false;
   let dispatching = false;
+  let reconciling = false;
   const timers: NodeJS.Timeout[] = [];
   if (runtime.writer !== null && runtime.account !== null) {
     timers.push(
@@ -58,6 +62,20 @@ async function main(): Promise<void> {
           dispatching = false;
         }
       }, 250),
+    );
+    timers.push(
+      setInterval(async () => {
+        if (reconciling) return;
+        reconciling = true;
+        try {
+          const sweep = await reconcileOutstanding(runtime, runtime.clock());
+          if (sweep.reports.length > 0) app.log.info({ sweep }, "reconciliation");
+        } catch (error) {
+          app.log.error({ err: error }, "reconciliation failed");
+        } finally {
+          reconciling = false;
+        }
+      }, 1000),
     );
   }
 
