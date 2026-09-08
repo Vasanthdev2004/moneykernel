@@ -1,0 +1,72 @@
+{
+  "capturedAt": "2026-09-08T16:12:27.848Z",
+  "account": "film-mtsv3igt",
+  "source": "BINANCE_PUBLIC_REST",
+  "execution": "SHADOW_PAPER",
+  "book": {
+    "snapshot_id": "snap_a20ce6a023b5b10b",
+    "received_at": "2026-09-08T16:12:26.622Z",
+    "best_bid": {
+      "price": "103.74",
+      "quantity": "153.182"
+    },
+    "best_ask": {
+      "price": "103.75",
+      "quantity": "502.932"
+    }
+  },
+  "intent": {
+    "schema_version": "1",
+    "lease_id": "lease_alpha_2fdbc62f",
+    "symbol": "SOLUSDT",
+    "side": "BUY",
+    "order_type": "LIMIT_IOC",
+    "size": {
+      "kind": "QUOTE_NOTIONAL",
+      "quote_asset": "USDT",
+      "amount": "50"
+    },
+    "limit_price": "103.96",
+    "observation_ids": [
+      "snap_a20ce6a023b5b10b"
+    ],
+    "rationale": "Demonstrate bounded spending authority using a fresh live Binance order book."
+  },
+  "decision": {
+    "intent_id": "intent_fba4c04b3c9a4c3b",
+    "proposal_id": "proposal_24d2a1d19626abab",
+    "proposal_revision": 1,
+    "outcome": "COUNTERPROPOSE",
+    "state": "AWAITING_APPROVAL",
+    "reason_codes": [
+      "LEASE_BUDGET"
+    ],
+    "candidate": {
+      "side": "BUY",
+      "symbol": "SOLUSDT",
+      "quantity": "0.288",
+      "order_type": "LIMIT_IOC",
+      "limit_price": "103.96",
+      "base_reserved": "0",
+      "notional_quote": "29.94048",
+      "reference_mark": "103.74",
+      "fee_reserve_quote": "0.02994048",
+      "total_quote_reserved": "29.97042048"
+    },
+    "authority": {
+      "policy_version": 1,
+      "lease_revision": 1,
+      "account_epoch": 1,
+      "requires_operator_approval": true
+    },
+    "provenance": {
+      "execution_mode": "SHADOW",
+      "market_source": "BINANCE_PUBLIC_REST",
+      "model_source": "DISABLED",
+      "execution_source": "PAPER"
+    },
+    "receipt_id": "receipt_be1431ee1ded524e",
+    "proposal_hash": "a6300b3a75f7848d81455e236bd9a6e4be4e83da6e113f89b9fe1c86dd162ef4",
+    "expires_at": "2026-09-08T16:14:26.802Z"
+  }
+}

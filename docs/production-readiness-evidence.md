@@ -33,7 +33,7 @@ The image was run with a read-only root filesystem, a writable state volume, no 
 - authorized Prometheus metrics reporting ready and zero unknown commands;
 - the migration runner reporting five applied migrations, zero pending, and zero drift.
 
-Docker Scout v1.24.0 indexed 119 packages in the final image and reported 0 critical, high, medium, or low vulnerabilities using its 2026-09-08 advisory database. This scan is point-in-time evidence; Dependabot tracks npm, GitHub Actions, and container updates after merge.
+Docker Scout v1.24.0 indexed 119 packages in the final image and reported 0 critical or high vulnerabilities in the severity-filtered scan using its 2026-09-08 advisory database. That scan does not establish the absence of medium or low findings. This scan is point-in-time evidence; Dependabot tracks npm, GitHub Actions, and container updates after merge.
 
 ## Claim boundary
 

@@ -1,0 +1,14 @@
+{
+  "node": "24.20.0",
+  "alias": "readme-mtswe7hd",
+  "mode": "SHADOW",
+  "profile": "docs/submission/shadow-bootstrap.json",
+  "checks": [
+    "documented profile bootstraps a fresh account",
+    "live public market request reaches exact approval with a smaller candidate",
+    "doctor passes with the pinned Node version, migrated database, configuration, and tracked secret scan",
+    "recorded submission export passes all nine offline checks",
+    "all relative document and image targets exist"
+  ],
+  "ok": true
+}
