@@ -1,18 +1,20 @@
-# Security
+# Security policy
 
-MoneyKernel v0.1 supports a production-hardened private SHADOW beta. It is not a licensed financial service or custody solution, and it cannot place a real-money order.
+MoneyKernel's maintained release boundary is the current `main` branch and its private, single-instance SHADOW deployment. REPLAY and SHADOW use virtual funds. Testnet execution is unqualified, and mainnet execution is absent. See the [deployment runbook](docs/production-shadow.md) for supported operating conditions.
 
-## Boundaries
+## Authority and deployment boundaries
 
-- Safety authority is deterministic application code. No model output can change policy, grant approval, mint leases, or arm an order.
-- Default mode is REPLAY (offline fixtures, virtual funds). SHADOW uses real market observations with virtual funds. TESTNET uses Binance Spot Testnet only after qualification. There is no mainnet execution path and no configuration option to create one.
-- The strategy process never receives exchange credentials, operator session data, or a writable database connection.
-- Secrets live only in `.env` (gitignored) or environment injection. Nothing in this repository grants access to any account.
-- Production config requires an HTTPS canonical origin, strong and separate operator/metrics secrets, a trusted-proxy declaration, and a bounded global request rate. Browser mutations require same-origin CSRF; metrics use a separate bearer token.
-- The production container runs as a non-root user with a read-only root filesystem. PostgreSQL and the kernel are reachable only through the Compose network; Caddy is the public TLS edge.
+- Model output cannot change policy, grant approval, issue leases, or arm an order. The strategy process receives no exchange credentials, operator session, or writable database connection.
+- Secrets belong in a private environment or secret store. `.env` and operational state are gitignored.
+- Production configuration requires an HTTPS origin, separate strong operator and metrics secrets, and bounded request rates. Browser mutations require same-origin CSRF checks; proxy trust must be configured deliberately.
+- The production container runs without root privileges on a read-only filesystem. PostgreSQL and the kernel remain inside the Compose network behind the Caddy TLS edge.
 
-See `prd.md` section 18 for the threat model, role permissions, and residual limitations, and `docs/production-shadow.md` for deployment controls and response procedures.
+The [PRD threat model](prd.md#18-security-privacy-and-operational-boundaries) documents permissions and residual risks.
 
-## Reporting
+## Report a vulnerability
 
-Open a private security advisory on the GitHub repository, or contact the maintainer directly. Do not open public issues for credential or authorization problems.
+Use [GitHub's private vulnerability reporting](https://github.com/Vasanthdev2004/moneykernel/security/advisories/new). Include the affected commit, reproduction steps, expected and observed behavior, and a sanitized impact example. Do not send real account credentials, operator secrets, agent tokens, or customer data. Do not open a public issue containing an exploitable vulnerability before coordination with the maintainer.
+
+Reports affecting authority escalation, cross-account access, duplicate submission, inconsistent reservations, accounting, credential disclosure, or unsafe recovery receive priority. Response times are not guaranteed for this independently maintained hackathon project.
+
+An internally consistent audit chain does not prove that an upstream data source is truthful or reveal a complete history rewrite without an independently retained checkpoint. Public market data can be unavailable or stale, and paper execution does not establish external venue behavior.

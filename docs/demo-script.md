@@ -1,5 +1,7 @@
 # Demo script (prd.md 23.1, 23.2)
 
+The completed **1:45 SHADOW submission video** and its public download links are in the [submission package](submission/README.md). Its [matching run export](evidence/submission/README.md) passed all nine verifier checks. The instructions below document how to reproduce the product flow and the separate four-scene REPLAY rehearsal.
+
 > AI agents can propose trades. MoneyKernel decides whether they have the authority and resources to act, and records the result.
 
 ## Recommended recording: live Binance data, virtual execution
@@ -141,6 +143,6 @@ failure, risk-free autonomous trading, saved real money.
 - `pnpm run doctor` passes; `.env` is not tracked; no secret in any terminal you show.
 - Confirm the current fresh-clone REPLAY startup and rehearsal results in [test evidence](test-evidence.md).
 - Keep screenshots with the verified export and verification result from the same rehearsal account.
-- The [MIT license](../LICENSE) is included. Recording, upload and submission remain owner steps.
+- The [MIT license](../LICENSE) is included. The primary SHADOW recording is complete; the public package links above identify it. Posting and survey submission remain owner steps.
 - Describe this as a partial prototype: a supported Codex session produced verified, read-only Binance plugin evidence; backend-owned Agent OS access and the README's other integration gaps remain open.
 - Verify the entry survey fields and eligibility, submit the actual video/repository links, check public access, and retain the completion confirmation.

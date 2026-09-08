@@ -1,0 +1,22 @@
+{
+  "sourceCommit": "7dd4736190b2809255454222165d7c0845e4a2b7",
+  "account": "film-mtsv3igt",
+  "mode": "SHADOW",
+  "market": "BINANCE_PUBLIC_REST",
+  "execution": "PAPER",
+  "externalOrderWrites": 0,
+  "voice": "en-US-AndrewMultilingualNeural",
+  "voiceService": "Microsoft Edge text-to-speech via node-edge-tts",
+  "voiceIsSynthetic": true,
+  "captionMethod": "Narration word boundary timestamps, manually phrased caption lines",
+  "rawCapture": "Chromium Playwright video of actual local UI",
+  "editor": "Remotion 4.0.522 + FFmpeg",
+  "durationSeconds": 105.1,
+  "dimensions": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "operatorCredentialsInDelivery": false,
+  "exportChecksPassed": 9
+}

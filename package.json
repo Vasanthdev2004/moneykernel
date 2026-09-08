@@ -48,5 +48,13 @@
     "@moneykernel/domain": "workspace:*",
     "@moneykernel/integrations": "workspace:*",
     "@moneykernel/persistence": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vasanthdev2004/moneykernel.git"
+  },
+  "homepage": "https://github.com/Vasanthdev2004/moneykernel#readme",
+  "bugs": {
+    "url": "https://github.com/Vasanthdev2004/moneykernel/issues"
   }
 }

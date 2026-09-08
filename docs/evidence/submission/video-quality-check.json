@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "dimensions": [
+    1920,
+    1080
+  ],
+  "fps": "30/1",
+  "videoCodec": "h264",
+  "audioCodec": "aac",
+  "videoDuration": 105.1,
+  "audioDuration": 105.152,
+  "duration": 105.152,
+  "bytes": 23628222,
+  "sha256": "e21fde1fc14eb5ffe9ba00b92ac4393eb3d307ece9ccd25b17090d2fcb9c750f",
+  "decodeErrors": 0,
+  "captions": 36,
+  "captionOverlaps": 0,
+  "sampledFrames": [
+    {
+      "scene": "intro",
+      "seconds": 3.3
+    },
+    {
+      "scene": "flow",
+      "seconds": 10.6
+    },
+    {
+      "scene": "overview",
+      "seconds": 22.7
+    },
+    {
+      "scene": "agents",
+      "seconds": 31.633333333333333
+    },
+    {
+      "scene": "request",
+      "seconds": 40.86666666666667
+    },
+    {
+      "scene": "candidate",
+      "seconds": 54.733333333333334
+    },
+    {
+      "scene": "approval",
+      "seconds": 60.266666666666666
+    },
+    {
+      "scene": "settlement",
+      "seconds": 69.66666666666666
+    },
+    {
+      "scene": "receipt",
+      "seconds": 83.86666666666667
+    },
+    {
+      "scene": "stop",
+      "seconds": 92.83333333333333
+    },
+    {
+      "scene": "close",
+      "seconds": 96.86666666666666
+    }
+  ],
+  "checksPassed": 9,
+  "browserPlayback": {
+    "ok": true,
+    "paused": false,
+    "time": 1.907392,
+    "width": 1920,
+    "height": 1080,
+    "error": null,
+    "readyState": 4,
+    "seekVerified": true,
+    "pageErrors": []
+  }
+}
