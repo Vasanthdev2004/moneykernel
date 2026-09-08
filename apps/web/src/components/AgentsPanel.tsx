@@ -1,3 +1,4 @@
+import { Bot } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { amount, shortId, trimDecimal } from "../format.ts";
 import { ACTION } from "../hooks.ts";
@@ -13,11 +14,18 @@ import type {
 } from "../types.ts";
 import { Badge, CountdownText, DefList, Empty, ErrorNote, Mono, Panel, StateBadge, Timestamp } from "./common.tsx";
 import { TokenIcon } from "./TokenIcon.tsx";
+import { UsageMeter } from "./ui.tsx";
 
 const STRATEGY_KINDS: StrategyKind[] = ["SCRIPTED", "MODEL", "RECORDED", "SUPPORTED_AGENT"];
 const SIDES: Side[] = ["BUY", "SELL"];
 const DECIMAL_RE = /^\d+(\.\d+)?$/;
 const SYMBOL_RE = /^[A-Z0-9]{2,20}$/;
+
+function usagePercent(consumed: string | number, limit: string | number): number {
+  const used = Number(consumed);
+  const total = Number(limit);
+  return total > 0 && Number.isFinite(used) && Number.isFinite(total) ? (used / total) * 100 : 0;
+}
 
 export interface AgentTokenReveal {
   agent: Agent;
@@ -408,23 +416,35 @@ export function AgentsPanel({
             return (
               <li className="agent" data-testid="agent-row" key={agent.id}>
                 <div className="agent-head">
-                  <strong className="agent-name">{agent.name}</strong>
+                  <span className="agent-avatar" aria-hidden="true">
+                    <Bot size={19} strokeWidth={1.8} />
+                  </span>
+                  <div className="agent-identity">
+                    <strong className="agent-name">{agent.name}</strong>
+                    <span className="muted small">{agent.strategy_kind.toLowerCase().replace("_", " ")} strategy</span>
+                  </div>
                   <StateBadge presentation={presentation} />
                 </div>
                 {lease !== null ? (
                   <div className="agent-summary">
-                    <div>
-                      <span className="muted small">Budget used</span>
-                      <p className="data">
-                        {trimDecimal(lease.consumed_quote)} / {amount(lease.acquisition_budget_quote, quoteAsset)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="muted small">Attempts used</span>
-                      <p className="data">
-                        {lease.attempts_consumed} / {lease.max_submission_attempts}
-                      </p>
-                    </div>
+                    <UsageMeter
+                      label="Budget used"
+                      value={usagePercent(lease.consumed_quote, lease.acquisition_budget_quote)}
+                      detail={
+                        <span className="data">
+                          {trimDecimal(lease.consumed_quote)} / {amount(lease.acquisition_budget_quote, quoteAsset)}
+                        </span>
+                      }
+                    />
+                    <UsageMeter
+                      label="Attempts used"
+                      value={usagePercent(lease.attempts_consumed, lease.max_submission_attempts)}
+                      detail={
+                        <span className="data">
+                          {lease.attempts_consumed} / {lease.max_submission_attempts}
+                        </span>
+                      }
+                    />
                   </div>
                 ) : (
                   <p className="muted small">No active lease.</p>

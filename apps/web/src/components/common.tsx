@@ -1,3 +1,4 @@
+import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import { countdown, fmtTs } from "../format.ts";
 import type { Presentation, Tone } from "../states.ts";
@@ -113,9 +114,7 @@ export function ErrorNote({ message, prefix }: { message: string | null | undefi
   if (!message) return null;
   return (
     <p className="error-note">
-      <span className="glyph" aria-hidden="true">
-        ✕
-      </span>
+      <CircleAlert size={16} aria-hidden="true" />
       {prefix ? `${prefix}: ` : ""}
       {message}
     </p>
@@ -204,7 +203,7 @@ export function Modal({
             onClick={() => ref.current?.close()}
             aria-label="Close dialog"
           >
-            ✕
+            <X size={18} aria-hidden="true" />
           </button>
         </header>
         <div className="modal-body">{children}</div>
@@ -226,6 +225,15 @@ export function Toasts({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id:
     <section className="toasts" aria-live="polite" aria-label="Notifications">
       {toasts.map((toast) => (
         <div className={`toast toast-${toast.kind}`} key={toast.id}>
+          <span className="toast-icon" aria-hidden="true">
+            {toast.kind === "success" ? (
+              <CircleCheck size={18} />
+            ) : toast.kind === "error" ? (
+              <CircleAlert size={18} />
+            ) : (
+              <Info size={18} />
+            )}
+          </span>
           <div className="toast-text">
             <strong>{toast.title}</strong>
             {toast.detail !== undefined && <div className="toast-detail">{toast.detail}</div>}
@@ -236,7 +244,7 @@ export function Toasts({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id:
             onClick={() => onDismiss(toast.id)}
             aria-label="Dismiss notification"
           >
-            ✕
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       ))}

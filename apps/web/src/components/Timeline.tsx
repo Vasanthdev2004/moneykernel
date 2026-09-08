@@ -1,10 +1,11 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Search, X } from "lucide-react";
 import { useState } from "react";
 import { describeEvent, type EventRefs, eventLabel, eventRefs, fmtAge, summarizeEvent } from "../format.ts";
 import type { StreamStatus } from "../hooks.ts";
 import { eventTone } from "../states.ts";
 import type { AuditEvent } from "../types.ts";
 import { Badge, Empty, Mono } from "./common.tsx";
+import { Hint, ScrollViewport } from "./ui.tsx";
 
 const MAX_ROWS = 300;
 
@@ -71,53 +72,65 @@ export function Timeline({
           <label htmlFor="timeline-filter" className="sr-only">
             Filter events
           </label>
-          <input
-            id="timeline-filter"
-            className="filter-input"
-            placeholder="Search activity"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          />
+          <div className="search-field">
+            <Search className="search-icon" size={16} aria-hidden="true" />
+            <input
+              id="timeline-filter"
+              className="filter-input"
+              placeholder="Search activity"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+            {filter.length > 0 && (
+              <Hint label="Clear search">
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setFilter("")}>
+                  <X size={15} aria-hidden="true" />
+                </button>
+              </Hint>
+            )}
+          </div>
         </div>
       </header>
       {rows.length === 0 ? (
         <Empty>{events.length === 0 ? "No events received yet." : "No events match the filter."}</Empty>
       ) : (
-        <ol className="events">
-          {rows.map(({ event, description, refs }) => {
-            const tone = eventTone(event.type, event.payload);
-            const hasRef = refs.intent_id !== null || refs.proposal_id !== null;
-            return (
-              <li
-                className={`event tone-${tone}`}
-                data-testid="timeline-event"
-                data-event-type={event.type}
-                key={event.id}
-              >
-                <span className={`event-marker event-marker-${tone}`} aria-hidden="true" />
-                <div className="event-copy">
-                  <strong className="event-title">{eventLabel(event.type)}</strong>
-                  <p className="event-summary">{description}</p>
-                  <div className="event-meta">
-                    <span>{fmtAge(event.occurred_at, serverNow)}</span>
-                    <Mono>{event.type}</Mono>
-                    <Mono className="seq">#{event.account_seq}</Mono>
+        <ScrollViewport className="event-scroll">
+          <ol className="events">
+            {rows.map(({ event, description, refs }) => {
+              const tone = eventTone(event.type, event.payload);
+              const hasRef = refs.intent_id !== null || refs.proposal_id !== null;
+              return (
+                <li
+                  className={`event tone-${tone}`}
+                  data-testid="timeline-event"
+                  data-event-type={event.type}
+                  key={event.id}
+                >
+                  <span className={`event-marker event-marker-${tone}`} aria-hidden="true" />
+                  <div className="event-copy">
+                    <strong className="event-title">{eventLabel(event.type)}</strong>
+                    <p className="event-summary">{description}</p>
+                    <div className="event-meta">
+                      <span>{fmtAge(event.occurred_at, serverNow)}</span>
+                      <Mono>{event.type}</Mono>
+                      <Mono className="seq">#{event.account_seq}</Mono>
+                    </div>
                   </div>
-                </div>
-                {hasRef && (
-                  <button
-                    type="button"
-                    className="text-button event-open"
-                    aria-label="open receipt"
-                    onClick={() => onOpen(refs)}
-                  >
-                    View receipt <ArrowRight size={14} aria-hidden="true" />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+                  {hasRef && (
+                    <button
+                      type="button"
+                      className="text-button event-open"
+                      aria-label="open receipt"
+                      onClick={() => onOpen(refs)}
+                    >
+                      View receipt <ArrowRight size={14} aria-hidden="true" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </ScrollViewport>
       )}
     </section>
   );
