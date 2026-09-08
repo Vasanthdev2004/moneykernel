@@ -10,5 +10,8 @@ hand-written except these README files. Timestamps are UTC.
 | `g4-review-model-run/` | The review session's qualifying model run with the exact context, unmodified output, trace, and receipt | Review session, see its README |
 | `replays/` | Sanitized run exports produced by `pnpm demo:replay`, each verified offline by `pnpm verify:receipt` | `pnpm demo:replay -- <scenario-id>`; copy of `.moneykernel/replays/<alias>/export.json` |
 
-A run export contains no agent token hashes, operator secrets, or provider keys; the verifier's secret
-scan fails if any appear. `docs/test-evidence.md` records the commands and counts behind every gate.
+The export query excludes token hashes. Export-time screening rejects known credential shapes and
+configured secret values; the offline verifier checks credential shapes without access to configuration.
+Neither scanner can identify every arbitrary secret in prose. Historical artifacts remain unchanged;
+the independent review is recorded in `docs/g6-fix-test-evidence.md`.
+`docs/test-evidence.md` records the commands and counts behind every gate.

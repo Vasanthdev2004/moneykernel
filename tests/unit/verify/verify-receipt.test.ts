@@ -12,7 +12,7 @@ import {
   type VerificationReport,
   verifyRunExport,
 } from "../../../scripts/verify-receipt.ts";
-import { buildBundle, COMMAND_ID, FILL_ID, fingerprintOnlyReceipt, RECEIPT_ID } from "./bundle-fixture.ts";
+import { buildBundle, COMMAND_ID, chainEvents, FILL_ID, fingerprintOnlyReceipt, RECEIPT_ID } from "./bundle-fixture.ts";
 
 const SCRIPT = fileURLToPath(new URL("../../../scripts/verify-receipt.ts", import.meta.url));
 const workDir = mkdtempSync(join(tmpdir(), "moneykernel-verify-"));
@@ -45,7 +45,7 @@ describe("verifyRunExport: a consistent export (prd.md 23.4)", () => {
     expect(report.checks.filter((c) => !c.ok)).toEqual([]);
     expect(report.ok).toBe(true);
     expect(report.summary).toEqual({
-      events: 10,
+      events: 12,
       receipts: 1,
       replayed: 1,
       fingerprint_only: 0,
@@ -67,14 +67,14 @@ describe("verifyRunExport: a consistent export (prd.md 23.4)", () => {
       expect(report.summary.receipts).toBe(0);
     }
     const report = verifyRunExport({ ...buildBundle(), environment: "MAINNET" });
-    expect(check(report, "schema").detail).toContain("$.environment");
+    expect(check(report, "schema").detail).toContain("does not match RunExportSchema");
   });
 });
 
 describe("audit integrity (prd.md 14.5)", () => {
   it("(b) T-54: editing one exported event payload fails the chain at that sequence", () => {
     const bundle = buildBundle();
-    const event = at(bundle.audit_events, 4);
+    const event = at(bundle.audit_events, 6);
     event.payload = { ...event.payload, outcome: "ALLOW_PROPOSAL" };
     const report = verifyRunExport(bundle);
     const chain = check(report, "event_chain");
@@ -136,12 +136,39 @@ describe("audit integrity (prd.md 14.5)", () => {
     const extra = fingerprintOnlyReceipt();
     bundle.intents.push(extra.intent);
     bundle.receipts.push(extra.receipt);
+    bundle.audit_events = chainEvents([
+      ...bundle.audit_events,
+      {
+        type: "INTENT_RECEIVED",
+        payload: {
+          intent_id: extra.intent.id,
+          agent_id: extra.intent.agent_id,
+          lease_id: extra.intent.lease_id,
+          payload_hash: extra.intent.payload_hash,
+        },
+      },
+      {
+        type: "DECISION_RECORDED",
+        occurred_at: extra.receipt.evaluated_at,
+        payload: {
+          receipt_id: extra.receipt.decision_id,
+          intent_id: extra.receipt.intent_id,
+          proposal_id: null,
+          outcome: extra.receipt.outcome,
+          reason_codes: extra.receipt.reason_codes,
+          decision_fingerprint: extra.receipt.decision_fingerprint,
+        },
+      },
+    ]);
+    bundle.checkpoint.event_count = bundle.audit_events.length;
+    bundle.checkpoint.final_hash = bundle.audit_events.at(-1)?.event_hash ?? null;
+    bundle.checkpoint.final_seq = bundle.audit_events.at(-1)?.account_seq ?? 0;
     const report = verifyRunExport(bundle);
     expect(report.ok).toBe(true);
     expect(report.summary).toMatchObject({ receipts: 2, replayed: 1, fingerprint_only: 1 });
     const replay = check(report, "decision_replay");
     expect(replay.ok).toBe(true);
-    expect(replay.detail).toContain("1 fingerprint-only: context not archived (receipt predates migration 0005)");
+    expect(replay.detail).toContain("1 fingerprint-only: context unavailable; replay completeness is not verified");
     expect(check(report, "receipt_fingerprints").count).toBe(2);
   });
 
@@ -166,7 +193,7 @@ describe("numerical agreement and conservation (prd.md 23.4, 14.3)", () => {
     expect(agreement.ok).toBe(false);
     expect(agreement.detail).toContain(`command ${COMMAND_ID}`);
     expect(agreement.detail).toContain("executed_quote");
-    expect(check(report, "ledger_conservation").ok).toBe(true);
+    expect(check(report, "ledger_conservation").ok).toBe(false);
   });
 
   it("flags a command whose armed payload, holds, or order status no longer match the candidate", () => {
@@ -203,8 +230,8 @@ describe("numerical agreement and conservation (prd.md 23.4, 14.3)", () => {
     const conservation = check(report, "ledger_conservation");
     expect(conservation.ok).toBe(false);
     expect(conservation.detail).toContain("USDT: ledger sum 973 != balance 972.973");
-    // A missing fee entry is legal per fill (fees can be zero), so agreement itself still holds.
-    expect(check(report, "numerical_agreement").ok).toBe(true);
+    // This fill records a positive commission, which must also appear as a fee debit.
+    expect(check(report, "numerical_agreement").ok).toBe(false);
     expect(report.ok).toBe(false);
   });
 
@@ -250,9 +277,9 @@ describe("secret and sanitization checks (T-58)", () => {
     const context = at(contextLeak.receipts, 0).evaluation_input as Record<string, unknown>;
     context.agent = { ...(context.agent as Record<string, unknown>), token: "not-a-real-token" };
     const report = verifyRunExport(contextLeak);
-    const sanitization = check(report, "sanitization");
+    const sanitization = check(report, "secret_scan");
     expect(sanitization.ok).toBe(false);
-    expect(sanitization.detail).toContain(RECEIPT_ID);
+    expect(sanitization.detail).toContain("credential key");
     expect(sanitization.detail).not.toContain("not-a-real-token");
   });
 
@@ -287,7 +314,7 @@ describe("CLI: node scripts/verify-receipt.ts (prd.md 22.2)", () => {
     expect(asJson.status).toBe(0);
     const report = JSON.parse(asJson.stdout) as VerificationReport;
     expect(report.ok).toBe(true);
-    expect(report.summary.events).toBe(10);
+    expect(report.summary.events).toBe(12);
   });
 
   it("exits 1 when a check fails and 2 for a bundle outside the export contract or a bad checkpoint", {

@@ -13,6 +13,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { canonicalJson } from "@moneykernel/contracts";
 import { dec, eq } from "@moneykernel/domain";
 import {
   loadScenario,
@@ -43,7 +44,16 @@ const { values, positionals } = parseArgs({
   },
 });
 const scenarioId = positionals[0] ?? "scenario-a-constrained-acquisition";
-const runs = Math.max(1, Number.parseInt(values.runs ?? "1", 10) || 1);
+const runsText = values.runs ?? "1";
+const runs = Number(runsText);
+if (!/^[1-9]\d*$/.test(runsText) || !Number.isSafeInteger(runs)) {
+  console.error("--runs must be a positive safe integer");
+  process.exit(1);
+}
+if (positionals.length > 1 || (values["keep-alias"] !== undefined && runs !== 1)) {
+  console.error("use one scenario, and use --keep-alias only with --runs 1");
+  process.exit(1);
+}
 
 let baseConfig: ReturnType<typeof loadConfig>;
 try {
@@ -72,6 +82,7 @@ class Replay {
   lastDecision: Json | null = null;
   lastCommandId: string | null = null;
   decisions: Json[] = [];
+  readonly submissions = new Map<string, { agentId: string; intent: Json; decision: Json }>();
 
   constructor(scenario: Scenario, alias: string) {
     this.scenario = scenario;
@@ -106,8 +117,11 @@ class Replay {
   }
 
   async shutdown(): Promise<void> {
-    await this.app.close();
-    await this.runtime.shutdown();
+    try {
+      await this.app?.close();
+    } finally {
+      await this.runtime?.shutdown();
+    }
   }
 
   async request(method: "GET" | "POST", url: string, body?: unknown, headers: Record<string, string> = {}) {
@@ -155,6 +169,7 @@ class Replay {
       "idempotency-key": key,
     });
     const decision = { http_status: res.status, ...res.body };
+    this.submissions.set(key, { agentId: fixtureAgentId, intent, decision });
     this.decisions.push(decision);
     this.lastDecision = decision;
     this.log.push(
@@ -227,59 +242,74 @@ class Replay {
 
 async function runScenario(scenario: Scenario, alias: string): Promise<{ replay: Replay; exportPath: string }> {
   const replay = new Replay(scenario, alias);
-  await replay.boot();
-  replay.agents = (await seedScenario(replay.runtime, scenario, { operatorId: "demo-replay" })).agents;
-  await replay.login();
+  try {
+    await replay.boot();
+    replay.agents = (await seedScenario(replay.runtime, scenario, { operatorId: "demo-replay" })).agents;
+    await replay.login();
 
-  for (const step of (scenario as Scenario & { steps?: Json[] }).steps ?? []) {
-    replay.clock.now = Math.max(replay.clock.now, Date.parse(String(step.at)));
-    const action = String(step.action);
-    if (action === "SUBMIT_INTENT") {
-      await replay.submitIntent(String(step.agent_id), String(step.idempotency_key), step.intent as Json);
-    } else if (action === "OPERATOR_APPROVE_EXACT") {
-      await replay.approveLast();
-    } else if (action === "DISPATCH") {
-      await replay.dispatch((step.fault as Json | undefined)?.kind as string | undefined);
-    } else if (action === "CRASH_BEFORE_RESPONSE_PERSISTED") {
-      replay.log.push("crash point: response never persisted (the dropped-response fault already modelled it)");
-    } else if (action === "RESTART") {
-      await replay.restart();
-    } else if (action === "RECONCILE") {
-      await replay.reconcile();
-    } else {
-      throw new Error(`unknown scenario step ${action}`);
+    for (const step of (scenario as Scenario & { steps?: Json[] }).steps ?? []) {
+      replay.clock.now = Math.max(replay.clock.now, Date.parse(String(step.at)));
+      const action = String(step.action);
+      if (action === "SUBMIT_INTENT") {
+        await replay.submitIntent(String(step.agent_id), String(step.idempotency_key), step.intent as Json);
+      } else if (action === "OPERATOR_APPROVE_EXACT") {
+        await replay.approveLast();
+      } else if (action === "DISPATCH") {
+        await replay.dispatch((step.fault as Json | undefined)?.kind as string | undefined);
+      } else if (action === "CRASH_BEFORE_RESPONSE_PERSISTED") {
+        const { pool, account } = replay.runtime;
+        if (pool === null || account === null) throw new Error("no runtime account");
+        const commands = await withClient(pool, (c) => listCommands(c, account.id));
+        const expected = (scenario as Scenario & { expected?: Json }).expected ?? {};
+        replay.check(
+          "state_entering_boot_recovery",
+          commands.length === 1 && commands[0]?.state === expected.state_on_boot,
+          commands.map((c) => c.state).join(","),
+        );
+      } else if (action === "RESTART") {
+        await replay.restart();
+        const expected = (scenario as Scenario & { expected?: Json }).expected ?? {};
+        const overview = await replay.op("GET", "/v1/overview");
+        const status = (overview.body.account as Json | undefined)?.status;
+        replay.check("account_status_on_boot", status === expected.account_status_on_boot, String(status));
+      } else if (action === "RECONCILE") {
+        await replay.reconcile();
+      } else {
+        throw new Error(`unknown scenario step ${action}`);
+      }
     }
-  }
 
-  // Scenario C carries a burst block instead of steps (prd.md 27.3).
-  const burst = (scenario as Scenario & { burst?: Json }).burst;
-  if (burst !== undefined) {
-    const count = Number(burst.count ?? 11);
-    const template = burst.intent_template as Json;
-    const prefix = String(burst.idempotency_key_prefix ?? "burst-");
-    const agentId = scenario.agents[0]?.agent_id ?? "";
-    for (let i = 1; i <= count; i += 1) {
-      replay.clock.now += Number(burst.spacing_ms ?? 50);
-      await replay.submitIntent(agentId, `${prefix}${String(i).padStart(3, "0")}`, {
-        ...template,
-        rationale: `burst request ${i}`,
-      });
+    // Scenario C carries a burst block instead of steps (prd.md 27.3).
+    const burst = (scenario as Scenario & { burst?: Json }).burst;
+    if (burst !== undefined) {
+      const count = Number(burst.count ?? 11);
+      const template = burst.intent_template as Json;
+      const prefix = String(burst.idempotency_key_prefix ?? "burst-");
+      const agentId = scenario.agents[0]?.agent_id ?? "";
+      for (let i = 1; i <= count; i += 1) {
+        replay.clock.now += Number(burst.spacing_ms ?? 50);
+        await replay.submitIntent(agentId, `${prefix}${i}`, {
+          ...template,
+          rationale: `burst request ${i}`,
+        });
+      }
     }
-  }
 
-  await evaluateExpectations(replay);
-  const exported = await replay.op("GET", "/v1/runs/current/export");
-  if (exported.status !== 200) throw new Error(`export failed: ${JSON.stringify(exported.body)}`);
-  const dir = join(values.out ?? ".moneykernel/replays", alias);
-  mkdirSync(dir, { recursive: true });
-  const exportPath = join(dir, "export.json");
-  writeFileSync(exportPath, `${JSON.stringify(exported.body, null, 2)}\n`);
-  writeFileSync(
-    join(dir, "replay-log.json"),
-    `${JSON.stringify({ scenario: scenario.scenario_id, alias, log: replay.log, checks: replay.checks, decisions: replay.decisions }, null, 2)}\n`,
-  );
-  await replay.shutdown();
-  return { replay, exportPath };
+    await evaluateExpectations(replay);
+    const exported = await replay.op("GET", "/v1/runs/current/export");
+    if (exported.status !== 200) throw new Error(`export failed: ${JSON.stringify(exported.body)}`);
+    const dir = join(values.out ?? ".moneykernel/replays", alias);
+    mkdirSync(dir, { recursive: true });
+    const exportPath = join(dir, "export.json");
+    writeFileSync(exportPath, `${JSON.stringify(exported.body, null, 2)}\n`);
+    writeFileSync(
+      join(dir, "replay-log.json"),
+      `${JSON.stringify({ scenario: scenario.scenario_id, alias, log: replay.log, checks: replay.checks, decisions: replay.decisions }, null, 2)}\n`,
+    );
+    return { replay, exportPath };
+  } finally {
+    await replay.shutdown();
+  }
 }
 
 async function evaluateExpectations(replay: Replay): Promise<void> {
@@ -329,8 +359,12 @@ async function evaluateExpectations(replay: Replay): Promise<void> {
   if (expected.original_intent_unchanged === true) {
     const intent = await replay.op("GET", `/v1/intents/${String(first?.intent_id)}`);
     const payload = (intent.body.intent as Json | undefined)?.canonical_payload as Json | undefined;
-    const size = payload?.size as Json | undefined;
-    replay.check("original_intent_unchanged", size?.amount === "80", `stored request size ${String(size?.amount)}`);
+    const submitted = replay.submissions.values().next().value?.intent;
+    replay.check(
+      "original_intent_unchanged",
+      payload !== undefined && submitted !== undefined && canonicalJson(payload) === canonicalJson(submitted),
+      "complete stored intent compared with submitted payload",
+    );
   }
   if (typeof expected.alpha_candidate_quantity === "string") {
     const alpha = replay.decisions[0]?.candidate as Json | null;
@@ -356,9 +390,45 @@ async function evaluateExpectations(replay: Replay): Promise<void> {
       proposals.map((p) => p.state).join(","),
     );
     replay.check("conflict_created", conflicts.length === 1, `${conflicts.length} open conflict(s)`);
-    const conflict = (queue.body.conflicts as Array<{ conflict_id: string }>)[0];
+    let conflict = (queue.body.conflicts as Array<{ conflict_id: string }>)[0];
     if (conflict !== undefined) {
-      const winner = String(replay.decisions[0]?.proposal_id);
+      const rejected = await replay.op(
+        "POST",
+        `/v1/conflicts/${conflict.conflict_id}/resolve`,
+        { action: "REJECT_BOTH" },
+        `replay-reject-${conflict.conflict_id}`,
+      );
+      const holds = await withClient(pool, async (c) =>
+        (
+          await Promise.all(
+            replay.decisions.slice(0, 2).map((d) => listReservationsForProposal(c, String(d.proposal_id))),
+          )
+        ).flat(),
+      );
+      replay.check(
+        "reject_both_releases_only_never_armed_reservations",
+        rejected.status === 200 &&
+          holds.length > 0 &&
+          holds.every((r) => r.state === "RELEASED") &&
+          (await withClient(pool, (c) => listCommands(c, accountId))).length === 0,
+        `${rejected.status} ${holds.map((r) => `${r.kind}:${r.state}`).join(",")}`,
+      );
+      // Exercise SELECT separately with fresh intents after both first proposals are rejected.
+      for (const step of (replay.scenario as Scenario & { steps?: Json[] }).steps ?? []) {
+        if (step.action === "SUBMIT_INTENT")
+          await replay.submitIntent(
+            String(step.agent_id),
+            `${String(step.idempotency_key)}-select`,
+            step.intent as Json,
+          );
+      }
+      replay.clock.now += 800;
+      await replay.sweep();
+      const nextQueue = await replay.op("GET", "/v1/proposals");
+      conflict = (nextQueue.body.conflicts as Array<{ conflict_id: string }>)[0];
+    }
+    if (conflict !== undefined) {
+      const winner = String(replay.decisions[2]?.proposal_id);
       const resolved = await replay.op(
         "POST",
         `/v1/conflicts/${conflict.conflict_id}/resolve`,
@@ -372,14 +442,8 @@ async function evaluateExpectations(replay: Replay): Promise<void> {
         resolved.status === 200 && states.includes("AWAITING_APPROVAL"),
         `${resolved.status} ${states.join(",")}`,
       );
-      const loserHolds = await withClient(pool, (c) =>
-        listReservationsForProposal(c, String(replay.decisions[1]?.proposal_id)),
-      );
-      replay.check(
-        "reject_both_releases_only_never_armed_reservations",
-        loserHolds.every((r) => r.state === "RELEASED"),
-        loserHolds.map((r) => `${r.kind}:${r.state}`).join(","),
-      );
+    } else {
+      replay.check("select_one_revalidates_and_requests_exact_approval", false, "second conflict missing");
     }
     const commands = await withClient(pool, (c) => listCommands(c, accountId));
     replay.check("short_operations", commands.length === 0, `${commands.length} commands`);
@@ -406,19 +470,50 @@ async function evaluateExpectations(replay: Replay): Promise<void> {
     );
     const commands = await withClient(pool, (c) => listCommands(c, accountId));
     replay.check("armed_commands_affected", commands.length === 0, `${commands.length} commands`);
-    const later = await replay.submitIntent(
-      scenario_agent(replay),
-      `${String((replay.scenario as Scenario & { burst?: Json }).burst?.idempotency_key_prefix ?? "burst-")}later`,
-      {
-        ...((replay.scenario as Scenario & { burst?: Json }).burst?.intent_template as Json),
-        rationale: "after quarantine",
-      },
-    );
-    replay.check(
-      "later_requests_acquire_authority",
-      later.http_status !== 201 || later.outcome === "DENY",
-      `${later.http_status} ${String(later.outcome ?? (later.error as Json | undefined)?.code)}`,
-    );
+    for (const step of (replay.scenario as Scenario & { post_burst_steps?: Json[] }).post_burst_steps ?? []) {
+      const key = String(step.idempotency_key);
+      if (step.action === "RETRY_EXACT") {
+        const original = replay.submissions.get(key);
+        if (original === undefined) throw new Error(`no original request for retry ${key}`);
+        const counts = () =>
+          withClient(
+            pool,
+            async (c) =>
+              (
+                await c.query(
+                  "SELECT (SELECT count(*)::int FROM intents WHERE account_id = $1) AS intents, " +
+                    "(SELECT count(*)::int FROM audit_events WHERE account_id = $1) AS events",
+                  [accountId],
+                )
+              ).rows[0],
+          );
+        const beforeRetry = await counts();
+        const retried = await replay.request("POST", "/v1/agent/intents", original.intent, {
+          authorization: `Bearer ${replay.agent(original.agentId).token}`,
+          "idempotency-key": key,
+        });
+        const { http_status: _status, ...originalOutcome } = original.decision;
+        replay.check(
+          "exact_retry_preserves_recorded_outcome_and_counts",
+          retried.status === 200 &&
+            canonicalJson(retried.body) === canonicalJson(originalOutcome) &&
+            canonicalJson(await counts()) === canonicalJson(beforeRetry),
+          `retry ${key}: ${retried.status}`,
+        );
+      } else if (step.action === "SUBMIT_NEW") {
+        const later = await replay.submitIntent(scenario_agent(replay), key, {
+          ...((replay.scenario as Scenario & { burst?: Json }).burst?.intent_template as Json),
+          rationale: "after quarantine",
+        });
+        replay.check(
+          "later_requests_acquire_authority",
+          later.http_status === 201 && later.outcome === "DENY" && quarantined(later),
+          `${later.http_status} ${String(later.outcome)}`,
+        );
+      } else {
+        throw new Error(`unknown post-burst step ${String(step.action)}`);
+      }
+    }
   }
   if (typeof expected.submit_invocations === "number") {
     const paper = replay.runtime.execution as PaperExecutionAdapter;

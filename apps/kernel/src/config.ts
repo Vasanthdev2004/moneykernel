@@ -1,7 +1,8 @@
 import { type Environment, EnvironmentSchema, hashCanonical } from "@moneykernel/contracts";
+import { ENGINE_VERSION } from "@moneykernel/domain";
 import { z } from "zod";
 
-export const ENGINE_VERSION = "0.1.2";
+export { ENGINE_VERSION };
 
 /** Options that must never exist in v0.1 (prd.md 22.1). Presence alone is a startup failure. */
 export const FORBIDDEN_ENV_KEYS = [

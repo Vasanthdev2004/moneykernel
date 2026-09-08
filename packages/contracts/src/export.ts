@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { canonicalJson } from "./canonical-json.ts";
 import { DecisionOutcomeSchema } from "./decision.ts";
 import { AuditEventSchema } from "./events.ts";
 import {
@@ -39,40 +40,60 @@ export const ExportedReceiptSchema = z.strictObject({
 });
 export type ExportedReceipt = z.infer<typeof ExportedReceiptSchema>;
 
-export const RunExportSchema = z.strictObject({
-  schema_version: z.literal("1"),
-  exported_at: IsoTimestampSchema,
-  engine_version: z.string(),
-  environment: EnvironmentSchema,
-  account: z.strictObject({
-    id: IdSchema,
-    alias: z.string(),
+export const RunExportSchema = z
+  .strictObject({
+    schema_version: z.literal("1"),
+    exported_at: IsoTimestampSchema,
+    engine_version: z.string(),
     environment: EnvironmentSchema,
-    status: AccountStatusSchema,
-    epoch: NonNegativeIntSchema,
-    quote_asset: z.string(),
-    configuration_hash: Hex64Schema,
-  }),
-  provenance: ProvenanceSchema,
-  integration_manifest: z.string(),
-  policy_versions: z.array(Row),
-  agents: z.array(Row),
-  leases: z.array(Row),
-  intents: z.array(Row),
-  receipts: z.array(ExportedReceiptSchema),
-  proposals: z.array(Row),
-  reservations: z.array(Row),
-  approvals: z.array(Row),
-  commands: z.array(Row),
-  orders: z.array(Row),
-  fills: z.array(Row),
-  ledger_entries: z.array(Row),
-  balances: z.array(Row),
-  allocations: z.array(Row),
-  conflicts: z.array(Row),
-  incidents: z.array(Row),
-  audit_events: z.array(AuditEventSchema),
-  /** The chain is verified from genesis (null) unless a trusted checkpoint hash is supplied out of band. */
-  checkpoint: z.strictObject({ previous_hash: Hex64Schema.nullable(), event_count: NonNegativeIntSchema }),
-});
+    account: z.strictObject({
+      id: IdSchema,
+      alias: z.string(),
+      environment: EnvironmentSchema,
+      status: AccountStatusSchema,
+      epoch: NonNegativeIntSchema,
+      quote_asset: z.string(),
+      configuration_hash: Hex64Schema,
+    }),
+    provenance: ProvenanceSchema,
+    integration_manifest: z.string(),
+    policy_versions: z.array(Row),
+    agents: z.array(Row),
+    leases: z.array(Row),
+    intents: z.array(Row),
+    receipts: z.array(ExportedReceiptSchema),
+    proposals: z.array(Row),
+    reservations: z.array(Row),
+    approvals: z.array(Row),
+    commands: z.array(Row),
+    orders: z.array(Row),
+    fills: z.array(Row),
+    ledger_entries: z.array(Row),
+    balances: z.array(Row),
+    allocations: z.array(Row),
+    conflicts: z.array(Row),
+    incidents: z.array(Row),
+    audit_events: z.array(AuditEventSchema),
+    /** Declared bounds are internal consistency evidence; retain final_hash independently to authenticate the tail. */
+    checkpoint: z.strictObject({
+      previous_hash: Hex64Schema.nullable(),
+      event_count: NonNegativeIntSchema,
+      // Optional for historical v1 exports. New exports declare the complete snapshot head.
+      final_hash: Hex64Schema.nullable().optional(),
+      final_seq: NonNegativeIntSchema.optional(),
+    }),
+  })
+  .superRefine((run, ctx) => {
+    for (let index = 0; index < run.audit_events.length; index += 1) {
+      try {
+        canonicalJson(run.audit_events[index]?.payload);
+      } catch {
+        ctx.addIssue({
+          code: "custom",
+          path: ["audit_events", index, "payload"],
+          message: "invalid canonical payload",
+        });
+      }
+    }
+  });
 export type RunExport = z.infer<typeof RunExportSchema>;

@@ -6,7 +6,7 @@ import { dec, toDecimalString } from "@moneykernel/domain";
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
 import type { IntentDocument, LedgerResponse, PolicyResponse } from "../../apps/web/src/types.ts";
 
-const API = "http://127.0.0.1:8080";
+const API = `http://127.0.0.1:${process.env.E2E_KERNEL_PORT ?? "8080"}`;
 const SECRET = process.env.OPERATOR_BOOTSTRAP_SECRET ?? "";
 type TestAgent = { id: string; name: string; token: string; leaseId: string; side: "BUY" | "SELL" };
 

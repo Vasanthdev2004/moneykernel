@@ -7,6 +7,10 @@ subsequent regression coverage and qualification limits. Historical runs below
 describe their original code state; their SHADOW approvals do not qualify the
 exchange filters that the review now rejects as unsupported.
 
+## 2026-09-08 — Independent G6 review, rebased onto G7
+
+The [G6 review evidence](g6-fix-test-evidence.md) records the original false passes, export failures and their regressions. On base `afe3847`, `pnpm test` passed 515 tests with three online checks skipped, `pnpm test:e2e` passed seven browser tests using isolated ports, and lint/build/doctor passed. All four replay scenarios passed after the rebase; twelve repeated runs had passed before it. The six historical replay exports remain unchanged and verifiable. The separate G7 recording rehearsal was not rerun by this review.
+
 ## 2026-09-08 — Gate 7 release candidate
 
 | Command | Result | What it covers |
