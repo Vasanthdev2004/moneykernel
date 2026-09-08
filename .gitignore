@@ -1,0 +1,30 @@
+# dependencies / build
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# secrets and local config (PRD 18.3: never commit credential-bearing files)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# raw, unsanitized integration captures (only sanitized exports are committed)
+**/raw/
+**/*.raw.json
+
+# logs and OS noise
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
