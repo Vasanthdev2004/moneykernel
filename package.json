@@ -36,7 +36,7 @@
     "secret:generate": "node scripts/generate-secret.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.12",
+    "@biomejs/biome": "2.5.13",
     "@playwright/test": "1.63.0",
     "@types/node": "26.4.1",
     "fast-check": "4.9.0",
