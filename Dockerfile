@@ -16,7 +16,7 @@ RUN mkdir -p /opt/moneykernel/apps/web /opt/moneykernel/fixtures \
     && mkdir -p /var/lib/moneykernel \
     && chown -R 65532:65532 /opt/moneykernel /var/lib/moneykernel
 
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:774b7d020b24214835769e24c3544835526cd0288f0b094eae48e8b2c2429a79 AS runtime
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /opt/moneykernel/apps/kernel
