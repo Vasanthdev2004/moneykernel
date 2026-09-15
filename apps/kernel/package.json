@@ -19,6 +19,6 @@
     "@moneykernel/persistence": "workspace:*",
     "fastify": "5.12.3",
     "tsx": "4.23.13",
-    "zod": "4.5.4"
+    "zod": "4.6.2"
   }
 }
